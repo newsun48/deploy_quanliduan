@@ -99,4 +99,35 @@ public class ProjectService {
         }
         return projectRepository.findByNameContainingIgnoreCase(keyword);
     }
+
+    // 5. 🆕 Lấy các dự án mà người dùng có thể truy cập
+    // Bao gồm: (1) Dự án user là thành viên, (2) Dự án user là trưởng phòng
+    public List<Project> getAccessibleProjects(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        // Lấy tất cả dự án
+        List<Project> allProjects = getAllProjects();
+        
+        // Lọc các dự án mà user có thể truy cập
+        return allProjects.stream()
+                .filter(project -> {
+                    // 1. User là thành viên dự án
+                    boolean isMember = project.getMembers().stream()
+                            .anyMatch(member -> member.getId().equals(userId));
+                    if (isMember) {
+                        return true;
+                    }
+
+                    // 2. User là trưởng phòng của phòng ban chứa dự án
+                    if (project.getDepartment() != null && 
+                        project.getDepartment().getManager() != null &&
+                        project.getDepartment().getManager().getId().equals(userId)) {
+                        return true;
+                    }
+
+                    return false;
+                })
+                .toList();
+    }
 }

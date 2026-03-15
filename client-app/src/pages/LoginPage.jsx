@@ -27,7 +27,8 @@ const LoginPage = () => {
             else navigate('/employee');
 
         } catch (err) {
-            setError("Đăng nhập thất bại! Vui lòng kiểm tra thông tin.");
+            const errorMsg = err.response?.data || err.message || "Đăng nhập thất bại! Vui lòng kiểm tra thông tin.";
+            setError(typeof errorMsg === 'string' ? errorMsg : "Đăng nhập thất bại!");
         } finally {
             setIsLoading(false);
         }

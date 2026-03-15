@@ -9,6 +9,9 @@ const ProfilePage = () => {
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('PROFILE');
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarUrl, setAvatarUrl] = useState('');
 
     useEffect(() => {
         const userJson = localStorage.getItem('user');
@@ -33,6 +36,96 @@ const ProfilePage = () => {
 
     const handleChangePasswordSuccess = () => {
         // Optional: Có thể hiển thị modal thành công hoặc reset form
+    };
+
+    const handleAvatarSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.type.match(/image\/(png|jpeg|jpg)/)) {
+                alert("Vui lòng chọn file ảnh PNG hoặc JPG!");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Kích thước ảnh không được vượt quá 5MB!");
+                return;
+            }
+            setAvatarFile(file);
+            setAvatarUrl('');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setAvatarPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleEditAvatar = () => {
+        document.getElementById('profileAvatarInput').click();
+    };
+
+    const handleAvatarUrlChange = (e) => {
+        const url = e.target.value;
+        setAvatarUrl(url);
+        setAvatarFile(null);
+        document.getElementById('profileAvatarInput').value = '';
+    };
+
+    const handleLoadAvatarFromUrl = () => {
+        if (!avatarUrl.trim()) {
+            alert("Vui lòng nhập URL ảnh!");
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            setAvatarPreview(avatarUrl);
+            setAvatarFile(null);
+        };
+        img.onerror = () => {
+            alert("Không thể tải ảnh từ URL này. Vui lòng kiểm tra lại!");
+            setAvatarUrl('');
+            setAvatarPreview(null);
+        };
+        img.src = avatarUrl;
+    };
+
+    const handleUploadAvatar = async () => {
+        if (!avatarFile && !avatarUrl) return;
+        try {
+            const formData = new FormData();
+            if (avatarFile) {
+                formData.append('avatar', avatarFile);
+            } else if (avatarUrl) {
+                formData.append('avatarUrl', avatarUrl);
+            }
+            const response = await api.post('/users/upload-avatar', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            // Use the response from backend which contains the new avatar
+            const updatedUser = response.data;
+            alert("✅ Cập nhật avatar thành công!");
+            
+            // Update localStorage with the new user data from backend
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            
+            // Update component state with new user data
+            setCurrentUser(updatedUser);
+            
+            // Clear preview states
+            setAvatarFile(null);
+            setAvatarPreview(null);
+            setAvatarUrl('');
+            document.getElementById('profileAvatarInput').value = '';
+        } catch (err) {
+            alert("Lỗi cập nhật avatar: " + err.message);
+        }
+    };
+
+    const handleRemoveAvatar = () => {
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        setAvatarUrl('');
+        document.getElementById('profileAvatarInput').value = '';
     };
 
     if (isLoading) {
@@ -94,13 +187,65 @@ const ProfilePage = () => {
                     <div className="col-lg-3">
                         <div className="card border-0 shadow-sm profile-card">
                             <div className="card-body text-center">
-                                <div
-                                    className="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                                    style={{ width: 80, height: 80 }}
-                                >
-                                    <i className="bi bi-person-fill text-white" style={{ fontSize: '36px' }}></i>
+                                <div className="position-relative d-inline-block mb-3">
+                                    {avatarPreview ? (
+                                        <img src={avatarPreview} alt="Avatar preview" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} onError={() => setAvatarPreview(null)} />
+                                    ) : currentUser?.avatar ? (
+                                        <img src={currentUser.avatar} alt="User avatar" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} onError={() => {}} />
+                                    ) : (
+                                        <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style={{ width: 100, height: 100 }}>
+                                            <i className="bi bi-person-fill text-white" style={{ fontSize: '36px' }}></i>
+                                        </div>
+                                    )}
+                                    {avatarPreview && (
+                                        <div className="position-absolute top-0 end-0 translate-middle">
+                                            <span className="badge bg-success rounded-circle">
+                                                <i className="bi bi-check-lg"></i>
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                                <h5 className="fw-bold text-dark">{currentUser.fullName}</h5>
+                                <input type="file" id="profileAvatarInput" accept="image/png,image/jpeg,image/jpg" onChange={handleAvatarSelect} style={{display: 'none'}} />
+                                <div className="d-flex gap-2 mb-3 justify-content-center flex-wrap">
+                                    <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={handleEditAvatar} title="Tải file ảnh từ máy tính" disabled={avatarUrl && avatarPreview}>
+                                        <i className="bi bi-upload me-1"></i>File
+                                    </button>
+                                    {avatarPreview && (
+                                        <button type="button" className="btn btn-sm btn-outline-danger fw-bold" onClick={handleRemoveAvatar}>
+                                            <i className="bi bi-trash me-1"></i>Xóa
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="mb-3">
+                                    <div className="input-group input-group-sm mb-2">
+                                        <input 
+                                            type="url" 
+                                            className="form-control" 
+                                            placeholder="https://..."
+                                            value={avatarUrl}
+                                            onChange={handleAvatarUrlChange}
+                                            style={{fontSize: '0.8rem'}}
+                                            disabled={avatarFile}
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-outline-success fw-bold btn-sm"
+                                            onClick={handleLoadAvatarFromUrl}
+                                            title="Tải ảnh từ URL"
+                                            disabled={avatarFile}
+                                        >
+                                            <i className="bi bi-globe"></i>
+                                        </button>
+                                    </div>
+                                    <small className="text-muted d-block">Chọn một trong hai: File hoặc URL</small>
+                                </div>
+                                {avatarPreview && (
+                                    <button type="button" className="btn btn-sm btn-success fw-bold w-100 mb-3" onClick={handleUploadAvatar}>
+                                        <i className="bi bi-upload me-1"></i>Lưu Avatar
+                                    </button>
+                                )}
+                                <small className="text-muted d-block">{avatarPreview ? 'PNG/JPG, max 5MB' : ''}</small>
+                                <h5 className="fw-bold text-dark mt-3">{currentUser.fullName}</h5>
                                 <p className="text-muted small mb-2">{currentUser.email}</p>
                                 <div className="d-flex justify-content-center">
                                     <span className="badge bg-info">

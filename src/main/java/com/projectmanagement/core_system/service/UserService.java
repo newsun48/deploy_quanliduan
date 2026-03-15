@@ -8,8 +8,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Base64;
 
 import java.util.List;
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
 
 @Service
 public class UserService {
@@ -95,5 +100,89 @@ public class UserService {
         // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
         return userRepository.save(user);
+    }
+
+    // 7. 🔥 MỚI: Upload Avatar
+    public User uploadAvatar(String userId, MultipartFile avatarFile) throws IOException {
+        if (avatarFile == null || avatarFile.isEmpty()) {
+            throw new IllegalArgumentException("File ảnh không được để trống!");
+        }
+
+        String contentType = avatarFile.getContentType();
+        if (contentType == null || !contentType.matches("image/(png|jpeg|jpg)")) {
+            throw new IllegalArgumentException("Chỉ chấp nhận file ảnh PNG hoặc JPG!");
+        }
+
+        if (avatarFile.getSize() > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException("Kích thước ảnh không được vượt quá 5MB!");
+        }
+
+        User user = getUserById(userId);
+        String base64Avatar = convertFileToBase64(avatarFile);
+        user.setAvatar(base64Avatar);
+
+        return userRepository.save(user);
+    }
+
+    // 8. 🔥 MỚI: Convert File to Base64
+    public String convertFileToBase64(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        byte[] fileBytes = file.getBytes();
+        String base64 = Base64.getEncoder().encodeToString(fileBytes);
+        String contentType = file.getContentType();
+        
+        // Return data URL format
+        return "data:" + contentType + ";base64," + base64;
+    }
+
+    // 9. 🔥 MỚI: Upload Avatar from URL
+    public User uploadAvatarFromUrl(String userId, String imageUrl) throws IOException {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            throw new IllegalArgumentException("URL ảnh không được để trống!");
+        }
+
+        User user = getUserById(userId);
+        String base64Avatar = downloadImageFromUrl(imageUrl);
+        user.setAvatar(base64Avatar);
+
+        return userRepository.save(user);
+    }
+
+    // 10. 🔥 MỚI: Download Image from URL and convert to Base64
+    public String downloadImageFromUrl(String imageUrl) throws IOException {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            throw new IllegalArgumentException("URL ảnh không được để trống!");
+        }
+
+        try {
+            URL url = new URL(imageUrl);
+            URLConnection connection = url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+            String contentType = connection.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new IllegalArgumentException("URL không chỉ tới một file ảnh!");
+            }
+
+            byte[] imageBytes = connection.getInputStream().readAllBytes();
+
+            if (imageBytes.length > 5 * 1024 * 1024) {
+                throw new IllegalArgumentException("Kích thước ảnh từ URL không được vượt quá 5MB!");
+            }
+
+            String base64 = Base64.getEncoder().encodeToString(imageBytes);
+            return "data:" + contentType + ";base64," + base64;
+        } catch (java.net.MalformedURLException e) {
+            throw new IllegalArgumentException("URL không hợp lệ!");
+        } catch (java.net.SocketTimeoutException e) {
+            throw new IllegalArgumentException("Timeout khi tải ảnh từ URL!");
+        } catch (IOException e) {
+            throw new IOException("Lỗi khi tải ảnh từ URL: " + e.getMessage());
+        }
     }
 }

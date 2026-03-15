@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
+import TaskDetailModal from '../components/TaskDetailModal';
 
 const EmployeeDashboard = () => {
     const navigate = useNavigate();
@@ -10,6 +11,7 @@ const EmployeeDashboard = () => {
     const [filterStatus, setFilterStatus] = useState('ALL'); 
     const [editingTask, setEditingTask] = useState(null);
     const [updatePayload, setUpdatePayload] = useState({ status: '', percent: 0 });
+    const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
 
     useEffect(() => {
         const userJson = localStorage.getItem('user');
@@ -108,13 +110,16 @@ const EmployeeDashboard = () => {
                                                 <small className="ms-2 fw-bold">{task.completionPercentage}%</small>
                                             </div>
 
-                                            <div className="d-flex justify-content-between align-items-end border-top pt-3">
+                                            <div className="d-flex justify-content-between align-items-end border-top pt-3 gap-2">
                                                 <div className={`badge ${task.status==='DONE'?'bg-success':task.status==='IN_PROGRESS'?'bg-primary':'bg-secondary'}`}>{task.status.replace('_', ' ')}</div>
-                                                {task.project?.status === 'CLOSED' ? (
-                                                    <button className="btn btn-sm btn-secondary disabled rounded-pill px-3" title="Dự án đã đóng" disabled>🔒 Đã khóa</button>
-                                                ) : (
-                                                    <button className="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onClick={()=>{setEditingTask(task); setUpdatePayload({status: task.status, percent: task.completionPercentage});}}>Cập nhật</button>
-                                                )}
+                                                <div className="d-flex gap-2">
+                                                    <button className="btn btn-sm btn-success fw-bold rounded-pill px-3" onClick={()=>setSelectedTaskForDetail(task)} title="Xem chi tiết & bình luận">💬 Bình luận</button>
+                                                    {task.project?.status === 'CLOSED' ? (
+                                                        <button className="btn btn-sm btn-secondary disabled rounded-pill px-3" title="Dự án đã đóng" disabled>🔒</button>
+                                                    ) : (
+                                                        <button className="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onClick={()=>{setEditingTask(task); setUpdatePayload({status: task.status, percent: task.completionPercentage});}}>Cập nhật</button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -141,6 +146,16 @@ const EmployeeDashboard = () => {
                     </div>
                 </div>
             )}
+
+            {selectedTaskForDetail && (
+                <TaskDetailModal 
+                    task={selectedTaskForDetail} 
+                    currentUser={currentUser}
+                    onClose={() => setSelectedTaskForDetail(null)}
+                    onTaskUpdate={() => fetchMyTasks(currentUser.id)}
+                />
+            )}
+
             <style>{`.modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); } .task-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; } .transition { transition: all 0.3s ease; }`}</style>
         </div>
     );

@@ -5,6 +5,8 @@ import com.projectmanagement.core_system.model.LoginRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.UserRepository;
 import com.projectmanagement.core_system.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,8 +32,12 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        logger.info("Login attempt for email: {}", loginRequest.getEmail());
+        
         // Tìm user theo email
         Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
 
