@@ -5,8 +5,8 @@ Status: 🔄 In Progress
 ## Goal: Push group chat/avatar/comment features to main
 
 Steps:
-- [ ] 1. git add .
-- [ ] 2. git commit -m "feat: add avatar and comment"
+- [x] 1. git add .
+- [x] 2. git commit -m "feat: add avatar and comment"
 - [ ] 3. git checkout main && git pull origin main
 - [ ] 4. git merge forget-password
 - [ ] 5. git push origin main
