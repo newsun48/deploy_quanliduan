@@ -17,4 +17,13 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
     // 🔥 MỚI: Tìm kiếm dự án theo tên (Không phân biệt hoa thường)
     // Ví dụ: Gõ "java" ra "Dự án Java Web", "JAVA Core"
     List<Project> findByNameContainingIgnoreCase(String name);
+    
+    // Soft delete support
+    List<Project> findByIsDeletedFalse();
+    List<Project> findByIsDeletedFalseAndDepartment_Id(String departmentId);
+    List<Project> findByIsDeletedFalseAndNameContainingIgnoreCase(String name);
+    
+    // Deleted projects support
+    List<Project> findByIsDeletedTrue();
+    List<Project> findByIsDeletedTrueAndDepartment_Id(String departmentId);
 }

@@ -11,6 +11,7 @@ const AdminDashboard = () => {
     const [departments, setDepartments] = useState([]);
     const [projects, setProjects] = useState([]); 
     const [completedProjects, setCompletedProjects] = useState([]);
+    const [deletedProjects, setDeletedProjects] = useState([]);
     const [viewingCompletedProject, setViewingCompletedProject] = useState(null); 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -27,20 +28,22 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [usersRes, deptsRes, projectsRes] = await Promise.all([
+            const [usersRes, deptsRes, projectsRes, deletedRes] = await Promise.all([
                 api.get('/users'),
                 api.get('/departments'),
-                api.get('/projects')
+                api.get('/projects'),
+                api.get('/projects/deleted')
             ]);
             console.log("Users:", usersRes.data);
             console.log("Departments:", deptsRes.data);
             console.log("Projects:", projectsRes.data);
+            console.log("Deleted Projects:", deletedRes.data);
+            
             setUsers(usersRes.data);
             setDepartments(deptsRes.data);
-            
-            const allProjects = projectsRes.data;
-            setProjects(allProjects.filter(p => p.status !== 'CLOSED'));
-            setCompletedProjects(allProjects.filter(p => p.status === 'CLOSED'));
+            setProjects(projectsRes.data.filter(p => !p.isDeleted));
+            setCompletedProjects(projectsRes.data.filter(p => p.status === 'CLOSED'));
+            setDeletedProjects(deletedRes.data);
         } catch (error) { console.error("Lỗi tải dữ liệu:", error); }
     };
 
@@ -154,6 +157,42 @@ const AdminDashboard = () => {
         try { await api.delete(`/users/${id}`); fetchData(); } catch (err) { alert("Lỗi xóa!"); }
     };
 
+    const [editingUserId, setEditingUserId] = useState(null);
+    const [editEmail, setEditEmail] = useState('');
+    const [editDeptId, setEditDeptId] = useState('');
+    const [editRole, setEditRole] = useState('');
+
+    const handleEditUser = (id) => {
+        const user = users.find(u => u.id === id);
+        setEditingUserId(id);
+        setEditEmail(user.email);
+        setEditDeptId(user.department?.id || '');
+        setEditRole(user.role);
+    };
+
+    const handleSaveEdit = async () => {
+        try {
+            await api.patch(`/users/${editingUserId}`, {
+                email: editEmail,
+                deptId: editDeptId,
+                role: editRole
+            }, {
+                params: {
+                    adminEmail: currentUser.email
+                }
+            });
+            alert('Cập nhật thành công!');
+            fetchData();
+            setEditingUserId(null);
+        } catch (err) {
+            alert('Lỗi: ' + err.response?.data || err.message);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingUserId(null);
+    };
+
     const handleAddDept = async (e) => {
         e.preventDefault();
         try { 
@@ -202,6 +241,7 @@ const AdminDashboard = () => {
                         <button className={`btn rounded-pill px-4 fw-bold ${activeTab === 'users' ? 'btn-primary shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('users')}>👥 Nhân sự</button>
                         <button className={`btn rounded-pill px-4 fw-bold ms-2 ${activeTab === 'departments' ? 'btn-primary shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('departments')}>🏢 Phòng Ban & Dự Án</button>
                         <button className={`btn rounded-pill px-4 fw-bold ms-2 ${activeTab === 'completed' ? 'btn-success shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('completed')}>✅ Dự án Hoàn thành</button>
+                        <button className={`btn rounded-pill px-4 fw-bold ms-2 ${activeTab === 'deleted' ? 'btn-warning shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('deleted')}>🗑️ Thùng rác</button>
                         <button className="btn rounded-pill px-3 fw-bold ms-2 btn-outline-primary" onClick={fetchData} title="Tải lại dữ liệu">🔄</button>
                     </div>
                 </div>
@@ -287,24 +327,74 @@ const AdminDashboard = () => {
                                     <table className="table table-hover align-middle mb-0">
                                         <thead className="table-light"><tr><th style={{width: '60px'}}>Avatar</th><th>Họ tên</th><th>Email</th><th>Phòng</th><th>Vai trò</th><th></th></tr></thead>
                                         <tbody>
-                                            {users.map(u => (
-                                                <tr key={u.id}>
-                                                    <td className="text-center">
-                                                        {u.avatar ? (
-                                                            <img src={u.avatar} alt={u.fullName} className="rounded-circle" style={{width: 40, height: 40, objectFit: 'cover'}} />
-                                                        ) : (
-                                                            <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto" style={{width: 40, height: 40}}>
-                                                                <i className="bi bi-person-fill text-white" style={{fontSize: '18px'}}></i>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="fw-bold">{u.fullName}</td>
-                                                    <td>{u.email}</td>
-                                                    <td>{u.department?.name || <span className="text-muted small">--</span>}</td>
-                                                    <td><span className={`badge ${u.role === 'ADMIN' ? 'bg-danger' : u.role === 'MANAGER' ? 'bg-warning text-dark' : 'bg-info text-white'}`}>{u.role}</span></td>
-                                                    <td className="text-end"><button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleDeleteUser(u.id)}>❌</button></td>
-                                                </tr>
-                                            ))}
+                                            {users.map(u => {
+                                                const isEditing = editingUserId === u.id;
+                                                return (
+                                                    <tr key={u.id}>
+                                                        <td className="text-center">
+                                                            {u.avatar ? (
+                                                                <img src={u.avatar} alt={u.fullName} className="rounded-circle" style={{width: 40, height: 40, objectFit: 'cover'}} />
+                                                            ) : (
+                                                                <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto" style={{width: 40, height: 40}}>
+                                                                    <i className="bi bi-person-fill text-white" style={{fontSize: '18px'}}></i>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="fw-bold">{u.fullName}</td>
+                                                        <td>
+                                                            {isEditing ? (
+                                                                <input 
+                                                                    className="form-control form-control-sm" 
+                                                                    value={editEmail}
+                                                                    onChange={(e) => setEditEmail(e.target.value)}
+                                                                />
+                                                            ) : u.email}
+                                                        </td>
+                                                        <td>
+                                                            {isEditing ? (
+                                                                <select 
+                                                                    className="form-select form-select-sm" 
+                                                                    value={editDeptId}
+                                                                    onChange={(e) => setEditDeptId(e.target.value)}
+                                                                >
+                                                                    <option value="">-- Không phòng ban --</option>
+                                                                    {departments.map(d => (
+                                                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : u.department?.name || <span className="text-muted small">--</span>}
+                                                        </td>
+                                                        <td>
+                                                            {isEditing ? (
+                                                                <select 
+                                                                    className="form-select form-select-sm" 
+                                                                    value={editRole}
+                                                                    onChange={(e) => setEditRole(e.target.value)}
+                                                                >
+                                                                    <option value="EMPLOYEE">Nhân viên</option>
+                                                                    <option value="MANAGER">Trưởng phòng</option>
+                                                                    <option value="ADMIN">Quản trị viên</option>
+                                                                </select>
+                                                            ) : (
+                                                                <span className={`badge ${u.role === 'ADMIN' ? 'bg-danger' : u.role === 'MANAGER' ? 'bg-warning text-dark' : 'bg-info text-white'}`}>{u.role}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-end">
+                                                            {isEditing ? (
+                                                                <>
+                                                                    <button className="btn btn-sm btn-success me-1" onClick={handleSaveEdit}>✅</button>
+                                                                    <button className="btn btn-sm btn-secondary" onClick={handleCancelEdit}>❌</button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button className="btn btn-sm btn-primary me-1" onClick={() => handleEditUser(u.id)}>✏️</button>
+                                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteUser(u.id)}>🗑️</button>
+                                                                </>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                             {users.length === 0 && <tr><td colSpan="6" className="text-center py-4 text-muted">Không tìm thấy nhân viên nào.</td></tr>}
                                         </tbody>
                                     </table>
@@ -346,9 +436,31 @@ const AdminDashboard = () => {
                                     {selectedDept && showProjectForm && (
                                         <div className="card border-0 shadow-sm mb-4 bg-white"><div className="card-body"><form onSubmit={handleAddProject}><input className="form-control mb-2" placeholder="Tên dự án" required value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} /><div className="row mb-2"><div className="col-6"><input type="date" className="form-control" required value={newProject.deadline} onChange={e => setNewProject({...newProject, deadline: e.target.value})} /></div><div className="col-6"><select className="form-select" value={newProject.priority} onChange={e => setNewProject({...newProject, priority: e.target.value})}><option value="MEDIUM">TB</option><option value="HIGH">Cao</option></select></div></div><textarea className="form-control mb-2" placeholder="Mô tả" value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} /><button className="btn btn-success w-100 fw-bold">Lưu</button></form></div></div>
                                     )}
-                                    {selectedDept && getProjectsByDept(selectedDept.id).map(p => (
-                                        <div key={p.id} className="card border-0 shadow-sm p-3 mb-3"><div className="d-flex justify-content-between"><h6 className="fw-bold">{p.name}</h6><span className="badge bg-warning text-dark">{p.priority}</span></div><small className="text-muted">{p.description}</small></div>
-                                    ))}
+                                        {selectedDept && getProjectsByDept(selectedDept.id).map(p => (
+                                            <div key={p.id} className="card border-0 shadow-sm p-3 mb-3">
+                                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                                    <h6 className="fw-bold mb-0">{p.name}</h6>
+                                                    <span className="badge bg-warning text-dark">{p.priority}</span>
+                                                </div>
+                                                <small className="text-muted">{p.description}</small>
+                                                <div className="mt-2">
+                                                    <button 
+                                                        className="btn btn-sm btn-outline-danger fw-bold" 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (window.confirm('Xóa dự án này (Soft Delete)?')) {
+                                                                api.delete(`/projects/${p.id}?adminEmail=${currentUser.email}`).then(() => {
+                                                                    fetchData();
+                                                                    alert('Dự án đã được xóa!');
+                                                                }).catch(err => alert('Lỗi xóa: ' + err.message));
+                                                            }
+                                                        }}
+                                                    >
+                                                        🗑️ Xóa
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
                                 </div>
                             </div>
                         </div>
@@ -385,6 +497,60 @@ const AdminDashboard = () => {
                                 )
                             })}
                             {completedProjects.length === 0 && <div className="text-center py-5 text-muted">Chưa có dự án nào hoàn thành.</div>}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'deleted' && (
+                    <div className="row">
+                        <div className="col-12">
+                            <h4 className="fw-bold text-warning mb-4"><i className="bi bi-trash me-2"></i>Dự án đã xóa (Thùng rác)</h4>
+                            {departments.map(dept => {
+                                const deptDeletedProjects = deletedProjects.filter(p => p.department?.id === dept.id);
+                                if (deptDeletedProjects.length === 0) return null;
+                                return (
+                                    <div key={dept.id} className="card border-0 shadow-sm mb-4">
+                                        <div className="card-header bg-warning text-dark fw-bold d-flex align-items-center"><i className="bi bi-building me-2"></i>{dept.name}</div>
+                                        <div className="card-body bg-light">
+                                            <div className="row g-3">
+                                                {deptDeletedProjects.map(p => (
+                                                    <div key={p.id} className="col-md-6 col-lg-3">
+                                                        <div className="card h-100 border-0 shadow-sm">
+                                                            <div className="card-body">
+                                                                <div className="d-flex justify-content-between mb-2">
+                                                                    <span className="badge bg-danger">🗑️ ĐÃ XÓA</span>
+                                                                    <small className="text-muted">{p.deletedAt}</small>
+                                                                </div>
+                                                                <h6 className="fw-bold text-dark">{p.name}</h6>
+                                                                <p className="text-muted small">{p.description}</p>
+                                                                <button 
+                                                                    className="btn btn-sm btn-success w-100 mt-2" 
+                                                                    onClick={async () => {
+                                                                        if (window.confirm('Khôi phục dự án này?')) {
+                                                                            try {
+                                                                                await api.post(`/projects/${p.id}/restore`, null, {
+                                                                                    params: { adminEmail: currentUser.email }
+                                                                                });
+                                                                                fetchData();
+                                                                                alert('Đã khôi phục!');
+                                                                            } catch (err) {
+                                                                                alert('Lỗi: ' + err.message);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    🔄 Khôi phục
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                            {deletedProjects.length === 0 && <div className="text-center py-5 text-muted">Chưa có dự án nào trong thùng rác.</div>}
                         </div>
                     </div>
                 )}

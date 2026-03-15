@@ -44,4 +44,7 @@ public class Project {
 
     private String createdBy;
     private Long createdDate = System.currentTimeMillis();
+    
+    private boolean isDeleted = false;
+    private LocalDate deletedAt;
 }

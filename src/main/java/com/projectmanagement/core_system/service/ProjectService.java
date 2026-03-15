@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @Service
 public class ProjectService {
@@ -89,7 +90,7 @@ public class ProjectService {
 
     // 3. Lấy tất cả
     public List<Project> getAllProjects() {
-        return projectRepository.findAll();
+        return projectRepository.findByIsDeletedFalse();
     }
 
     // 4. 🔥 MỚI: Tìm kiếm dự án
@@ -97,7 +98,7 @@ public class ProjectService {
         if (keyword == null || keyword.trim().isEmpty()) {
             return getAllProjects();
         }
-        return projectRepository.findByNameContainingIgnoreCase(keyword);
+        return projectRepository.findByIsDeletedFalseAndNameContainingIgnoreCase(keyword);
     }
 
     // 5. 🆕 Lấy các dự án mà người dùng có thể truy cập
@@ -106,8 +107,8 @@ public class ProjectService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // Lấy tất cả dự án
-        List<Project> allProjects = getAllProjects();
+        // Lấy tất cả dự án chưa xóa
+        List<Project> allProjects = projectRepository.findByIsDeletedFalse();
         
         // Lọc các dự án mà user có thể truy cập
         return allProjects.stream()
@@ -129,5 +130,43 @@ public class ProjectService {
                     return false;
                 })
                 .toList();
+    }
+
+    // Get deleted projects (Admin)
+    public List<Project> getDeletedProjects() {
+        return projectRepository.findByIsDeletedTrue();
+    }
+
+    // Get deleted projects by department
+    public List<Project> getDeletedProjectsByDept(String deptId) {
+        return projectRepository.findByIsDeletedTrueAndDepartment_Id(deptId);
+    }
+
+    // Restore deleted project
+    public Project restoreProject(String projectId, String adminEmail) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
+        
+        if (!project.isDeleted()) {
+            throw new RuntimeException("Dự án không nằm trong thùng rác!");
+        }
+        
+        project.setDeleted(false);
+        project.setDeletedAt(null);
+        return projectRepository.save(project);
+    }
+
+    // Soft delete project (Admin only)
+    public Project softDelete(String projectId, String adminEmail) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
+        
+        if (project.isDeleted()) {
+            throw new RuntimeException("Dự án đã bị xóa rồi!");
+        }
+        
+        project.setDeleted(true);
+        project.setDeletedAt(LocalDate.now());
+        return projectRepository.save(project);
     }
 }

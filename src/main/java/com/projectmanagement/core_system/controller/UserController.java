@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.projectmanagement.core_system.model.UpdateUserRequest;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -156,6 +158,20 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Lỗi tạo user với avatar: " + e.getMessage());
+        }
+    }
+
+    // 8. Admin update employee (email, department, role)
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateEmployee(
+            @PathVariable String id,
+            @RequestBody UpdateUserRequest request,
+            @RequestParam String adminEmail
+    ) {
+        try {
+            return ResponseEntity.ok(userService.updateEmployee(id, request, adminEmail));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }
