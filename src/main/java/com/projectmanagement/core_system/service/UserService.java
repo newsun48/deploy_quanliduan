@@ -16,6 +16,7 @@ import java.util.List;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
+import com.projectmanagement.core_system.model.UpdateUserRequest;
 
 @Service
 public class UserService {
@@ -186,6 +187,29 @@ public class UserService {
             throw new IOException("Lỗi khi tải ảnh từ URL: " + e.getMessage());
         }
     }
+
+    // 11. Admin update employee info (email, department, role)
+    public User updateEmployee(String userId, UpdateUserRequest request, String adminEmail) {
+        User user = getUserById(userId);
+
+        // Optional fields only
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            if (userRepository.existsByEmail(request.getEmail()) && !user.getEmail().equals(request.getEmail())) {
+                throw new RuntimeException("Email '" + request.getEmail() + "' đã được sử dụng bởi tài khoản khác!");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        if (request.getDeptId() != null && !request.getDeptId().isEmpty()) {
+            Department dept = departmentRepository.findById(request.getDeptId())
+                    .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
+            user.setDepartment(dept);
+        }
+
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+
 }
     // 🔥 6. MỚI: Cập nhật Avatar URL
     public User updateAvatar(String userId, String avatarUrl) {

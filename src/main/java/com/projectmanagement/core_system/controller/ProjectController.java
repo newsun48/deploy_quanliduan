@@ -90,4 +90,34 @@ public class ProjectController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // 6. Soft Delete Project (Admin only)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProject(@PathVariable String id, @RequestParam String adminEmail) {
+        try {
+            return ResponseEntity.ok(projectService.softDelete(id, adminEmail));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // 7. Get deleted projects (Admin)
+    @GetMapping("/deleted")
+    public ResponseEntity<?> getDeletedProjects() {
+        try {
+            return ResponseEntity.ok(projectService.getDeletedProjects());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi: " + e.getMessage());
+        }
+    }
+
+    // 8. Restore deleted project (Admin)
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<?> restoreProject(@PathVariable String id, @RequestParam String adminEmail) {
+        try {
+            return ResponseEntity.ok(projectService.restoreProject(id, adminEmail));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
