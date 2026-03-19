@@ -20,6 +20,7 @@ const LoginPage = () => {
 
             // Lưu token và user vào localStorage
             localStorage.setItem('token', token);
+            const user = res.data;
             localStorage.setItem('user', JSON.stringify(user));
 
             if (user.role === 'ADMIN') navigate('/admin');

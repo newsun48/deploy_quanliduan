@@ -23,7 +23,7 @@ const EmployeeDashboard = () => {
 
     const fetchMyTasks = async (userId) => {
         try {
-            const res = await api.get(`/tasks/my-tasks/${userId}`);
+            const res = await axios.get(`/api/tasks/my-tasks/${userId}`);
             setMyTasks(res.data);
         } catch (err) { console.error(err); }
     };
@@ -31,7 +31,7 @@ const EmployeeDashboard = () => {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
-            await api.put(`/tasks/${editingTask.id}/status`, {
+            await axios.put(`/api/tasks/${editingTask.id}/status`, {
                 status: updatePayload.status,
                 percent: parseInt(updatePayload.percent)
             });
@@ -68,9 +68,18 @@ const EmployeeDashboard = () => {
 
             <div className="container-fluid px-4 py-5 flex-grow-1">
                 <div className="row mb-4 align-items-center justify-content-center">
-                    <div className="col-lg-8">
-                        <h3 className="fw-bold text-dark mb-0">Xin chào, {currentUser.fullName} 👋</h3>
-                        <p className="text-muted">Đây là danh sách công việc của bạn.</p>
+                    <div className="col-lg-8 d-flex align-items-center">
+                        {currentUser.avatarUrl ? (
+                            <img src={currentUser.avatarUrl} alt={currentUser.fullName} className="rounded-circle me-3" style={{width: 60, height: 60, objectFit: 'cover'}} />
+                        ) : (
+                            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold me-3" style={{width: 60, height: 60, fontSize: '1.8rem'}}>
+                                {currentUser.fullName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                        <div>
+                            <h3 className="fw-bold text-dark mb-0">{currentUser.fullName} 👋</h3>
+                            <p className="text-muted mb-0">Đây là danh sách công việc của bạn.</p>
+                        </div>
                     </div>
                     <div className="col-lg-4 text-lg-end mt-3 mt-lg-0">
                          <div className="bg-white p-2 rounded-pill shadow-sm d-inline-flex gap-2">

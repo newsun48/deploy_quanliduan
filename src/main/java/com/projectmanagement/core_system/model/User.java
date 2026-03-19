@@ -39,5 +39,5 @@ public class User {
     private boolean isActive = false; 
     private Long createdAt = System.currentTimeMillis();
     
-    private String avatar; // Base64 encoded avatar image
+    private String avatarUrl;
 }
