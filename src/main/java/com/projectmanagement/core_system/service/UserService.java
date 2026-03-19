@@ -121,7 +121,7 @@ public class UserService {
 
         User user = getUserById(userId);
         String base64Avatar = convertFileToBase64(avatarFile);
-        user.setAvatar(base64Avatar);
+        user.setAvatarUrl(base64Avatar);
 
         return userRepository.save(user);
     }
@@ -148,7 +148,7 @@ public class UserService {
 
         User user = getUserById(userId);
         String base64Avatar = downloadImageFromUrl(imageUrl);
-        user.setAvatar(base64Avatar);
+        user.setAvatarUrl(base64Avatar);
 
         return userRepository.save(user);
     }
@@ -210,7 +210,8 @@ public class UserService {
             user.setRole(request.getRole());
         }
 
-}
+        return userRepository.save(user);
+    }
     // 🔥 6. MỚI: Cập nhật Avatar URL
     public User updateAvatar(String userId, String avatarUrl) {
         User user = getUserById(userId); // Validate tồn tại

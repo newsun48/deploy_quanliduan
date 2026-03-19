@@ -21,9 +21,11 @@ const ProfilePage = () => {
         }
         try {
             const userObj = JSON.parse(userJson);
+            // eslint-disable-next-line
             setCurrentUser(userObj);
             setIsLoading(false);
         } catch (e) {
+            console.error(e);
             navigate('/');
         }
     }, []);

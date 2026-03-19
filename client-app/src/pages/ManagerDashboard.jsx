@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -36,7 +36,7 @@ const ManagerDashboard = () => {
         try {
             const userObj = JSON.parse(userJson);
             fetchManagerInfo(userObj.id);
-        } catch (e) { navigate('/'); }
+        } catch (e) { console.error(e); navigate('/'); }
     }, []);
 
     const fetchManagerInfo = async (userId) => {
@@ -115,7 +115,7 @@ const ManagerDashboard = () => {
         }
 
         try {
-            await axios.post(`/api/projects/${selectedProject.id}/add-member/${selectedMemberToAdd}`);
+            const response = await axios.post(`/api/projects/${selectedProject.id}/add-member/${selectedMemberToAdd}`);
             alert("✅ Đã thêm thành công!");
             setShowMemberModal(false);
             setSelectedMemberToAdd('');

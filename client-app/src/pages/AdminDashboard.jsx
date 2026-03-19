@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
@@ -28,10 +29,11 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [usersRes, deptsRes, projectsRes] = await Promise.all([
+            const [usersRes, deptsRes, projectsRes, deletedRes] = await Promise.all([
                 axios.get('/api/users'),
                 axios.get('/api/departments'),
-                axios.get('/api/projects')
+                axios.get('/api/projects'),
+                axios.get(`/api/projects/deleted?adminEmail=${currentUser.email}`)
             ]);
             console.log("Users:", usersRes.data);
             console.log("Departments:", deptsRes.data);
@@ -46,7 +48,10 @@ const AdminDashboard = () => {
         } catch (error) { console.error("Lỗi tải dữ liệu:", error); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { 
+        // eslint-disable-next-line
+        fetchData(); 
+    }, []);
     const handleLogout = () => { localStorage.removeItem('user'); navigate('/'); };
 
     const handleSearchUser = async (e) => {
@@ -158,7 +163,7 @@ const AdminDashboard = () => {
 
     const handleDeleteUser = async (id) => {
         if (!window.confirm("Xóa nhân viên này?")) return;
-        try { await axios.delete(`/api/users/${id}`); fetchData(); } catch (err) { alert("Lỗi xóa!"); }
+        try { await axios.delete(`/api/users/${id}`); fetchData(); } catch (err) { console.error(err); alert("Lỗi xóa!"); }
     };
 
     const [editingUserId, setEditingUserId] = useState(null);
@@ -204,7 +209,7 @@ const AdminDashboard = () => {
             alert("Thêm phòng thành công!"); 
             setNewDept({ name: '', description: '' });
             await fetchData(); 
-        } catch (err) { alert("Lỗi thêm phòng!"); }
+        } catch (err) { console.error(err); alert("Lỗi thêm phòng!"); }
     };
 
     const handleAddProject = async (e) => {
@@ -217,7 +222,7 @@ const AdminDashboard = () => {
             fetchData();
             setNewProject({ name: '', description: '', deadline: '', priority: 'MEDIUM' });
             setShowProjectForm(false);
-        } catch (error) { alert("Lỗi tạo dự án!"); }
+        } catch (error) { console.error(error); alert("Lỗi tạo dự án!"); }
     };
 
     const getProjectsByDept = (deptId) => { return projects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
