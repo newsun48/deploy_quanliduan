@@ -28,9 +28,9 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         try {
             const [usersRes, deptsRes, projectsRes] = await Promise.all([
-                api.get('/users'),
-                api.get('/departments'),
-                api.get('/projects')
+                axios.get('/api/users'),
+                axios.get('/api/departments'),
+                axios.get('/api/projects')
             ]);
             console.log("Users:", usersRes.data);
             console.log("Departments:", deptsRes.data);
@@ -50,7 +50,7 @@ const AdminDashboard = () => {
     const handleSearchUser = async (e) => {
         e.preventDefault();
         try {
-            const res = await api.get(`/users/search?keyword=${searchTerm}`);
+            const res = await axios.get(`/api/users/search?keyword=${searchTerm}`);
             setUsers(res.data);
         } catch (err) { console.error("Lỗi tìm kiếm:", err); }
     };
@@ -145,19 +145,24 @@ const AdminDashboard = () => {
             setAvatarPreview(null);
             setAvatarUrl('');
             document.getElementById('avatarInput').value = '';
+            let url = '/api/users';
+            if (newUser.deptId) url += `?deptId=${newUser.deptId}`;
+            await axios.post(url, newUser);
+            alert("Thêm nhân sự thành công!"); 
+            setNewUser({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
             await fetchData();
         } catch (err) { alert("Lỗi: " + err.message); }
     };
 
     const handleDeleteUser = async (id) => {
         if (!window.confirm("Xóa nhân viên này?")) return;
-        try { await api.delete(`/users/${id}`); fetchData(); } catch (err) { alert("Lỗi xóa!"); }
+        try { await axios.delete(`/api/users/${id}`); fetchData(); } catch (err) { alert("Lỗi xóa!"); }
     };
 
     const handleAddDept = async (e) => {
         e.preventDefault();
         try { 
-            await api.post('/departments', newDept); 
+            await axios.post('/api/departments', newDept); 
             alert("Thêm phòng thành công!"); 
             setNewDept({ name: '', description: '' });
             await fetchData(); 
@@ -168,8 +173,8 @@ const AdminDashboard = () => {
         e.preventDefault();
         if (!selectedDept) return;
         try {
-            const url = `/projects/create?deptId=${selectedDept.id}&email=${currentUser.email}`;
-            await api.post(url, newProject);
+            const url = `/api/projects/create?deptId=${selectedDept.id}&email=${currentUser.email}`;
+            await axios.post(url, newProject);
             alert(`Đã tạo dự án cho phòng ${selectedDept.name}!`);
             fetchData();
             setNewProject({ name: '', description: '', deadline: '', priority: 'MEDIUM' });
@@ -268,7 +273,8 @@ const AdminDashboard = () => {
                                         <select className="form-select mb-4" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
                                             <option value="EMPLOYEE">Nhân viên</option><option value="MANAGER">Trưởng phòng</option><option value="ADMIN">Quản trị viên</option>
                                         </select>
-                                        <button className="btn btn-primary w-100 fw-bold">TẠO MỚI</button>
+                                        <input className="form-control mb-3" type="url" placeholder="Avatar URL (tùy chọn)" value={newUser.avatarUrl || ''} onChange={e => setNewUser({ ...newUser, avatarUrl: e.target.value })} />
+                                        <button className="btn btn-primary w-100 fw-bold">TẠO MỚI 👤</button>
                                     </form>
                                 </div>
                             </div>
@@ -285,16 +291,16 @@ const AdminDashboard = () => {
                                 </div>
                                 <div className="table-responsive">
                                     <table className="table table-hover align-middle mb-0">
-                                        <thead className="table-light"><tr><th style={{width: '60px'}}>Avatar</th><th>Họ tên</th><th>Email</th><th>Phòng</th><th>Vai trò</th><th></th></tr></thead>
+                                        <thead className="table-light"><tr><th>👤</th><th>Họ tên</th><th>Email</th><th>Phòng</th><th>Vai trò</th><th></th></tr></thead>
                                         <tbody>
                                             {users.map(u => (
                                                 <tr key={u.id}>
-                                                    <td className="text-center">
-                                                        {u.avatar ? (
-                                                            <img src={u.avatar} alt={u.fullName} className="rounded-circle" style={{width: 40, height: 40, objectFit: 'cover'}} />
+                                                    <td>
+                                                        {u.avatarUrl ? (
+                                                            <img src={u.avatarUrl} alt={u.fullName} className="rounded-circle" style={{width: 32, height: 32, objectFit: 'cover'}} />
                                                         ) : (
-                                                            <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto" style={{width: 40, height: 40}}>
-                                                                <i className="bi bi-person-fill text-white" style={{fontSize: '18px'}}></i>
+                                                            <div className="bg-light rounded-circle d-flex align-items-center justify-content-center fw-bold text-primary" style={{width: 32, height: 32, fontSize: '0.8rem'}}>
+                                                                {u.fullName.charAt(0).toUpperCase()}
                                                             </div>
                                                         )}
                                                     </td>

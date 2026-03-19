@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -52,6 +53,7 @@ public class UserController {
             @RequestParam(required = false) String deptId 
     ) {
         try {
+            // Auto active new user (default false in model)
             return ResponseEntity.ok(userService.createUser(user, deptId));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -156,6 +158,22 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Lỗi tạo user với avatar: " + e.getMessage());
+        }
+    }
+}
+    // 🔥 5. API CẬP NHẬT AVATAR
+    @PutMapping("/{id}/avatar")
+    public ResponseEntity<?> updateAvatar(@PathVariable String id, @RequestBody Map<String, String> request) {
+        try {
+            String avatarUrl = request.get("avatarUrl");
+            if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("avatarUrl không được để trống!");
+            }
+            return ResponseEntity.ok(userService.updateAvatar(id, avatarUrl));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
         }
     }
 }
