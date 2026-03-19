@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "*") // Cho phép React gọi API
+@CrossOrigin(origins = "http://localhost:5173") // Cho phép React gọi API
 public class TaskController {
 
     @Autowired
@@ -22,8 +22,8 @@ public class TaskController {
     @PostMapping("/create")
     public ResponseEntity<?> createTask(
             @RequestBody Task task,
-            @RequestParam long projectId,
-            @RequestParam long assigneeId) {
+            @RequestParam String projectId,
+            @RequestParam String assigneeId) {
         try {
             return ResponseEntity.ok(taskService.createTask(task, projectId, assigneeId));
         } catch (RuntimeException e) {
@@ -33,20 +33,20 @@ public class TaskController {
 
     // 2. Lấy Task theo Dự án (Manager xem)
     @GetMapping("/project/{projectId}")
-    public List<Task> getTasksByProject(@PathVariable long projectId) {
+    public List<Task> getTasksByProject(@PathVariable String projectId) {
         return taskService.getTasksByProject(projectId);
     }
 
     // 3. Lấy Task của Tôi (Nhân viên xem)
     @GetMapping("/my-tasks/{userId}")
-    public List<Task> getMyTasks(@PathVariable long userId) {
+    public List<Task> getMyTasks(@PathVariable String userId) {
         return taskService.getMyTasks(userId);
     }
 
     // 4. 🔥 QUAN TRỌNG: Cập nhật Tiến độ & Trạng thái (Nhân viên dùng)
     @PutMapping("/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(
-            @PathVariable long taskId,
+            @PathVariable String taskId,
             @RequestBody Map<String, Object> payload // Nhận JSON { "status": "DONE", "percent": 100 }
     ) {
         try {

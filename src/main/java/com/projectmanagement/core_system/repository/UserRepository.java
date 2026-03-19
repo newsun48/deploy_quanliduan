@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.List;
 
 @Repository
-public interface UserRepository extends MongoRepository<User, Long> {
+public interface UserRepository extends MongoRepository<User, String> {
     
     // Tìm user bằng email để đăng nhập
     Optional<User> findByEmail(String email);
@@ -15,8 +15,8 @@ public interface UserRepository extends MongoRepository<User, Long> {
     // Kiểm tra email trùng khi tạo mới
     boolean existsByEmail(String email);
 
-    // Tìm tất cả nhân viên thuộc 1 phòng ban
-    List<User> findByDepartmentId(long departmentId);
+    // Tìm tất cả nhân viên thuộc 1 phòng ban (sử dụng department.id)
+    List<User> findByDepartment_Id(String departmentId);
 
     // 🔥 MỚI: Tìm kiếm theo Tên HOẶC Email (Không phân biệt hoa thường)
     // Ví dụ: Nhập "nam" sẽ ra "Phan Đức Nam" và "nam@gmail.com"

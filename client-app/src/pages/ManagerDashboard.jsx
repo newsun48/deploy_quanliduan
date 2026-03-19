@@ -38,7 +38,7 @@ const ManagerDashboard = () => {
     const fetchManagerInfo = async (userId) => {
         setIsLoading(true);
         try {
-            const res = await axios.get('http://localhost:8080/api/users');
+            const res = await axios.get('/api/users');
             // Dùng == để so sánh ID (tránh lỗi string vs number)
             const foundUser = res.data.find(u => u.id == userId);
             
@@ -59,8 +59,8 @@ const ManagerDashboard = () => {
     const fetchDeptData = async (deptId) => {
         try {
             const [usersRes, projectsRes] = await Promise.all([
-                axios.get('http://localhost:8080/api/users'),
-                axios.get('http://localhost:8080/api/projects')
+                axios.get('/api/users'),
+                axios.get('/api/projects')
             ]);
             
             // 🔥 SỬA: Dùng == để so sánh ID
@@ -83,7 +83,7 @@ const ManagerDashboard = () => {
         setSelectedProject(project);
         setActiveTab('PROJECT_DETAIL');
         try {
-            const res = await axios.get(`http://localhost:8080/api/tasks/project/${project.id}`);
+            const res = await axios.get(`/api/tasks/project/${project.id}`);
             // 🔥 SỬA: Đảm bảo tasks luôn là mảng để tránh crash
             setTasks(Array.isArray(res.data) ? res.data : []);
         } catch (e) { 
@@ -95,7 +95,7 @@ const ManagerDashboard = () => {
     const handleCompleteProject = async () => {
         if (!window.confirm("⚠️ CẢNH BÁO: Dự án sẽ chuyển sang trạng thái 'ĐÃ ĐÓNG'. Bạn có chắc chắn không?")) return;
         try {
-            await axios.put(`http://localhost:8080/api/projects/${selectedProject.id}/complete`);
+            await axios.put(`/api/projects/${selectedProject.id}/complete`);
             alert("🎉 Chúc mừng! Dự án đã hoàn thành và đóng lại.");
             const updatedProject = { ...selectedProject, status: 'CLOSED' };
             setSelectedProject(updatedProject);
@@ -107,7 +107,7 @@ const ManagerDashboard = () => {
     const handleAddMember = async () => {
         if (!selectedMemberToAdd) return alert("Vui lòng chọn nhân viên!");
         try {
-            await axios.post(`http://localhost:8080/api/projects/${selectedProject.id}/add-member/${selectedMemberToAdd}`);
+            await axios.post(`/api/projects/${selectedProject.id}/add-member/${selectedMemberToAdd}`);
             alert("✅ Đã thêm thành công!");
             setShowMemberModal(false);
             setSelectedMemberToAdd('');
@@ -116,7 +116,7 @@ const ManagerDashboard = () => {
             await fetchDeptData(myDepartment.id);
             
             // Reload lại project hiện tại để thấy member mới
-            const res = await axios.get('http://localhost:8080/api/projects');
+            const res = await axios.get('/api/projects');
             const updated = res.data.find(p => p.id == selectedProject.id);
             if(updated) setSelectedProject(updated);
             
@@ -128,11 +128,11 @@ const ManagerDashboard = () => {
     const handleCreateTask = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`http://localhost:8080/api/tasks/create?projectId=${selectedProject.id}&assigneeId=${newTask.assigneeId}`, newTask);
+            await axios.post(`/api/tasks/create?projectId=${selectedProject.id}&assigneeId=${newTask.assigneeId}`, newTask);
             alert("✅ Giao việc thành công!");
             setShowTaskModal(false);
             setNewTask({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
-            const res = await axios.get(`http://localhost:8080/api/tasks/project/${selectedProject.id}`);
+            const res = await axios.get(`/api/tasks/project/${selectedProject.id}`);
             setTasks(Array.isArray(res.data) ? res.data : []);
         } catch (err) { alert("Lỗi: " + (err.response?.data || err.message)); }
     };
@@ -173,7 +173,13 @@ const ManagerDashboard = () => {
             <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow px-4 w-100">
                 <div className="container-fluid">
                     <div className="d-flex align-items-center text-white">
-                        <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" style={{width: 40, height: 40}}><i className="bi bi-briefcase-fill"></i></div>
+                        {currentUser.avatarUrl ? (
+                            <img src={currentUser.avatarUrl} alt={currentUser.fullName} className="rounded-circle me-2" style={{width: 40, height: 40, objectFit: 'cover'}} />
+                        ) : (
+                            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2 fw-bold text-white" style={{width: 40, height: 40, fontSize: '0.9rem'}}>
+                                {currentUser.fullName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
                         <div><div className="fw-bold">TRƯỞNG PHÒNG</div><div className="small opacity-75">{myDepartment.name}</div></div>
                     </div>
                     <div className="ms-auto d-flex align-items-center gap-3">
@@ -274,7 +280,18 @@ const ManagerDashboard = () => {
                                                         {(tasks || []).map(t => (
                                                             <tr key={t.id}>
                                                                 <td className="fw-bold">{t.title}</td>
-                                                                <td><div className="d-flex align-items-center"><div className="bg-primary text-white rounded-circle text-center small me-2" style={{width: 25, height: 25, lineHeight:'25px'}}>{t.assignee?.fullName ? t.assignee.fullName.charAt(0) : "?"}</div>{t.assignee?.fullName}</div></td>
+{t.assignee ? (
+    <div className="d-flex align-items-center">
+        {t.assignee.avatarUrl ? (
+            <img src={t.assignee.avatarUrl} alt={t.assignee.fullName} className="rounded-circle me-2" style={{width: 25, height: 25, objectFit: 'cover'}} />
+        ) : (
+            <div className="bg-primary text-white rounded-circle text-center small me-2 fw-bold" style={{width: 25, height: 25, lineHeight:'25px'}}>
+                {t.assignee.fullName.charAt(0).toUpperCase()}
+            </div>
+        )}
+        {t.assignee.fullName}
+    </div>
+) : <span className="text-muted">--</span>}
                                                                 <td>{t.deadline}</td>
                                                                 <td><span className={`badge ${t.status === 'DONE' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span></td>
                                                                 <td><div className="d-flex align-items-center gap-2"><div className="progress flex-grow-1" style={{height: 6}}><div className="progress-bar bg-info" style={{width: `${t.completionPercentage}%`}}></div></div><small className="fw-bold">{t.completionPercentage}%</small></div></td>
@@ -293,7 +310,15 @@ const ManagerDashboard = () => {
                                                 {/* 🔥 FIX TRẮNG TRANG: Thêm || [] */}
                                                 {(selectedProject.members || []).length > 0 ? (
                                                     (selectedProject.members || []).map(m => (
-                                                        <div key={m.id} className="col-md-4 col-lg-3"><div className="bg-white p-3 rounded shadow-sm d-flex align-items-center"><div className="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold me-3" style={{width: 50, height: 50, fontSize: '1.2rem'}}>{m.fullName.charAt(0)}</div><div><h6 className="fw-bold mb-0">{m.fullName}</h6><small className="text-muted">{m.email}</small><div className="mt-1"><span className="badge bg-secondary">Employee</span></div></div></div></div>
+                                                <div key={m.id} className="col-md-4 col-lg-3"><div className="bg-white p-3 rounded shadow-sm d-flex align-items-center">
+                                                    {m.avatarUrl ? (
+                                                        <img src={m.avatarUrl} alt={m.fullName} className="rounded-circle me-3" style={{width: 50, height: 50, objectFit: 'cover'}} />
+                                                    ) : (
+                                                        <div className="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold me-3" style={{width: 50, height: 50, fontSize: '1.2rem'}}>
+                                                            {m.fullName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div><h6 className="fw-bold mb-0">{m.fullName}</h6><small className="text-muted">{m.email}</small><div className="mt-1"><span className="badge bg-secondary">Employee</span></div></div></div></div>
                                                     ))
                                                 ) : <div className="col-12 text-center text-muted">Chưa có thành viên nào.</div>}
                                             </div>

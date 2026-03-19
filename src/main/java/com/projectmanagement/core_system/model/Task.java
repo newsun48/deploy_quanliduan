@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -21,7 +22,7 @@ public class Task {
     public static final String SEQUENCE_NAME = "tasks_sequence";
 
     @Id
-    private long id; // Đổi từ String sang long
+    private String id;
 
     private String title;
     private String description;
@@ -32,8 +33,10 @@ public class Task {
     private int completionPercentage = 0;
 
     @DBRef
+    @JsonIgnoreProperties({"department", "members"})
     private Project project;
 
     @DBRef
+    @JsonIgnoreProperties({"department"})
     private User assignee;
 }

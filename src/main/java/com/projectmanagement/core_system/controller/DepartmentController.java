@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/departments")
-@CrossOrigin(origins = "*") 
+@CrossOrigin(origins = "http://localhost:5173") 
 public class DepartmentController {
 
     @Autowired
@@ -18,8 +18,13 @@ public class DepartmentController {
 
     // 1. Lấy danh sách
     @GetMapping
-    public List<Department> getAll() {
-        return departmentService.getAllDepartments();
+    public ResponseEntity<?> getAll() {
+        try {
+            return ResponseEntity.ok(departmentService.getAllDepartments());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Lỗi: " + e.getMessage());
+        }
     }
 
     // 2. Tạo mới
@@ -34,7 +39,7 @@ public class DepartmentController {
 
     // 3. Xóa
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable long id) {
+    public ResponseEntity<?> delete(@PathVariable String id) {
         try {
             departmentService.deleteDepartment(id);
             return ResponseEntity.ok("Xóa phòng ban thành công!");

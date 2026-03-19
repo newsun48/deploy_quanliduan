@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import java.util.Map;
 
 import java.util.List;
 
@@ -23,11 +24,8 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private SequenceGeneratorService sequenceGeneratorService;
-
     // 1. Tạo User (Thêm Validate kỹ càng hơn)
-    public User createUser(User user, Long deptId) {
+    public User createUser(User user, String deptId) {
         // 🔥 Validate dữ liệu đầu vào
         if (!StringUtils.hasText(user.getFullName())) {
             throw new RuntimeException("Họ tên không được để trống!");
@@ -45,14 +43,13 @@ public class UserService {
         }
 
         // Logic gắn phòng ban
-        if (deptId != null && deptId > 0) {
+        if (deptId != null && !deptId.isEmpty()) {
             Department dept = departmentRepository.findById(deptId)
                     .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
             user.setDepartment(dept);
         }
 
-        // Sinh ID & Mã hóa pass
-        user.setId(sequenceGeneratorService.generateSequence(User.SEQUENCE_NAME));
+        // Mã hóa pass - ID để MongoDB tự tạo
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         
         return userRepository.save(user);
@@ -64,13 +61,13 @@ public class UserService {
     }
 
     // 3. Xóa User
-    public void deleteUser(long userId) {
+    public void deleteUser(String userId) {
         if (!userRepository.existsById(userId)) throw new RuntimeException("User không tồn tại!");
         userRepository.deleteById(userId);
     }
 
     // 4. Lấy theo ID
-    public User getUserById(long id) {
+    public User getUserById(String id) {
         return userRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy User: " + id));
     }
 
@@ -80,5 +77,15 @@ public class UserService {
             return getAllUsers(); // Nếu từ khóa rỗng thì trả về tất cả
         }
         return userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(keyword, keyword);
+    }
+
+    // 🔥 6. MỚI: Cập nhật Avatar URL
+    public User updateAvatar(String userId, String avatarUrl) {
+        User user = getUserById(userId); // Validate tồn tại
+        if (!user.isActive()) {
+            throw new RuntimeException("Không thể cập nhật avatar cho tài khoản đã bị khóa!");
+        }
+        user.setAvatarUrl(avatarUrl.trim());
+        return userRepository.save(user);
     }
 }

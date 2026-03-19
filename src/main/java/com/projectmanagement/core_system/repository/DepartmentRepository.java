@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface DepartmentRepository extends MongoRepository<Department, Long> {
+public interface DepartmentRepository extends MongoRepository<Department, String> {
     
     // Kiểm tra tên phòng ban (Chính xác)
     boolean existsByName(String name);

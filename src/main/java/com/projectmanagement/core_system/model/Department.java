@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -19,13 +20,14 @@ public class Department {
     public static final String SEQUENCE_NAME = "departments_sequence";
 
     @Id
-    private long id; // Đổi từ String sang long
+    private String id;
 
     @Indexed(unique = true)
     private String name;
 
     private String description;
 
-    @DBRef 
+    @DBRef
+    @JsonIgnoreProperties({"department"})
     private User manager; 
 }

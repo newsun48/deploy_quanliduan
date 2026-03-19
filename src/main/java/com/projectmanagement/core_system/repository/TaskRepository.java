@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TaskRepository extends MongoRepository<Task, Long> {
+public interface TaskRepository extends MongoRepository<Task, String> {
 
     // ✅ SỬA LẠI: Tìm theo đối tượng Project
     // Spring Data sẽ tự hiểu và so sánh ID bên trong DBRef

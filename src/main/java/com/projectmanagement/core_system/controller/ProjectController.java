@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:5173")
 public class ProjectController {
 
     @Autowired
@@ -25,7 +25,7 @@ public class ProjectController {
     @PostMapping("/create")
     public ResponseEntity<?> createProject(
             @RequestBody Project project,
-            @RequestParam long deptId,
+            @RequestParam String deptId,
             @RequestParam String email) {
         try {
             project.setStatus(ProjectStatus.OPEN);
@@ -37,7 +37,7 @@ public class ProjectController {
 
     // 2. Thêm thành viên
     @PostMapping("/{projectId}/add-member/{userId}")
-    public ResponseEntity<?> addMember(@PathVariable long projectId, @PathVariable long userId) {
+    public ResponseEntity<?> addMember(@PathVariable String projectId, @PathVariable String userId) {
         try {
             return ResponseEntity.ok(projectService.addMember(projectId, userId));
         } catch (RuntimeException e) {
@@ -47,8 +47,13 @@ public class ProjectController {
 
     // 3. Lấy tất cả
     @GetMapping
-    public List<Project> getAll() {
-        return projectService.getAllProjects();
+    public ResponseEntity<?> getAll() {
+        try {
+            return ResponseEntity.ok(projectService.getAllProjects());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Lỗi: " + e.getMessage());
+        }
     }
 
     // 4. 🔥 API MỚI: Tìm kiếm dự án
@@ -60,7 +65,7 @@ public class ProjectController {
 
     // 5. Đóng dự án
     @PutMapping("/{id}/complete")
-    public ResponseEntity<?> completeProject(@PathVariable long id) {
+    public ResponseEntity<?> completeProject(@PathVariable String id) {
         try {
             Project project = projectRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));

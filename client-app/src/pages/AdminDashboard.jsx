@@ -24,10 +24,13 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         try {
             const [usersRes, deptsRes, projectsRes] = await Promise.all([
-                axios.get('http://localhost:8080/api/users'),
-                axios.get('http://localhost:8080/api/departments'),
-                axios.get('http://localhost:8080/api/projects')
+                axios.get('/api/users'),
+                axios.get('/api/departments'),
+                axios.get('/api/projects')
             ]);
+            console.log("Users:", usersRes.data);
+            console.log("Departments:", deptsRes.data);
+            console.log("Projects:", projectsRes.data);
             setUsers(usersRes.data);
             setDepartments(deptsRes.data);
             
@@ -43,7 +46,7 @@ const AdminDashboard = () => {
     const handleSearchUser = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.get(`http://localhost:8080/api/users/search?keyword=${searchTerm}`);
+            const res = await axios.get(`/api/users/search?keyword=${searchTerm}`);
             setUsers(res.data);
         } catch (err) { console.error("Lỗi tìm kiếm:", err); }
     };
@@ -53,29 +56,35 @@ const AdminDashboard = () => {
     const handleAddUser = async (e) => {
         e.preventDefault();
         try {
-            let url = 'http://localhost:8080/api/users';
+            let url = '/api/users';
             if (newUser.deptId) url += `?deptId=${newUser.deptId}`;
             await axios.post(url, newUser);
-            alert("Thêm nhân sự thành công!"); fetchData();
+            alert("Thêm nhân sự thành công!"); 
             setNewUser({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
+            await fetchData();
         } catch (err) { alert("Lỗi: " + err.message); }
     };
 
     const handleDeleteUser = async (id) => {
         if (!window.confirm("Xóa nhân viên này?")) return;
-        try { await axios.delete(`http://localhost:8080/api/users/${id}`); fetchData(); } catch (err) { alert("Lỗi xóa!"); }
+        try { await axios.delete(`/api/users/${id}`); fetchData(); } catch (err) { alert("Lỗi xóa!"); }
     };
 
     const handleAddDept = async (e) => {
         e.preventDefault();
-        try { await axios.post('http://localhost:8080/api/departments', newDept); alert("Thêm phòng thành công!"); fetchData(); setNewDept({ name: '', description: '' }); } catch (err) { alert("Lỗi thêm phòng!"); }
+        try { 
+            await axios.post('/api/departments', newDept); 
+            alert("Thêm phòng thành công!"); 
+            setNewDept({ name: '', description: '' });
+            await fetchData(); 
+        } catch (err) { alert("Lỗi thêm phòng!"); }
     };
 
     const handleAddProject = async (e) => {
         e.preventDefault();
         if (!selectedDept) return;
         try {
-            const url = `http://localhost:8080/api/projects/create?deptId=${selectedDept.id}&email=${currentUser.email}`;
+            const url = `/api/projects/create?deptId=${selectedDept.id}&email=${currentUser.email}`;
             await axios.post(url, newProject);
             alert(`Đã tạo dự án cho phòng ${selectedDept.name}!`);
             fetchData();
@@ -84,8 +93,8 @@ const AdminDashboard = () => {
         } catch (error) { alert("Lỗi tạo dự án!"); }
     };
 
-    const getProjectsByDept = (deptId) => { return projects.filter(p => (p.deptId === deptId || p.department?.id === deptId)); };
-    const getCompletedProjectsByDept = (deptId) => { return completedProjects.filter(p => (p.deptId === deptId || p.department?.id === deptId)); };
+    const getProjectsByDept = (deptId) => { return projects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
+    const getCompletedProjectsByDept = (deptId) => { return completedProjects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
 
     return (
         <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
@@ -102,6 +111,7 @@ const AdminDashboard = () => {
                         <button className={`btn rounded-pill px-4 fw-bold ${activeTab === 'users' ? 'btn-primary shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('users')}>👥 Nhân sự</button>
                         <button className={`btn rounded-pill px-4 fw-bold ms-2 ${activeTab === 'departments' ? 'btn-primary shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('departments')}>🏢 Phòng Ban & Dự Án</button>
                         <button className={`btn rounded-pill px-4 fw-bold ms-2 ${activeTab === 'completed' ? 'btn-success shadow' : 'btn-light text-muted'}`} onClick={() => setActiveTab('completed')}>✅ Dự án Hoàn thành</button>
+                        <button className="btn rounded-pill px-3 fw-bold ms-2 btn-outline-primary" onClick={fetchData} title="Tải lại dữ liệu">🔄</button>
                     </div>
                 </div>
 
@@ -122,7 +132,8 @@ const AdminDashboard = () => {
                                         <select className="form-select mb-4" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
                                             <option value="EMPLOYEE">Nhân viên</option><option value="MANAGER">Trưởng phòng</option><option value="ADMIN">Quản trị viên</option>
                                         </select>
-                                        <button className="btn btn-primary w-100 fw-bold">TẠO MỚI</button>
+                                        <input className="form-control mb-3" type="url" placeholder="Avatar URL (tùy chọn)" value={newUser.avatarUrl || ''} onChange={e => setNewUser({ ...newUser, avatarUrl: e.target.value })} />
+                                        <button className="btn btn-primary w-100 fw-bold">TẠO MỚI 👤</button>
                                     </form>
                                 </div>
                             </div>
@@ -139,10 +150,19 @@ const AdminDashboard = () => {
                                 </div>
                                 <div className="table-responsive">
                                     <table className="table table-hover align-middle mb-0">
-                                        <thead className="table-light"><tr><th>Họ tên</th><th>Email</th><th>Phòng</th><th>Vai trò</th><th></th></tr></thead>
+                                        <thead className="table-light"><tr><th>👤</th><th>Họ tên</th><th>Email</th><th>Phòng</th><th>Vai trò</th><th></th></tr></thead>
                                         <tbody>
                                             {users.map(u => (
                                                 <tr key={u.id}>
+                                                    <td>
+                                                        {u.avatarUrl ? (
+                                                            <img src={u.avatarUrl} alt={u.fullName} className="rounded-circle" style={{width: 32, height: 32, objectFit: 'cover'}} />
+                                                        ) : (
+                                                            <div className="bg-light rounded-circle d-flex align-items-center justify-content-center fw-bold text-primary" style={{width: 32, height: 32, fontSize: '0.8rem'}}>
+                                                                {u.fullName.charAt(0).toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                     <td className="fw-bold">{u.fullName}</td>
                                                     <td>{u.email}</td>
                                                     <td>{u.department?.name || <span className="text-muted small">--</span>}</td>

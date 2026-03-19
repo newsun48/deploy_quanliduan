@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*") // Cho phép Frontend gọi vào
+@CrossOrigin(origins = "http://localhost:5173") // Cho phép Frontend gọi vào
 public class AuthController {
 
     @Autowired

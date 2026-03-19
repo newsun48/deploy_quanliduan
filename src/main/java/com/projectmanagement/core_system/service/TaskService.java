@@ -1,6 +1,6 @@
 package com.projectmanagement.core_system.service;
 
-import com.projectmanagement.core_system.enums.ProjectStatus; // 🔥 Import Enum
+import com.projectmanagement.core_system.enums.ProjectStatus;
 import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.Task;
@@ -25,11 +25,8 @@ public class TaskService {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private SequenceGeneratorService sequenceGeneratorService;
-
     // 1. Tạo Task
-    public Task createTask(Task task, long projectId, long assigneeId) {
+    public Task createTask(Task task, String projectId, String assigneeId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
 
@@ -42,7 +39,7 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Người được gán không tồn tại!"));
 
         boolean isMember = project.getMembers().stream()
-                .anyMatch(member -> member.getId() == assigneeId);
+                .anyMatch(member -> member.getId().equals(assigneeId));
         
         if (!isMember) {
             throw new RuntimeException("LỖI: Người này chưa tham gia dự án!");
@@ -54,7 +51,7 @@ public class TaskService {
             }
         }
 
-        task.setId(sequenceGeneratorService.generateSequence(Task.SEQUENCE_NAME));
+        // Để MongoDB tự tạo ID
         task.setProject(project);
         task.setAssignee(assignee);
         task.setStatus(TaskStatus.TO_DO);
@@ -64,7 +61,7 @@ public class TaskService {
     }
 
     // 2. Update Status & Tiến độ
-    public Task updateStatus(long taskId, TaskStatus newStatus, int percent) {
+    public Task updateStatus(String taskId, TaskStatus newStatus, int percent) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
 
@@ -79,14 +76,14 @@ public class TaskService {
     }
 
     // 3. 🔥 SỬA LẠI: Tìm Task theo Object Project (Fix lỗi không hiện task)
-    public List<Task> getTasksByProject(long projectId) {
+    public List<Task> getTasksByProject(String projectId) {
         Project p = new Project();
         p.setId(projectId);
         return taskRepository.findByProject(p);
     }
 
     // 4. 🔥 SỬA LẠI: Tìm Task theo Object User
-    public List<Task> getMyTasks(long userId) {
+    public List<Task> getMyTasks(String userId) {
         User u = new User();
         u.setId(userId);
         return taskRepository.findByAssignee(u);
