@@ -25,6 +25,9 @@ public class TaskService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     // 1. Tạo Task
     public Task createTask(Task task, String projectId, String assigneeId) {
         Project project = projectRepository.findById(projectId)
@@ -57,7 +60,15 @@ public class TaskService {
         task.setStatus(TaskStatus.TO_DO);
         task.setCompletionPercentage(0);
 
-        return taskRepository.save(task);
+        Task savedTask = taskRepository.save(task);
+
+        // 🔥 TẠO THÔNG BÁO cho người được gán công việc
+        // Lấy manager (người tạo task) - lấy từ department nếu có
+        User sender = assignee;  // Mặc định sender là người được gán (có thể thay đổi sau)
+        String message = "Bạn được giao công việc mới: " + savedTask.getTitle() + " từ dự án: " + project.getName();
+        notificationService.createNotification(assignee, sender, savedTask, message, "TASK_ASSIGNED");
+
+        return savedTask;
     }
 
     // 2. Update Status & Tiến độ

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -18,6 +19,9 @@ const AdminDashboard = () => {
     const [showProjectForm, setShowProjectForm] = useState(false);
 
     const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarUrl, setAvatarUrl] = useState('');
     const [newDept, setNewDept] = useState({ name: '', description: '' });
     const [newProject, setNewProject] = useState({ name: '', description: '', deadline: '', priority: 'MEDIUM' });
 
@@ -53,9 +57,94 @@ const AdminDashboard = () => {
 
     const handleResetSearch = () => { setSearchTerm(''); fetchData(); };
 
+    const handleAvatarSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.type.match(/image\/(png|jpeg|jpg)/)) {
+                alert("Vui lòng chọn file ảnh PNG hoặc JPG!");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Kích thước ảnh không được vượt quá 5MB!");
+                return;
+            }
+            setAvatarFile(file);
+            setAvatarUrl('');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setAvatarPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleEditAvatar = () => {
+        document.getElementById('avatarInput').click();
+    };
+
+    const handleAvatarUrlChange = (e) => {
+        const url = e.target.value;
+        setAvatarUrl(url);
+        setAvatarFile(null);
+        document.getElementById('avatarInput').value = '';
+    };
+
+    const handleLoadAvatarFromUrl = () => {
+        if (!avatarUrl.trim()) {
+            alert("Vui lòng nhập URL ảnh!");
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            setAvatarPreview(avatarUrl);
+            setAvatarFile(null);
+        };
+        img.onerror = () => {
+            alert("Không thể tải ảnh từ URL này. Vui lòng kiểm tra lại!");
+            setAvatarUrl('');
+            setAvatarPreview(null);
+        };
+        img.src = avatarUrl;
+    };
+
+    const handleRemoveAvatar = () => {
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        setAvatarUrl('');
+        document.getElementById('avatarInput').value = '';
+    };
+
     const handleAddUser = async (e) => {
         e.preventDefault();
         try {
+            if (avatarFile || avatarUrl) {
+                const formData = new FormData();
+                formData.append('fullName', newUser.fullName);
+                formData.append('email', newUser.email);
+                formData.append('password', newUser.password);
+                formData.append('role', newUser.role);
+                if (newUser.deptId) formData.append('deptId', newUser.deptId);
+                if (avatarFile) {
+                    formData.append('avatar', avatarFile);
+                } else if (avatarUrl) {
+                    formData.append('avatarUrl', avatarUrl);
+                }
+                
+                await api.post('/users/create-with-avatar', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                let url = '/users';
+                if (newUser.deptId) url += `?deptId=${newUser.deptId}`;
+                await api.post(url, newUser);
+            }
+            
+            alert("Thêm nhân sự thành công!"); 
+            setNewUser({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
+            setAvatarFile(null);
+            setAvatarPreview(null);
+            setAvatarUrl('');
+            document.getElementById('avatarInput').value = '';
             let url = '/api/users';
             if (newUser.deptId) url += `?deptId=${newUser.deptId}`;
             await axios.post(url, newUser);
@@ -101,7 +190,14 @@ const AdminDashboard = () => {
             <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4 sticky-top border-bottom w-100">
                 <div className="container-fluid">
                     <div className="d-flex align-items-center"><span className="fs-4 me-2">🚀</span><span className="navbar-brand fw-bold text-primary tracking-wide">ADMIN PORTAL</span></div>
-                    <div className="ms-auto"><button onClick={handleLogout} className="btn btn-outline-dark btn-sm rounded-pill px-4 fw-bold">Đăng xuất</button></div>
+                    <div className="ms-auto d-flex align-items-center gap-3">
+                        <NotificationBell />
+                        <button onClick={() => navigate('/profile')} className="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold">
+                            <i className="bi bi-person-fill me-1"></i>
+                            Tài khoản
+                        </button>
+                        <button onClick={handleLogout} className="btn btn-outline-dark btn-sm rounded-pill px-4 fw-bold">Đăng xuất</button>
+                    </div>
                 </div>
             </nav>
             
@@ -122,6 +218,51 @@ const AdminDashboard = () => {
                                 <div className="card-header bg-primary text-white fw-bold py-3">Thêm Nhân Sự Mới</div>
                                 <div className="card-body bg-light">
                                     <form onSubmit={handleAddUser}>
+                                        <div className="mb-3 text-center">
+                                            <div className="position-relative d-inline-block">
+                                                {avatarPreview ? (
+                                                    <img src={avatarPreview} alt="Avatar preview" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} />
+                                                ) : (
+                                                    <div className="rounded-circle bg-light border-2 border-secondary d-flex align-items-center justify-content-center" style={{width: 100, height: 100}}>
+                                                        <i className="bi bi-image text-muted" style={{fontSize: '2rem'}}></i>
+                                                    </div>
+                                                )}
+                                                <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/jpg" onChange={handleAvatarSelect} style={{display: 'none'}} />
+                                            </div>
+                                            <div className="d-flex gap-2 mt-3 justify-content-center flex-wrap">
+                                                <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={handleEditAvatar} title="Tải file ảnh từ máy tính" disabled={avatarUrl && avatarPreview}>
+                                                    <i className="bi bi-upload me-1"></i>File
+                                                </button>
+                                                {avatarPreview && (
+                                                    <button type="button" className="btn btn-sm btn-outline-danger fw-bold" onClick={handleRemoveAvatar}>
+                                                        <i className="bi bi-trash me-1"></i>Xóa
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <small className="text-muted d-block mt-2">Chọn một trong hai: File hoặc URL</small>
+                                            <div className="mt-3 mb-3">
+                                                <div className="input-group input-group-sm">
+                                                    <input 
+                                                        type="url" 
+                                                        className="form-control" 
+                                                        placeholder="https://example.com/avatar.jpg"
+                                                        value={avatarUrl}
+                                                        onChange={handleAvatarUrlChange}
+                                                        disabled={avatarFile}
+                                                    />
+                                                    <button 
+                                                        type="button" 
+                                                        className="btn btn-outline-success fw-bold"
+                                                        onClick={handleLoadAvatarFromUrl}
+                                                        title="Tải ảnh từ URL"
+                                                        disabled={avatarFile}
+                                                    >
+                                                        <i className="bi bi-globe me-1"></i>Tải
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <hr />
                                         <input className="form-control mb-3" placeholder="Họ tên" required value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} />
                                         <input className="form-control mb-3" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
                                         <input className="form-control mb-3" placeholder="Mật khẩu" required value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
@@ -170,7 +311,7 @@ const AdminDashboard = () => {
                                                     <td className="text-end"><button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleDeleteUser(u.id)}>❌</button></td>
                                                 </tr>
                                             ))}
-                                            {users.length === 0 && <tr><td colSpan="5" className="text-center py-4 text-muted">Không tìm thấy nhân viên nào.</td></tr>}
+                                            {users.length === 0 && <tr><td colSpan="6" className="text-center py-4 text-muted">Không tìm thấy nhân viên nào.</td></tr>}
                                         </tbody>
                                     </table>
                                 </div>

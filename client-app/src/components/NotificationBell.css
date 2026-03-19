@@ -1,0 +1,24 @@
+.notification-bell-container {
+    display: inline-block;
+}
+
+.notification-dropdown {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.notification-dropdown .card-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notification-dropdown .card-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.notification-dropdown .card-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.notification-dropdown .card-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

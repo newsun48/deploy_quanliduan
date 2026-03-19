@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
+import TaskDetailModal from '../components/TaskDetailModal';
+import ProjectChatPanel from '../components/ProjectChatPanel';
 
 const ManagerDashboard = () => {
     const navigate = useNavigate();
@@ -21,6 +24,7 @@ const ManagerDashboard = () => {
     // MODAL STATE
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
+    const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
     
     // FORMS
     const [newTask, setNewTask] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
@@ -105,14 +109,22 @@ const ManagerDashboard = () => {
     };
 
     const handleAddMember = async () => {
-        if (!selectedMemberToAdd) return alert("Vui lòng chọn nhân viên!");
+        if (!selectedMemberToAdd) {
+            alert("Vui lòng chọn nhân viên!");
+            return;
+        }
+
         try {
             await axios.post(`/api/projects/${selectedProject.id}/add-member/${selectedMemberToAdd}`);
             alert("✅ Đã thêm thành công!");
             setShowMemberModal(false);
             setSelectedMemberToAdd('');
             
-            // Reload dữ liệu phòng để cập nhật lại danh sách
+            // 🔥 CỰC KỲ QUAN TRỌNG: Cập nhật selectedProject ngay với dữ liệu mới từ API
+            setSelectedProject(response.data);
+            
+            // Reload dữ liệu phòng để cập nhật lại danh sách members khả dụng
+            console.log("🔄 Đang reload dữ liệu phòng...");
             await fetchDeptData(myDepartment.id);
             
             // Reload lại project hiện tại để thấy member mới
@@ -120,8 +132,10 @@ const ManagerDashboard = () => {
             const updated = res.data.find(p => p.id == selectedProject.id);
             if(updated) setSelectedProject(updated);
             
-        } catch (err) { 
-            alert("Lỗi: " + (err.response?.data || "Thất bại")); 
+        } catch (err) {
+            console.error("❌ Lỗi thêm member:", err);
+            const errorMessage = err.response?.data?.message || err.response?.data || err.message || "Thất bại";
+            alert("Lỗi: " + errorMessage);
         }
     };
 
@@ -183,7 +197,12 @@ const ManagerDashboard = () => {
                         <div><div className="fw-bold">TRƯỞNG PHÒNG</div><div className="small opacity-75">{myDepartment.name}</div></div>
                     </div>
                     <div className="ms-auto d-flex align-items-center gap-3">
+                        <NotificationBell />
                         <span className="text-white small">Xin chào, <b>{currentUser.fullName}</b></span>
+                        <button onClick={() => navigate('/profile')} className="btn btn-outline-light btn-sm px-3 rounded-pill" title="Xem tài khoản cá nhân">
+                            <i className="bi bi-person-fill me-1"></i>
+                            Tài khoản
+                        </button>
                         <button onClick={handleLogout} className="btn btn-outline-light btn-sm px-3 rounded-pill">Đăng xuất</button>
                     </div>
                 </div>
@@ -260,6 +279,7 @@ const ManagerDashboard = () => {
                                     <div className="d-flex gap-2 mt-4">
                                         <button className={`btn rounded-pill px-4 fw-bold ${projectTab === 'TASKS' ? (isProjectClosed ? 'btn-light text-dark' : 'btn-primary') : 'btn-outline-light text-dark bg-white opacity-75'}`} onClick={()=>setProjectTab('TASKS')}><i className="bi bi-list-check me-2"></i>Công việc ({(tasks || []).length})</button>
                                         <button className={`btn rounded-pill px-4 fw-bold ${projectTab === 'MEMBERS' ? (isProjectClosed ? 'btn-light text-dark' : 'btn-primary') : 'btn-outline-light text-dark bg-white opacity-75'}`} onClick={()=>setProjectTab('MEMBERS')}><i className="bi bi-people-fill me-2"></i>Thành viên ({(selectedProject.members || []).length})</button>
+                                        <button className={`btn rounded-pill px-4 fw-bold ${projectTab === 'CHAT' ? (isProjectClosed ? 'btn-light text-dark' : 'btn-primary') : 'btn-outline-light text-dark bg-white opacity-75'}`} onClick={()=>setProjectTab('CHAT')}><i className="bi bi-chat-dots-fill me-2"></i>Nhóm chat</button>
                                     </div>
                                 </div>
 
@@ -275,7 +295,7 @@ const ManagerDashboard = () => {
                                             {/* 🔥 FIX TRẮNG TRANG: Thêm || [] */}
                                             <div className="table-responsive bg-white rounded shadow-sm">
                                                 <table className="table table-hover align-middle mb-0">
-                                                    <thead className="table-light"><tr><th>Task</th><th>Giao cho</th><th>Deadline</th><th>Trạng thái</th><th>Tiến độ</th></tr></thead>
+                                                    <thead className="table-light"><tr><th>Task</th><th>Giao cho</th><th>Deadline</th><th>Trạng thái</th><th>Tiến độ</th><th>Hành động</th></tr></thead>
                                                     <tbody>
                                                         {(tasks || []).map(t => (
                                                             <tr key={t.id}>
@@ -295,9 +315,10 @@ const ManagerDashboard = () => {
                                                                 <td>{t.deadline}</td>
                                                                 <td><span className={`badge ${t.status === 'DONE' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span></td>
                                                                 <td><div className="d-flex align-items-center gap-2"><div className="progress flex-grow-1" style={{height: 6}}><div className="progress-bar bg-info" style={{width: `${t.completionPercentage}%`}}></div></div><small className="fw-bold">{t.completionPercentage}%</small></div></td>
+                                                                <td><button className="btn btn-sm btn-success fw-bold rounded-pill px-3" onClick={() => setSelectedTaskForDetail(t)} title="Xem chi tiết & bình luận">💬 Bình luận</button></td>
                                                             </tr>
                                                         ))}
-                                                        {(!tasks || tasks.length === 0) && <tr><td colSpan="5" className="text-center py-4 text-muted">Chưa có công việc nào</td></tr>}
+                                                        {(!tasks || tasks.length === 0) && <tr><td colSpan="6" className="text-center py-4 text-muted">Chưa có công việc nào</td></tr>}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -323,6 +344,11 @@ const ManagerDashboard = () => {
                                                 ) : <div className="col-12 text-center text-muted">Chưa có thành viên nào.</div>}
                                             </div>
                                         </>
+                                    )}
+                                    {projectTab === 'CHAT' && (
+                                        <div style={{minHeight: '600px', display: 'flex', flexDirection: 'column', width: '100%'}}>
+                                            <ProjectChatPanel project={selectedProject} currentUser={currentUser} />
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -360,6 +386,20 @@ const ManagerDashboard = () => {
             {showTaskModal && !isProjectClosed && (
                 <div className="modal-backdrop-custom"><div className="card shadow-lg border-0" style={{width: 500}}><div className="card-header bg-success text-white fw-bold d-flex justify-content-between"><span>Giao việc mới</span><button className="btn-close btn-close-white" onClick={()=>setShowTaskModal(false)}></button></div><div className="card-body"><form onSubmit={handleCreateTask}><input className="form-control mb-2" placeholder="Tiêu đề" required value={newTask.title} onChange={e=>setNewTask({...newTask, title: e.target.value})}/><textarea className="form-control mb-2" placeholder="Mô tả" rows="2" value={newTask.description} onChange={e=>setNewTask({...newTask, description: e.target.value})}/><div className="row mb-2"><div className="col-6"><input type="date" className="form-control" required value={newTask.deadline} onChange={e=>setNewTask({...newTask, deadline: e.target.value})}/></div><div className="col-6"><select className="form-select" value={newTask.priority} onChange={e=>setNewTask({...newTask, priority: e.target.value})}><option value="MEDIUM">Trung bình</option><option value="HIGH">Cao</option></select></div></div><select className="form-select mb-4" required value={newTask.assigneeId} onChange={e=>setNewTask({...newTask, assigneeId: e.target.value})}><option value="">-- Giao cho ai? --</option>{(selectedProject.members || []).map(m => <option key={m.id} value={m.id}>{m.fullName}</option>)}</select><button className="btn btn-success w-100 fw-bold">LƯU</button></form></div></div></div>
             )}
+
+            {selectedTaskForDetail && (
+                <TaskDetailModal 
+                    task={selectedTaskForDetail} 
+                    currentUser={currentUser}
+                    onClose={() => setSelectedTaskForDetail(null)}
+                    onTaskUpdate={() => {
+                        if (selectedProject) {
+                            handleSelectProject(selectedProject);
+                        }
+                    }}
+                />
+            )}
+
             <style>{`.modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); } .hover-shadow:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; } .transition { transition: all 0.3s ease; }`}</style>
         </div>
     );

@@ -63,6 +63,18 @@ public class ProjectController {
         return projectService.searchProjects(keyword);
     }
 
+    // 4b. 🆕 Lấy các dự án mà người dùng có thể truy cập
+    // GET /api/projects/accessible/{userId}
+    @GetMapping("/accessible/{userId}")
+    public ResponseEntity<?> getAccessibleProjects(@PathVariable String userId) {
+        try {
+            List<Project> projects = projectService.getAccessibleProjects(userId);
+            return ResponseEntity.ok(projects);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // 5. Đóng dự án
     @PutMapping("/{id}/complete")
     public ResponseEntity<?> completeProject(@PathVariable String id) {
