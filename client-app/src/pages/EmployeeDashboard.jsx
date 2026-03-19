@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -13,20 +13,21 @@ const EmployeeDashboard = () => {
     const [updatePayload, setUpdatePayload] = useState({ status: '', percent: 0 });
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
 
-    useEffect(() => {
-        const userJson = localStorage.getItem('user');
-        if (!userJson) { navigate('/'); return; }
-        const userObj = JSON.parse(userJson);
-        setCurrentUser(userObj);
-        fetchMyTasks(userObj.id);
-    }, []);
-
     const fetchMyTasks = async (userId) => {
         try {
             const res = await axios.get(`/api/tasks/my-tasks/${userId}`);
             setMyTasks(res.data);
         } catch (err) { console.error(err); }
     };
+
+    useEffect(() => {
+        const userJson = localStorage.getItem('user');
+        if (!userJson) { navigate('/'); return; }
+        const userObj = JSON.parse(userJson);
+        // eslint-disable-next-line
+        setCurrentUser(userObj);
+        fetchMyTasks(userObj.id);
+    }, []);
 
     const handleUpdate = async (e) => {
         e.preventDefault();

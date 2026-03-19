@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import './TaskDetailModal.css';
 
-const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
+const TaskDetailModal = ({ task, currentUser, onClose }) => {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(false);
@@ -154,7 +154,7 @@ const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
                                     type="submit" 
                                     className="btn btn-primary comment-submit-btn" 
                                     disabled={!newComment.trim()}
-                                    onClick={(e) => {
+                                    onClick={() => {
                                         console.log('Submit button clicked');
                                     }}
                                 >

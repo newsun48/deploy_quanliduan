@@ -150,9 +150,9 @@ public class UserController {
             user.setRole(com.projectmanagement.core_system.enums.ERole.valueOf(role));
             
             if (avatarFile != null && !avatarFile.isEmpty()) {
-                user.setAvatar(userService.convertFileToBase64(avatarFile));
+                user.setAvatarUrl(userService.convertFileToBase64(avatarFile));
             } else if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                user.setAvatar(userService.downloadImageFromUrl(avatarUrl));
+                user.setAvatarUrl(userService.downloadImageFromUrl(avatarUrl));
             }
             
             return ResponseEntity.ok(userService.createUser(user, deptId));
@@ -162,7 +162,7 @@ public class UserController {
             return ResponseEntity.status(500).body("Lỗi tạo user với avatar: " + e.getMessage());
         }
     }
-}
+
     // 🔥 5. API CẬP NHẬT AVATAR
     @PutMapping("/{id}/avatar")
     public ResponseEntity<?> updateAvatar(@PathVariable String id, @RequestBody Map<String, String> request) {
