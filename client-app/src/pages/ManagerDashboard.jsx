@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
 import ProjectChatPanel from '../components/ProjectChatPanel';
+import PrivateChatPanel from '../components/PrivateChatPanel';
 
 const ManagerDashboard = () => {
     const navigate = useNavigate();
@@ -25,6 +26,7 @@ const ManagerDashboard = () => {
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
+    const [privateChatUser, setPrivateChatUser] = useState(null);
     
     // FORMS
     const [newTask, setNewTask] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
@@ -398,6 +400,12 @@ const ManagerDashboard = () => {
                         }
                     }}
                 />
+            )}
+
+            {privateChatUser && (
+                <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '360px', height: '500px', zIndex: 1060, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <PrivateChatPanel currentUser={currentUser} targetUser={privateChatUser} onClose={() => setPrivateChatUser(null)} />
+                </div>
             )}
 
             <style>{`.modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); } .hover-shadow:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; } .transition { transition: all 0.3s ease; }`}</style>

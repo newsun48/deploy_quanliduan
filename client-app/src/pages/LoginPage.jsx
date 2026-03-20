@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -15,7 +15,8 @@ const LoginPage = () => {
         setError('');
 
         try {
-            const res = await axios.post('/api/auth/login', { email, password });
+            const res = await api.post('/auth/login', { email, password });
+            console.log("Login Response:", res.data);
             const { token, user } = res.data;
 
             // Lưu token và user vào localStorage
@@ -27,6 +28,11 @@ const LoginPage = () => {
             else navigate('/employee');
 
         } catch (err) {
+            console.error("❌ Login error:", err);
+            if (err.response) {
+                console.error("Error Status:", err.response.status);
+                console.error("Error Data:", err.response.data);
+            }
             const errorMsg = err.response?.data || err.message || "Đăng nhập thất bại! Vui lòng kiểm tra thông tin.";
             setError(typeof errorMsg === 'string' ? errorMsg : "Đăng nhập thất bại!");
         } finally {

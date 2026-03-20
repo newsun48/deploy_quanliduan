@@ -24,12 +24,35 @@ public class ProjectMessage {
 
     private String content;
 
-    @DBRef
-    @JsonIgnoreProperties({"department"})
-    private User sender;
+    // TEXT, IMAGE, FILE
+    private String messageType = "TEXT";
+
+    // URL file đã upload (cho IMAGE/FILE)
+    private String fileUrl;
 
     @DBRef
+    @JsonIgnoreProperties({"department", "password"})
+    private User sender;
+
+    // Group chat: project != null, receiver = null
+    @DBRef
     private Project project;
+
+    // Private chat: receiver != null (project có thể null hoặc rỗng)
+    @DBRef
+    @JsonIgnoreProperties({"department", "password"})
+    private User receiver;
+
+    // Reply: tham chiếu tin nhắn gốc
+    @DBRef
+    @JsonIgnoreProperties({"replyTo", "project"})
+    private ProjectMessage replyTo;
+
+    // Soft delete (thu hồi tin nhắn)
+    private boolean isDeleted = false;
+
+    // Đánh dấu tin nhắn đã được chỉnh sửa
+    private boolean isEdited = false;
 
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();

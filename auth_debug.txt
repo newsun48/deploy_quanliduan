@@ -1,0 +1,1472 @@
+2026-03-20T09:24:21.270687700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:24:21.273347500 - Token found for user: tan@gmail.com
+2026-03-20T09:24:21.281409700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:24:21.283011400 - Authentication SET in SecurityContext
+2026-03-20T09:25:21.267645300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:25:21.268657500 - Token found for user: tan@gmail.com
+2026-03-20T09:25:21.270845300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:25:21.272498800 - Authentication SET in SecurityContext
+2026-03-20T09:26:21.276356100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:26:21.278688400 - Token found for user: tan@gmail.com
+2026-03-20T09:26:21.281412600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:26:21.283086700 - Authentication SET in SecurityContext
+2026-03-20T09:26:34.980535300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:26:34.983509800 - Token found for user: tan@gmail.com
+2026-03-20T09:26:34.988091200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:26:34.992333500 - Authentication SET in SecurityContext
+2026-03-20T09:26:44.276077 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:26:44.278185400 - Token found for user: tan@gmail.com
+2026-03-20T09:26:44.280244200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:26:44.282173200 - Authentication SET in SecurityContext
+2026-03-20T09:26:54.265076900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:26:54.266642 - Token found for user: tan@gmail.com
+2026-03-20T09:26:54.268709200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:26:54.269561100 - Authentication SET in SecurityContext
+2026-03-20T09:27:04.271972200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:27:04.274499 - Token found for user: tan@gmail.com
+2026-03-20T09:27:04.276633 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:27:04.277699200 - Authentication SET in SecurityContext
+2026-03-20T09:27:14.263709500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:27:14.265976300 - Token found for user: tan@gmail.com
+2026-03-20T09:27:14.267992700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:27:14.269027 - Authentication SET in SecurityContext
+2026-03-20T09:27:24.266685400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:27:24.268190600 - Token found for user: tan@gmail.com
+2026-03-20T09:27:24.269759500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:27:24.271332100 - Authentication SET in SecurityContext
+2026-03-20T09:27:34.270588700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:27:34.272114 - Token found for user: tan@gmail.com
+2026-03-20T09:27:34.274183800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:27:34.276597800 - Authentication SET in SecurityContext
+2026-03-20T09:30:21.371529 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:30:21.508688100 - Token found for user: tan@gmail.com
+2026-03-20T09:30:21.593025700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:21.598895100 - Authentication SET in SecurityContext
+2026-03-20T09:30:26.193454800 - Incoming request: POST /api/auth/login
+2026-03-20T09:30:26.194549 - No Bearer token found in header
+2026-03-20T09:30:26.425611200 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T09:30:26.428642600 - Token found for user: tan@gmail.com
+2026-03-20T09:30:26.430276700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:30:26.433034800 - Token found for user: tan@gmail.com
+2026-03-20T09:30:26.434707100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:26.439770200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:26.440866700 - Authentication SET in SecurityContext
+2026-03-20T09:30:26.444713100 - Authentication SET in SecurityContext
+2026-03-20T09:30:26.468031400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:30:26.471781400 - Token found for user: tan@gmail.com
+2026-03-20T09:30:26.479885100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:26.484911800 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T09:30:26.484911800 - Authentication SET in SecurityContext
+2026-03-20T09:30:26.487779800 - Token found for user: tan@gmail.com
+2026-03-20T09:30:26.496923900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:26.503981100 - Authentication SET in SecurityContext
+2026-03-20T09:30:29.740878300 - Incoming request: GET /api/users
+2026-03-20T09:30:29.742885200 - Token found for user: tan@gmail.com
+2026-03-20T09:30:29.750940300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:29.754686400 - Authentication SET in SecurityContext
+2026-03-20T09:30:32.788805100 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T09:30:32.790966900 - Token found for user: tan@gmail.com
+2026-03-20T09:30:32.792582700 - Incoming request: GET /ws/info
+2026-03-20T09:30:32.794160400 - Incoming request: GET /ws/info
+2026-03-20T09:30:32.794160400 - No Bearer token found in header
+2026-03-20T09:30:32.795006100 - No Bearer token found in header
+2026-03-20T09:30:32.798607300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:32.803553900 - Authentication SET in SecurityContext
+2026-03-20T09:30:32.804573 - Incoming request: GET /ws/133/c4cizp5z/websocket
+2026-03-20T09:30:32.804573 - No Bearer token found in header
+2026-03-20T09:30:32.817833900 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T09:30:32.820239800 - Token found for user: tan@gmail.com
+2026-03-20T09:30:32.826434700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:32.831072900 - Authentication SET in SecurityContext
+2026-03-20T09:30:32.870116200 - Incoming request: GET /ws/477/ehwtu1ai/websocket
+2026-03-20T09:30:32.871487600 - No Bearer token found in header
+2026-03-20T09:30:34.003415200 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b686a806401d04041159e7
+2026-03-20T09:30:34.005865800 - Token found for user: tan@gmail.com
+2026-03-20T09:30:34.008879600 - Incoming request: GET /ws/info
+2026-03-20T09:30:34.009879700 - No Bearer token found in header
+2026-03-20T09:30:34.018295600 - Incoming request: GET /ws/812/eivaitot/websocket
+2026-03-20T09:30:34.019362700 - No Bearer token found in header
+2026-03-20T09:30:34.020433600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:34.028137 - Authentication SET in SecurityContext
+2026-03-20T09:30:36.428571500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:30:36.431088500 - Token found for user: tan@gmail.com
+2026-03-20T09:30:36.435931800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:36.439807 - Authentication SET in SecurityContext
+2026-03-20T09:30:37.472791500 - Incoming request: POST /api/project-messages/send
+2026-03-20T09:30:37.475068400 - Token found for user: tan@gmail.com
+2026-03-20T09:30:37.479201700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:37.482974300 - Authentication SET in SecurityContext
+2026-03-20T09:30:46.431564100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:30:46.435291100 - Token found for user: tan@gmail.com
+2026-03-20T09:30:46.441213 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:46.444911400 - Authentication SET in SecurityContext
+2026-03-20T09:30:52.210377100 - Incoming request: PUT /api/project-messages/69bcb14ddf983812c0bfd550
+2026-03-20T09:30:52.212907100 - Token found for user: tan@gmail.com
+2026-03-20T09:30:52.217570600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:52.221882 - Authentication SET in SecurityContext
+2026-03-20T09:30:56.431973 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:30:56.434098600 - Token found for user: tan@gmail.com
+2026-03-20T09:30:56.438970800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:56.442754900 - Authentication SET in SecurityContext
+2026-03-20T09:30:59.344824500 - Incoming request: DELETE /api/project-messages/69bcb14ddf983812c0bfd550
+2026-03-20T09:30:59.348074900 - Token found for user: tan@gmail.com
+2026-03-20T09:30:59.355870500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:30:59.360743 - Authentication SET in SecurityContext
+2026-03-20T09:31:06.432630300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:31:06.435305900 - Token found for user: tan@gmail.com
+2026-03-20T09:31:06.440165 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:31:06.444396500 - Authentication SET in SecurityContext
+2026-03-20T09:31:16.432568200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:31:16.435522700 - Token found for user: tan@gmail.com
+2026-03-20T09:31:16.439837600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:31:16.442545500 - Authentication SET in SecurityContext
+2026-03-20T09:31:21.274999400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:31:21.278280 - Token found for user: tan@gmail.com
+2026-03-20T09:31:21.283074100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:31:21.288063300 - Authentication SET in SecurityContext
+2026-03-20T09:33:30.805827700 - Incoming request: POST /api/auth/login
+2026-03-20T09:33:30.806827 - No Bearer token found in header
+2026-03-20T09:33:31.121666200 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T09:33:31.125194100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:33:31.156906400 - Token found for user: tan@gmail.com
+2026-03-20T09:33:31.156906400 - Token found for user: tan@gmail.com
+2026-03-20T09:33:31.167837800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:31.167837800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:31.174563500 - Authentication SET in SecurityContext
+2026-03-20T09:33:31.174563500 - Authentication SET in SecurityContext
+2026-03-20T09:33:31.214338 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:33:31.219523600 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T09:33:31.220608600 - Token found for user: tan@gmail.com
+2026-03-20T09:33:31.222802500 - Token found for user: tan@gmail.com
+2026-03-20T09:33:31.227247300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:31.229424300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:31.233135400 - Authentication SET in SecurityContext
+2026-03-20T09:33:31.234748400 - Authentication SET in SecurityContext
+2026-03-20T09:33:34.046355300 - Incoming request: GET /api/users
+2026-03-20T09:33:34.048715300 - Token found for user: tan@gmail.com
+2026-03-20T09:33:34.054405600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:34.058653700 - Authentication SET in SecurityContext
+2026-03-20T09:33:35.431678800 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T09:33:35.434655600 - Token found for user: tan@gmail.com
+2026-03-20T09:33:35.436653900 - Incoming request: GET /ws/info
+2026-03-20T09:33:35.437383600 - No Bearer token found in header
+2026-03-20T09:33:35.441138700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:35.444379400 - Incoming request: GET /ws/info
+2026-03-20T09:33:35.444379400 - No Bearer token found in header
+2026-03-20T09:33:35.445953300 - Authentication SET in SecurityContext
+2026-03-20T09:33:35.445953300 - Incoming request: GET /ws/336/nquzdms5/websocket
+2026-03-20T09:33:35.446486200 - No Bearer token found in header
+2026-03-20T09:33:35.459397300 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T09:33:35.461604300 - Token found for user: tan@gmail.com
+2026-03-20T09:33:35.467823 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:35.472151 - Authentication SET in SecurityContext
+2026-03-20T09:33:35.499229300 - Incoming request: GET /ws/252/bn4ndtjw/websocket
+2026-03-20T09:33:35.500555300 - No Bearer token found in header
+2026-03-20T09:33:40.209903400 - Incoming request: POST /api/project-messages/send
+2026-03-20T09:33:40.212592800 - Token found for user: tan@gmail.com
+2026-03-20T09:33:40.216805400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:40.221132100 - Authentication SET in SecurityContext
+2026-03-20T09:33:41.120416100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:33:41.123027500 - Token found for user: tan@gmail.com
+2026-03-20T09:33:41.126826800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:41.131128200 - Authentication SET in SecurityContext
+2026-03-20T09:33:45.576928500 - Incoming request: PUT /api/project-messages/69bcb204a5ccd743ac6a4370
+2026-03-20T09:33:45.580130 - Token found for user: tan@gmail.com
+2026-03-20T09:33:45.584908900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:45.589251900 - Authentication SET in SecurityContext
+2026-03-20T09:33:54.275196100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:33:54.278663700 - Token found for user: tan@gmail.com
+2026-03-20T09:33:54.284229 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:33:54.288014 - Authentication SET in SecurityContext
+2026-03-20T09:34:01.120030400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:34:01.123093500 - Token found for user: tan@gmail.com
+2026-03-20T09:34:01.126762300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:34:01.130236700 - Authentication SET in SecurityContext
+2026-03-20T09:34:01.830708800 - Incoming request: POST /api/files/upload
+2026-03-20T09:34:01.833156500 - Token found for user: tan@gmail.com
+2026-03-20T09:34:01.846955600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:34:01.851416400 - Authentication SET in SecurityContext
+2026-03-20T09:34:01.882103 - Incoming request: POST /api/project-messages/send
+2026-03-20T09:34:01.885658 - Token found for user: tan@gmail.com
+2026-03-20T09:34:01.890512600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:34:01.894778200 - Authentication SET in SecurityContext
+2026-03-20T09:34:01.929156200 - Incoming request: GET /uploads/5a8d127f-1ac1-4126-ada6-cea838247e24.png
+2026-03-20T09:34:01.930672100 - No Bearer token found in header
+2026-03-20T09:34:05.220284200 - Incoming request: PUT /api/project-messages/69bcb204a5ccd743ac6a4370
+2026-03-20T09:34:05.223212200 - Token found for user: tan@gmail.com
+2026-03-20T09:34:05.227015700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:34:05.230786500 - Authentication SET in SecurityContext
+2026-03-20T09:43:27.079241900 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T09:43:27.083459200 - Token found for user: tan@gmail.com
+2026-03-20T09:43:27.089211100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:43:27.092289500 - Token found for user: tan@gmail.com
+2026-03-20T09:43:27.105245400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:27.105245400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:27.110006700 - Authentication SET in SecurityContext
+2026-03-20T09:43:27.110006700 - Authentication SET in SecurityContext
+2026-03-20T09:43:27.134103700 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T09:43:27.137250900 - Token found for user: tan@gmail.com
+2026-03-20T09:43:27.139506 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:43:27.142389 - Token found for user: tan@gmail.com
+2026-03-20T09:43:27.144011800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:27.147823100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:27.148887200 - Authentication SET in SecurityContext
+2026-03-20T09:43:27.151597200 - Authentication SET in SecurityContext
+2026-03-20T09:43:30.274019500 - Incoming request: GET /api/users
+2026-03-20T09:43:30.276580600 - Token found for user: tan@gmail.com
+2026-03-20T09:43:30.280893600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:30.284693900 - Authentication SET in SecurityContext
+2026-03-20T09:43:32.225042300 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T09:43:32.227683900 - Token found for user: tan@gmail.com
+2026-03-20T09:43:32.228697200 - Incoming request: GET /ws/info
+2026-03-20T09:43:32.229277100 - No Bearer token found in header
+2026-03-20T09:43:32.233102 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:32.234165200 - Incoming request: GET /ws/info
+2026-03-20T09:43:32.234698200 - No Bearer token found in header
+2026-03-20T09:43:32.235761100 - Incoming request: GET /ws/020/o3krprof/websocket
+2026-03-20T09:43:32.235761100 - No Bearer token found in header
+2026-03-20T09:43:32.236851900 - Authentication SET in SecurityContext
+2026-03-20T09:43:32.247637900 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T09:43:32.249210700 - Token found for user: tan@gmail.com
+2026-03-20T09:43:32.253502300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:32.256163700 - Authentication SET in SecurityContext
+2026-03-20T09:43:32.261001300 - Incoming request: GET /ws/114/z3uaoxwh/websocket
+2026-03-20T09:43:32.262067200 - No Bearer token found in header
+2026-03-20T09:43:36.023585800 - Incoming request: POST /api/project-messages/send
+2026-03-20T09:43:36.025291200 - Token found for user: tan@gmail.com
+2026-03-20T09:43:36.029960200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:36.032189400 - Authentication SET in SecurityContext
+2026-03-20T09:43:37.087600500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T09:43:37.089737400 - Token found for user: tan@gmail.com
+2026-03-20T09:43:37.093211800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:37.095861 - Authentication SET in SecurityContext
+2026-03-20T09:43:41.344974500 - Incoming request: PUT /api/project-messages/69bcb458a5ccd743ac6a4375
+2026-03-20T09:43:41.347458200 - Token found for user: tan@gmail.com
+2026-03-20T09:43:41.351538700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T09:43:41.353580700 - Authentication SET in SecurityContext
+2026-03-20T10:00:13.581065200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:13.658876700 - Token found for user: tan@gmail.com
+2026-03-20T10:00:13.723386700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:13.727994100 - Authentication SET in SecurityContext
+2026-03-20T10:00:14.058775300 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:00:14.061616100 - Token found for user: tan@gmail.com
+2026-03-20T10:00:14.066487300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:14.069665800 - Authentication SET in SecurityContext
+2026-03-20T10:00:14.082296600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:14.086361400 - Token found for user: tan@gmail.com
+2026-03-20T10:00:14.093269300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:14.097097500 - Authentication SET in SecurityContext
+2026-03-20T10:00:14.100052300 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:00:14.103002900 - Token found for user: tan@gmail.com
+2026-03-20T10:00:14.114378200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:14.120037500 - Authentication SET in SecurityContext
+2026-03-20T10:00:14.120679900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:14.123617400 - Token found for user: tan@gmail.com
+2026-03-20T10:00:14.134452800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:14.139473200 - Authentication SET in SecurityContext
+2026-03-20T10:00:18.317343400 - Incoming request: POST /api/auth/login
+2026-03-20T10:00:18.318912800 - No Bearer token found in header
+2026-03-20T10:00:18.488424100 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:00:18.491938700 - Token found for user: tan@gmail.com
+2026-03-20T10:00:18.498091700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:18.499152 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:18.502002600 - Token found for user: tan@gmail.com
+2026-03-20T10:00:18.503065500 - Authentication SET in SecurityContext
+2026-03-20T10:00:18.507970800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:18.512199600 - Authentication SET in SecurityContext
+2026-03-20T10:00:18.515270500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:00:18.520010600 - Token found for user: tan@gmail.com
+2026-03-20T10:00:18.527068100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:18.533540900 - Authentication SET in SecurityContext
+2026-03-20T10:00:18.535553300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:18.538239500 - Token found for user: tan@gmail.com
+2026-03-20T10:00:18.547561300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:18.552828400 - Authentication SET in SecurityContext
+2026-03-20T10:00:21.524446200 - Incoming request: GET /api/users
+2026-03-20T10:00:21.526175700 - Token found for user: tan@gmail.com
+2026-03-20T10:00:21.531881800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:21.536246 - Authentication SET in SecurityContext
+2026-03-20T10:00:23.186602700 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T10:00:23.190232 - Token found for user: tan@gmail.com
+2026-03-20T10:00:23.191442400 - Incoming request: GET /ws/info
+2026-03-20T10:00:23.191988400 - No Bearer token found in header
+2026-03-20T10:00:23.195855500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:23.199112300 - Incoming request: GET /ws/info
+2026-03-20T10:00:23.199656500 - No Bearer token found in header
+2026-03-20T10:00:23.200740900 - Authentication SET in SecurityContext
+2026-03-20T10:00:23.201281700 - Incoming request: GET /ws/979/dz2h5rfe/websocket
+2026-03-20T10:00:23.201823700 - No Bearer token found in header
+2026-03-20T10:00:23.212732100 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T10:00:23.214985 - Token found for user: tan@gmail.com
+2026-03-20T10:00:23.220061200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:23.224038 - Authentication SET in SecurityContext
+2026-03-20T10:00:23.256852400 - Incoming request: GET /ws/596/nta4azzv/websocket
+2026-03-20T10:00:23.258246600 - No Bearer token found in header
+2026-03-20T10:00:24.273133900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:24.275648800 - Token found for user: tan@gmail.com
+2026-03-20T10:00:24.280209200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:24.283563200 - Authentication SET in SecurityContext
+2026-03-20T10:00:26.580243700 - Incoming request: POST /api/project-messages/send
+2026-03-20T10:00:26.582094800 - Token found for user: tan@gmail.com
+2026-03-20T10:00:26.586179400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:26.589872 - Authentication SET in SecurityContext
+2026-03-20T10:00:28.493891300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:28.495770300 - Token found for user: tan@gmail.com
+2026-03-20T10:00:28.500922 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:28.505018600 - Authentication SET in SecurityContext
+2026-03-20T10:00:33.423673200 - Incoming request: PUT /api/project-messages/69bcb84afb4690faedec96cc
+2026-03-20T10:00:33.426065500 - Token found for user: tan@gmail.com
+2026-03-20T10:00:33.430132 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:33.433198100 - Authentication SET in SecurityContext
+2026-03-20T10:00:34.277534700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:34.280117100 - Token found for user: tan@gmail.com
+2026-03-20T10:00:34.285006500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:34.288862500 - Authentication SET in SecurityContext
+2026-03-20T10:00:42.184880 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:42.187224400 - Token found for user: tan@gmail.com
+2026-03-20T10:00:42.192516900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:42.196296400 - Authentication SET in SecurityContext
+2026-03-20T10:00:44.271736900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:44.275558 - Token found for user: tan@gmail.com
+2026-03-20T10:00:44.279160200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:44.283412600 - Authentication SET in SecurityContext
+2026-03-20T10:00:49.266058200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:49.269041400 - Token found for user: tan@gmail.com
+2026-03-20T10:00:49.275450100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:49.279809700 - Authentication SET in SecurityContext
+2026-03-20T10:00:54.280641200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:54.282702800 - Token found for user: tan@gmail.com
+2026-03-20T10:00:54.286793 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:54.288968700 - Authentication SET in SecurityContext
+2026-03-20T10:00:59.275208500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:00:59.277131800 - Token found for user: tan@gmail.com
+2026-03-20T10:00:59.280300700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:00:59.283999200 - Authentication SET in SecurityContext
+2026-03-20T10:01:04.273091900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:04.275379 - Token found for user: tan@gmail.com
+2026-03-20T10:01:04.279995800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:04.282595400 - Authentication SET in SecurityContext
+2026-03-20T10:01:09.275419400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:09.278028300 - Token found for user: tan@gmail.com
+2026-03-20T10:01:09.282651700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:09.286892400 - Authentication SET in SecurityContext
+2026-03-20T10:01:14.279027200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:14.281093300 - Token found for user: tan@gmail.com
+2026-03-20T10:01:14.284066500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:14.286531900 - Authentication SET in SecurityContext
+2026-03-20T10:01:19.169344400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:19.171427200 - Token found for user: tan@gmail.com
+2026-03-20T10:01:19.176714800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:19.180706400 - Authentication SET in SecurityContext
+2026-03-20T10:01:28.493624300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:28.495882800 - Token found for user: tan@gmail.com
+2026-03-20T10:01:28.499612900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:28.501758400 - Authentication SET in SecurityContext
+2026-03-20T10:01:38.493727 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:38.496141500 - Token found for user: tan@gmail.com
+2026-03-20T10:01:38.499569600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:38.503125500 - Authentication SET in SecurityContext
+2026-03-20T10:01:49.268945300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:49.271214800 - Token found for user: tan@gmail.com
+2026-03-20T10:01:49.275047700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:49.277700100 - Authentication SET in SecurityContext
+2026-03-20T10:01:59.265876700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:01:59.267885400 - Token found for user: tan@gmail.com
+2026-03-20T10:01:59.271444700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:01:59.273288700 - Authentication SET in SecurityContext
+2026-03-20T10:02:09.270932700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:09.273228800 - Token found for user: tan@gmail.com
+2026-03-20T10:02:09.277248600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:09.280779600 - Authentication SET in SecurityContext
+2026-03-20T10:02:19.273295200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:19.275623900 - Token found for user: tan@gmail.com
+2026-03-20T10:02:19.280274600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:19.282371300 - Authentication SET in SecurityContext
+2026-03-20T10:02:21.273313800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:21.275182700 - Token found for user: tan@gmail.com
+2026-03-20T10:02:21.278382900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:21.280485500 - Authentication SET in SecurityContext
+2026-03-20T10:02:28.492642500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:28.494372800 - Token found for user: tan@gmail.com
+2026-03-20T10:02:28.497106800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:28.500963800 - Authentication SET in SecurityContext
+2026-03-20T10:02:39.271218300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:39.273350100 - Token found for user: tan@gmail.com
+2026-03-20T10:02:39.277046900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:39.280139 - Authentication SET in SecurityContext
+2026-03-20T10:02:49.265898700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:49.267830200 - Token found for user: tan@gmail.com
+2026-03-20T10:02:49.271334900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:49.273994 - Authentication SET in SecurityContext
+2026-03-20T10:02:59.272982100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:02:59.274805300 - Token found for user: tan@gmail.com
+2026-03-20T10:02:59.278202600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:02:59.279790600 - Authentication SET in SecurityContext
+2026-03-20T10:03:09.268090600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:09.269419600 - Token found for user: tan@gmail.com
+2026-03-20T10:03:09.272026500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:09.273533600 - Authentication SET in SecurityContext
+2026-03-20T10:03:12.227162 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:12.230361900 - Token found for user: tan@gmail.com
+2026-03-20T10:03:12.238153200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:12.242113800 - Authentication SET in SecurityContext
+2026-03-20T10:03:14.266107500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:14.267717800 - Token found for user: tan@gmail.com
+2026-03-20T10:03:14.271171 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:14.273773400 - Authentication SET in SecurityContext
+2026-03-20T10:03:19.268346800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:19.270233200 - Token found for user: tan@gmail.com
+2026-03-20T10:03:19.273438700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:19.275926300 - Authentication SET in SecurityContext
+2026-03-20T10:03:24.267616 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:24.270120 - Token found for user: tan@gmail.com
+2026-03-20T10:03:24.274981200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:24.277714300 - Authentication SET in SecurityContext
+2026-03-20T10:03:29.280400800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:29.282311800 - Token found for user: tan@gmail.com
+2026-03-20T10:03:29.285708700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:29.288122500 - Authentication SET in SecurityContext
+2026-03-20T10:03:34.272069900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:34.273579900 - Token found for user: tan@gmail.com
+2026-03-20T10:03:34.278396400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:34.280816900 - Authentication SET in SecurityContext
+2026-03-20T10:03:39.277244200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:39.279883 - Token found for user: tan@gmail.com
+2026-03-20T10:03:39.284302200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:39.287198500 - Authentication SET in SecurityContext
+2026-03-20T10:03:44.270581700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:44.272739700 - Token found for user: tan@gmail.com
+2026-03-20T10:03:44.276280500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:44.279041700 - Authentication SET in SecurityContext
+2026-03-20T10:03:49.275124400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:49.276665400 - Token found for user: tan@gmail.com
+2026-03-20T10:03:49.281298200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:49.283966200 - Authentication SET in SecurityContext
+2026-03-20T10:03:54.276594800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:54.278219700 - Token found for user: tan@gmail.com
+2026-03-20T10:03:54.282659500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:54.284271800 - Authentication SET in SecurityContext
+2026-03-20T10:03:59.277056300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:03:59.278561300 - Token found for user: tan@gmail.com
+2026-03-20T10:03:59.281546 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:03:59.283080 - Authentication SET in SecurityContext
+2026-03-20T10:04:04.267104500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:04.268080300 - Token found for user: tan@gmail.com
+2026-03-20T10:04:04.270721800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:04.272835200 - Authentication SET in SecurityContext
+2026-03-20T10:04:09.276848200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:09.278913 - Token found for user: tan@gmail.com
+2026-03-20T10:04:09.283377 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:09.285177100 - Authentication SET in SecurityContext
+2026-03-20T10:04:14.277555700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:14.278556100 - Token found for user: tan@gmail.com
+2026-03-20T10:04:14.281794500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:14.283382600 - Authentication SET in SecurityContext
+2026-03-20T10:04:21.278984500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:21.281868300 - Token found for user: tan@gmail.com
+2026-03-20T10:04:21.290976 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:21.292568300 - Authentication SET in SecurityContext
+2026-03-20T10:04:24.276177900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:24.278154200 - Token found for user: tan@gmail.com
+2026-03-20T10:04:24.282541600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:24.284152400 - Authentication SET in SecurityContext
+2026-03-20T10:04:34.273427300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:34.276419400 - Token found for user: tan@gmail.com
+2026-03-20T10:04:34.290237 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:34.292623700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:04:44.268305400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:44.269818800 - Token found for user: tan@gmail.com
+2026-03-20T10:04:44.273070900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:44.274641 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:04:54.278930 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:04:54.281574900 - Token found for user: tan@gmail.com
+2026-03-20T10:04:54.290126700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:04:54.291716400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:04.270899100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:04.272246200 - Token found for user: tan@gmail.com
+2026-03-20T10:05:04.275449 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:04.277590100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:14.279204300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:14.280904800 - Token found for user: tan@gmail.com
+2026-03-20T10:05:14.283478800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:14.285667400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:21.273515500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:21.274722400 - Token found for user: tan@gmail.com
+2026-03-20T10:05:21.277386400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:21.278417300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:24.268338400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:24.269565700 - Token found for user: tan@gmail.com
+2026-03-20T10:05:24.271638700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:24.273672500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:34.278974100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:34.281415400 - Token found for user: tan@gmail.com
+2026-03-20T10:05:34.284570600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:34.287044300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:44.280140 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:44.281406600 - Token found for user: tan@gmail.com
+2026-03-20T10:05:44.283496200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:44.285624900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:05:54.271910600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:05:54.273946500 - Token found for user: tan@gmail.com
+2026-03-20T10:05:54.277697500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:05:54.279794200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:06:34.276871600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:06:34.280165500 - Token found for user: tan@gmail.com
+2026-03-20T10:06:34.291615600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:06:34.293268300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:06:44.264548500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:06:44.266055300 - Token found for user: tan@gmail.com
+2026-03-20T10:06:44.268495600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:06:44.272272400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:06:54.279114200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:06:54.281145100 - Token found for user: tan@gmail.com
+2026-03-20T10:06:54.283698400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:06:54.285489200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:04.270034 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:04.271534100 - Token found for user: tan@gmail.com
+2026-03-20T10:07:04.274908800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:04.276488300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:14.279317600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:14.280839400 - Token found for user: tan@gmail.com
+2026-03-20T10:07:14.283460600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:14.284517 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:21.272995 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:21.274161600 - Token found for user: tan@gmail.com
+2026-03-20T10:07:21.276803100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:21.278363900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:24.271886100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:24.273918900 - Token found for user: tan@gmail.com
+2026-03-20T10:07:24.276542600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:24.278649200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:34.275227800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:34.277064500 - Token found for user: tan@gmail.com
+2026-03-20T10:07:34.280258800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:34.282403600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:44.270957 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:44.272341300 - Token found for user: tan@gmail.com
+2026-03-20T10:07:44.274409400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:44.275756900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:54.266857 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:54.268368800 - Token found for user: tan@gmail.com
+2026-03-20T10:07:54.270079700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:54.272470100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:56.912548600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:56.914515700 - Token found for user: tan@gmail.com
+2026-03-20T10:07:56.920194400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:56.923114900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:07:58.487750300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:07:58.489834100 - Token found for user: tan@gmail.com
+2026-03-20T10:07:58.493607100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:07:58.495766800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:00.046102500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:00.047816 - Token found for user: tan@gmail.com
+2026-03-20T10:08:00.052866800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:00.055968300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:00.074607100 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:00.080575300 - Token found for user: tan@gmail.com
+2026-03-20T10:08:00.087389200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:00.092572900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:00.110780700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:00.114018900 - Token found for user: tan@gmail.com
+2026-03-20T10:08:00.121137400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:00.125663100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:00.155639200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:00.157642400 - Token found for user: tan@gmail.com
+2026-03-20T10:08:00.169316600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:00.172330400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:02.530467 - Incoming request: POST /api/auth/login
+2026-03-20T10:08:02.532031800 - No Bearer token found in header
+2026-03-20T10:08:02.656911400 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:02.658464300 - Token found for user: tan@gmail.com
+2026-03-20T10:08:02.662064800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:02.663147400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:02.664222700 - Token found for user: tan@gmail.com
+2026-03-20T10:08:02.665811900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:02.668560400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:02.671244 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:02.676068700 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:02.677800700 - Token found for user: tan@gmail.com
+2026-03-20T10:08:02.685665300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:02.687789 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:02.688836 - Token found for user: tan@gmail.com
+2026-03-20T10:08:02.690367500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:02.696140 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:02.700738900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:04.067093800 - Incoming request: POST /api/auth/login
+2026-03-20T10:08:04.068143200 - No Bearer token found in header
+2026-03-20T10:08:04.179809600 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:04.181504400 - Token found for user: tan@gmail.com
+2026-03-20T10:08:04.185291700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:04.187467 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:04.188020200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:04.189106800 - Token found for user: tan@gmail.com
+2026-03-20T10:08:04.192358100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:04.195663400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:04.198380300 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:04.199998500 - Token found for user: tan@gmail.com
+2026-03-20T10:08:04.204261700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:04.208875100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:04.211398800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:04.213214500 - Token found for user: tan@gmail.com
+2026-03-20T10:08:04.218106900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:04.221886600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:04.302643300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:04.303167100 - No Bearer token found in header
+2026-03-20T10:08:06.042423700 - Incoming request: POST /api/auth/login
+2026-03-20T10:08:06.044366900 - No Bearer token found in header
+2026-03-20T10:08:06.177348800 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:06.178878600 - Token found for user: tan@gmail.com
+2026-03-20T10:08:06.183021 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:06.186928300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:06.186928300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:06.188538900 - Token found for user: tan@gmail.com
+2026-03-20T10:08:06.192300300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:06.195017100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:06.197791900 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:08:06.199517400 - Token found for user: tan@gmail.com
+2026-03-20T10:08:06.203282200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:06.209331400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:08:06.212260700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:08:06.215083900 - Token found for user: tan@gmail.com
+2026-03-20T10:08:06.219959500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:08:06.223884400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:25.209812400 - Incoming request: POST /api/auth/login
+2026-03-20T10:10:25.211226 - No Bearer token found in header
+2026-03-20T10:10:25.540119700 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:10:25.542751700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:10:25.579076600 - Token found for user: tan@gmail.com
+2026-03-20T10:10:25.579076600 - Token found for user: tan@gmail.com
+2026-03-20T10:10:25.592169900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:25.592169900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:25.599429600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:25.599429600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:25.642213800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:10:25.648452 - Token found for user: tan@gmail.com
+2026-03-20T10:10:25.648982900 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:10:25.654240700 - Token found for user: tan@gmail.com
+2026-03-20T10:10:25.658097100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:25.662062700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:25.664267600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:25.666945700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:26.809108900 - Incoming request: POST /api/auth/login
+2026-03-20T10:10:26.810472900 - No Bearer token found in header
+2026-03-20T10:10:26.939598400 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:10:26.942896200 - Token found for user: tan@gmail.com
+2026-03-20T10:10:26.944524900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:10:26.948215600 - Token found for user: tan@gmail.com
+2026-03-20T10:10:26.950387 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:26.955794800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:26.957546900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:26.960279400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:26.974616100 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:10:26.978505200 - Token found for user: tan@gmail.com
+2026-03-20T10:10:26.984834700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:10:26.986518700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:26.988245900 - Token found for user: tan@gmail.com
+2026-03-20T10:10:26.992617600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:26.995153100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:27.001598300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:28.096748300 - Incoming request: POST /api/auth/login
+2026-03-20T10:10:28.097744300 - No Bearer token found in header
+2026-03-20T10:10:28.219862800 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:10:28.221770900 - Token found for user: tan@gmail.com
+2026-03-20T10:10:28.223830600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:10:28.226005500 - Token found for user: tan@gmail.com
+2026-03-20T10:10:28.228674900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:28.231986400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:28.234125200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:28.236277600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:28.245872200 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:10:28.248918200 - Token found for user: tan@gmail.com
+2026-03-20T10:10:28.254995800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:10:28.256069100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:28.257653600 - Token found for user: tan@gmail.com
+2026-03-20T10:10:28.259828700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:10:28.264383600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:10:28.270830900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:44.954144600 - Incoming request: POST /api/auth/login
+2026-03-20T10:11:44.955794700 - No Bearer token found in header
+2026-03-20T10:11:45.079002 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:11:45.082994700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:11:45.083504800 - Token found for user: tan@gmail.com
+2026-03-20T10:11:45.085796100 - Token found for user: tan@gmail.com
+2026-03-20T10:11:45.091382 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:45.092488300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:45.095743900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:45.096304800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:45.112599700 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:11:45.114374300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:11:45.115906300 - Token found for user: tan@gmail.com
+2026-03-20T10:11:45.117564700 - Token found for user: tan@gmail.com
+2026-03-20T10:11:45.121944900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:45.123014400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:45.125732100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:45.126847900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:46.228489800 - Incoming request: POST /api/auth/login
+2026-03-20T10:11:46.229115 - No Bearer token found in header
+2026-03-20T10:11:46.344207300 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:11:46.346083500 - Token found for user: tan@gmail.com
+2026-03-20T10:11:46.347730400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:11:46.349913800 - Token found for user: tan@gmail.com
+2026-03-20T10:11:46.352030700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:46.354677400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:46.355752400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:46.358199800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:46.367566600 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:11:46.371872100 - Token found for user: tan@gmail.com
+2026-03-20T10:11:46.377532500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:11:46.380043 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:46.381868100 - Token found for user: tan@gmail.com
+2026-03-20T10:11:46.383477100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:46.388444 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:46.393531500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:57.889928200 - Incoming request: POST /api/auth/login
+2026-03-20T10:11:57.891038500 - No Bearer token found in header
+2026-03-20T10:11:58.006895500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:11:58.008623400 - Token found for user: tan@gmail.com
+2026-03-20T10:11:58.014945300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:58.019978300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:58.020811 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:11:58.022404100 - Token found for user: tan@gmail.com
+2026-03-20T10:11:58.028785200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:58.031489 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:11:58.032030900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:58.033115 - Token found for user: tan@gmail.com
+2026-03-20T10:11:58.038199400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:58.043377700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:11:58.051177 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:11:58.055386600 - Token found for user: tan@gmail.com
+2026-03-20T10:11:58.060811500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:11:58.066387900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:14:12.501957800 - Incoming request: POST /api/auth/login
+2026-03-20T10:14:12.503409600 - No Bearer token found in header
+2026-03-20T10:14:12.627518300 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:14:12.630094 - Token found for user: tan@gmail.com
+2026-03-20T10:14:12.637013 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:14:12.639728300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:14:12.640807400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:14:12.641354400 - Token found for user: tan@gmail.com
+2026-03-20T10:14:12.646505500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:14:12.650864600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:14:12.652026800 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:14:12.653086900 - Token found for user: tan@gmail.com
+2026-03-20T10:14:12.658097700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:14:12.663151900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:14:12.668606600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:14:12.671911600 - Token found for user: tan@gmail.com
+2026-03-20T10:14:12.678643800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:14:12.682970100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:15:25.867855900 - Incoming request: POST /api/auth/login
+2026-03-20T10:15:25.868364 - No Bearer token found in header
+2026-03-20T10:15:26.234472100 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:15:26.256444400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:15:26.270943700 - Token found for user: tan@gmail.com
+2026-03-20T10:15:26.270943700 - Token found for user: tan@gmail.com
+2026-03-20T10:15:26.281193300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:15:26.281193300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:15:26.287855900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:15:26.287855900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:15:26.328984600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:15:26.330779200 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:15:26.331857900 - Token found for user: tan@gmail.com
+2026-03-20T10:15:26.333470200 - Token found for user: tan@gmail.com
+2026-03-20T10:15:26.346042400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:15:26.347738500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:15:26.351600100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:15:26.361979900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:18:32.070208200 - Incoming request: POST /api/auth/login
+2026-03-20T10:18:32.071832900 - No Bearer token found in header
+2026-03-20T10:18:32.214423400 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:18:32.219744500 - Token found for user: tan@gmail.com
+2026-03-20T10:18:32.228893 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:32.233567700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:18:32.234382900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:18:32.235989100 - Token found for user: tan@gmail.com
+2026-03-20T10:18:32.241428900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:32.244744500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:18:32 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:32.251800300 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:18:32.254589600 - Token found for user: tan@gmail.com
+2026-03-20T10:18:32.264709300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:32.266224100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:18:32.268296 - Token found for user: tan@gmail.com
+2026-03-20T10:18:32.268296 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:18:32.275890 - UserDetails loaded for: tan@gmail.com
+Fri Mar 20 10:18:32 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:32.281926500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:18:33.709921 - Incoming request: POST /api/auth/login
+2026-03-20T10:18:33.709921 - No Bearer token found in header
+2026-03-20T10:18:34.137240700 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:18:34.140015900 - Token found for user: tan@gmail.com
+2026-03-20T10:18:34.144961200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:34.148671200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:18:34 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:34.159106500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:18:34.161720400 - Token found for user: tan@gmail.com
+2026-03-20T10:18:34.167208300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:34.172277900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:18:34 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:34.278517800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:18:34.279106300 - No Bearer token found in header
+Fri Mar 20 10:18:34 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /api/notifications/unread-count - Reason: Full authentication is required to access this resource
+Fri Mar 20 10:18:34 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:34.285735 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:18:34.286276700 - No Bearer token found in header
+Fri Mar 20 10:18:34 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /api/notifications/unread-count - Reason: Full authentication is required to access this resource
+Fri Mar 20 10:18:34 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:35.188935400 - Incoming request: POST /api/auth/login
+2026-03-20T10:18:35.189539500 - No Bearer token found in header
+2026-03-20T10:18:35.543020600 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:18:35.546455400 - Token found for user: tan@gmail.com
+2026-03-20T10:18:35.552686700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:35.557711100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:18:35 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:35.570081800 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:18:35.572779900 - Token found for user: tan@gmail.com
+2026-03-20T10:18:35.579005600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:18:35.585113300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:18:35 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:35.621209500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:18:35.622212500 - No Bearer token found in header
+Fri Mar 20 10:18:35 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /api/notifications/unread-count - Reason: Full authentication is required to access this resource
+Fri Mar 20 10:18:35 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:18:35.629340700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:18:35.629886700 - No Bearer token found in header
+Fri Mar 20 10:18:35 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /api/notifications/unread-count - Reason: Full authentication is required to access this resource
+Fri Mar 20 10:18:35 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:19:12.774959900 - Incoming request: POST /api/auth/login
+2026-03-20T10:19:12.776960700 - No Bearer token found in header
+2026-03-20T10:19:13.086710900 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:19:13.089370400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:19:13.122251400 - Token found for user: tan@gmail.com
+2026-03-20T10:19:13.122251400 - Token found for user: tan@gmail.com
+2026-03-20T10:19:13.131355 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:13.131355 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:13.138095200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:19:13.138095200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:19:13 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:19:13.170224800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:19:13.171805100 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:19:13.173338400 - Token found for user: tan@gmail.com
+2026-03-20T10:19:13.176991 - Token found for user: tan@gmail.com
+2026-03-20T10:19:13.180242900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:13.183498400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:13.186221500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:19:13.188902 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:19:13 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:19:24.202073900 - Incoming request: POST /api/auth/login
+2026-03-20T10:19:24.202073900 - No Bearer token found in header
+2026-03-20T10:19:24.316282 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:19:24.318872500 - Token found for user: tan@gmail.com
+2026-03-20T10:19:24.320379800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:19:24.323261600 - Token found for user: tan@gmail.com
+2026-03-20T10:19:24.325740800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:24.328970900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:24.330033700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:19:24.332799900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:19:24 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:19:24.341493600 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:19:24.344806 - Token found for user: tan@gmail.com
+2026-03-20T10:19:24.349689200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:19:24.353042400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:24.353042400 - Token found for user: tan@gmail.com
+2026-03-20T10:19:24.359254100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:19:24.361269200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:19:24.367058400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+Fri Mar 20 10:19:24 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:20:01.948713300 - Incoming request: POST /api/auth/login
+2026-03-20T10:20:01.949286800 - No Bearer token found in header
+2026-03-20T10:20:02.082197500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:20:02.085627200 - Token found for user: tan@gmail.com
+2026-03-20T10:20:02.093779 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:20:02.094843200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:20:02.096837500 - Token found for user: tan@gmail.com
+2026-03-20T10:20:02.098998400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:20:02.104066400 - UserDetails loaded for: tan@gmail.com
+Fri Mar 20 10:20:02 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:20:02.109880300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:20:02.110419500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:20:02.112634400 - Token found for user: tan@gmail.com
+2026-03-20T10:20:02.119954800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:20:02.125011300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:20:02.128858900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:20:02.131458800 - Token found for user: tan@gmail.com
+Fri Mar 20 10:20:02 ICT 2026 - ❌ EntryPoint: 401 Unauthorized - URL: /error - Reason: Full authentication is required to access this resource
+2026-03-20T10:20:02.139386 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:20:02.144898 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:08.777018300 - Incoming request: POST /api/auth/login
+2026-03-20T10:22:08.779729800 - No Bearer token found in header
+2026-03-20T10:22:08.926858500 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:22:08.930944400 - Token found for user: tan@gmail.com
+2026-03-20T10:22:08.938794800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:08.940430800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:22:08.942079300 - Token found for user: tan@gmail.com
+2026-03-20T10:22:08.943692 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:08.949012300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:08.952179300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:08.964091900 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:22:08.968257200 - Token found for user: tan@gmail.com
+2026-03-20T10:22:08.972123800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:22:08.974848 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:08.974848 - Token found for user: tan@gmail.com
+2026-03-20T10:22:08.979793200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:08.981439300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:08.986295600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:13.902116700 - Incoming request: GET /api/users
+2026-03-20T10:22:13.904306 - Token found for user: tan@gmail.com
+2026-03-20T10:22:13.909965200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:13.912653700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:15.359726900 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T10:22:15.362521100 - Token found for user: tan@gmail.com
+2026-03-20T10:22:15.368109900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:15.370130100 - Incoming request: GET /ws/info
+2026-03-20T10:22:15.370130100 - Incoming request: GET /ws/info
+2026-03-20T10:22:15.371179100 - No Bearer token found in header
+2026-03-20T10:22:15.371179100 - No Bearer token found in header
+2026-03-20T10:22:15.372851300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:15.381328200 - Incoming request: GET /ws/508/m1f4qh4y/websocket
+2026-03-20T10:22:15.382386700 - No Bearer token found in header
+2026-03-20T10:22:15.384131100 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T10:22:15.386260600 - Token found for user: tan@gmail.com
+2026-03-20T10:22:15.391716600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:15.396585 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:15.441661900 - Incoming request: GET /ws/035/vtcy1ri0/websocket
+2026-03-20T10:22:15.442662200 - No Bearer token found in header
+2026-03-20T10:22:16.270949100 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6830782511756f4af86b1
+2026-03-20T10:22:16.273477300 - Token found for user: tan@gmail.com
+2026-03-20T10:22:16.276179700 - Incoming request: GET /ws/info
+2026-03-20T10:22:16.276708200 - No Bearer token found in header
+2026-03-20T10:22:16.277822300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:16.282127300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:16.282667800 - Incoming request: GET /ws/110/fmuut4wn/websocket
+2026-03-20T10:22:16.283208400 - No Bearer token found in header
+2026-03-20T10:22:18.939847100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:22:18.942092100 - Token found for user: tan@gmail.com
+2026-03-20T10:22:18.946006900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:18.949434200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:23.863849300 - Incoming request: POST /api/project-messages/send
+2026-03-20T10:22:23.865926300 - Token found for user: tan@gmail.com
+2026-03-20T10:22:23.870339100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:23.873557900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:28.939945600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:22:28.942627300 - Token found for user: tan@gmail.com
+2026-03-20T10:22:28.946648900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:28.949822 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:35.038233200 - Incoming request: POST /api/files/upload
+2026-03-20T10:22:35.040645500 - Token found for user: tan@gmail.com
+2026-03-20T10:22:35.046012 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:35.049996700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:35.090880200 - Incoming request: POST /api/project-messages/send
+2026-03-20T10:22:35.093525500 - Token found for user: tan@gmail.com
+2026-03-20T10:22:35.097654900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:35.101294 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:35.136629300 - Incoming request: GET /uploads/dc6d6c90-b009-4bc5-b855-dc887bf94fb5.png
+2026-03-20T10:22:35.138318500 - No Bearer token found in header
+2026-03-20T10:22:38.935581800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:22:38.937591900 - Token found for user: tan@gmail.com
+2026-03-20T10:22:38.941886200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:38.944285600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:22:44.997886400 - Incoming request: PUT /api/project-messages/69bcbd6fc6eba5de29a637c9
+2026-03-20T10:22:44.999387500 - Token found for user: tan@gmail.com
+2026-03-20T10:22:45.003947400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:22:45.006036600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:19.509045900 - Incoming request: POST /api/auth/login
+2026-03-20T10:34:19.595856100 - Token found for user: tan@gmail.com
+2026-03-20T10:34:19.654900100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:19.661231800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:19.901348800 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:34:19.903790600 - Token found for user: tan@gmail.com
+2026-03-20T10:34:19.910542 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:19.913576600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:34:19.915309600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:19.915839500 - Token found for user: tan@gmail.com
+2026-03-20T10:34:19.922397600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:19.927670400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:19.951784 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:34:19.956086100 - Token found for user: tan@gmail.com
+2026-03-20T10:34:19.964483700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:19.970344100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:20.041675700 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:34:20.044342800 - Token found for user: tan@gmail.com
+2026-03-20T10:34:20.050391600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:20.054720400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:29.900037700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:34:29.902559500 - Token found for user: tan@gmail.com
+2026-03-20T10:34:29.906784500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:29.910554500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:37.415148100 - Incoming request: GET /api/users
+2026-03-20T10:34:37.417672 - Token found for user: tan@gmail.com
+2026-03-20T10:34:37.422976700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:37.427397900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:39.592169700 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T10:34:39.595269200 - Token found for user: tan@gmail.com
+2026-03-20T10:34:39.597672500 - Incoming request: GET /ws/info
+2026-03-20T10:34:39.598199600 - No Bearer token found in header
+2026-03-20T10:34:39.601448500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:39.605759 - Incoming request: GET /ws/info
+2026-03-20T10:34:39.606434600 - No Bearer token found in header
+2026-03-20T10:34:39.606971400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:39.608808400 - Incoming request: GET /ws/944/kajr3s2q/websocket
+2026-03-20T10:34:39.609902500 - No Bearer token found in header
+2026-03-20T10:34:39.675780900 - Incoming request: GET /ws/738/vlb220ex/websocket
+2026-03-20T10:34:39.677045600 - No Bearer token found in header
+2026-03-20T10:34:39.695771300 - Incoming request: GET /api/project-messages/private/user/69b682ca82511756f4af86b0/69b6829182511756f4af86af
+2026-03-20T10:34:39.698966200 - Token found for user: tan@gmail.com
+2026-03-20T10:34:39.703380 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:39.707435200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:39.719730300 - Incoming request: GET /uploads/1415a3ac-ba60-4e77-ad86-782a31ae0560.png
+2026-03-20T10:34:39.719194900 - Incoming request: GET /uploads/e7d38fe7-efa9-4786-afb9-600e738e83fe.png
+2026-03-20T10:34:39.719194900 - Incoming request: GET /uploads/5a8d127f-1ac1-4126-ada6-cea838247e24.png
+2026-03-20T10:34:39.720883 - No Bearer token found in header
+2026-03-20T10:34:39.720883 - No Bearer token found in header
+2026-03-20T10:34:39.720883 - No Bearer token found in header
+2026-03-20T10:34:39.902111600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:34:39.904525500 - Token found for user: tan@gmail.com
+2026-03-20T10:34:39.908970700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:39.912198900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:49.516196600 - Incoming request: PUT /api/project-messages/69bcb84afb4690faedec96cc
+2026-03-20T10:34:49.518118300 - Token found for user: tan@gmail.com
+2026-03-20T10:34:49.522803900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:49.527141500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:49.901075400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:34:49.903199500 - Token found for user: tan@gmail.com
+2026-03-20T10:34:49.906865700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:49.910037300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:58.079194400 - Incoming request: DELETE /api/project-messages/69bcb458a5ccd743ac6a4375
+2026-03-20T10:34:58.081260400 - Token found for user: tan@gmail.com
+2026-03-20T10:34:58.087552500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:58.091892200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:34:59.896872900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:34:59.899412200 - Token found for user: tan@gmail.com
+2026-03-20T10:34:59.902967200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:34:59.905731200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:09.898750100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:35:09.900783300 - Token found for user: tan@gmail.com
+2026-03-20T10:35:09.905104400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:09.907746800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:19.897892700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:35:19.899967 - Token found for user: tan@gmail.com
+2026-03-20T10:35:19.903597500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:19.906854900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:20.948824900 - Incoming request: GET /api/project-messages/project/69b6808b8ba5dd3fc107950c/user/69b682ca82511756f4af86b0
+2026-03-20T10:35:20.951325400 - Incoming request: GET /ws/info
+2026-03-20T10:35:20.951325400 - Incoming request: GET /ws/info
+2026-03-20T10:35:20.952524 - No Bearer token found in header
+2026-03-20T10:35:20.952524 - No Bearer token found in header
+2026-03-20T10:35:20.953652200 - Token found for user: tan@gmail.com
+2026-03-20T10:35:20.960393700 - Incoming request: GET /ws/171/sbr0bifu/websocket
+2026-03-20T10:35:20.960393700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:20.960916600 - No Bearer token found in header
+2026-03-20T10:35:20.964849900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:20.983593700 - Incoming request: GET /ws/077/umekqtc5/websocket
+2026-03-20T10:35:20.984722700 - No Bearer token found in header
+2026-03-20T10:35:21.190805200 - Incoming request: GET /api/project-messages/project/69b6808b8ba5dd3fc107950c/user/69b682ca82511756f4af86b0
+2026-03-20T10:35:21.193275200 - Token found for user: tan@gmail.com
+2026-03-20T10:35:21.198473700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:21.202735900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:24.856189200 - Incoming request: GET /api/project-messages/project/69b7b0d538f55a832e69db19/user/69b682ca82511756f4af86b0
+2026-03-20T10:35:24.859517100 - Token found for user: tan@gmail.com
+2026-03-20T10:35:24.863316200 - Incoming request: GET /ws/info
+2026-03-20T10:35:24.864318700 - No Bearer token found in header
+2026-03-20T10:35:24.866079600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:24.872360200 - Incoming request: GET /ws/656/0xzb4fie/websocket
+2026-03-20T10:35:24.872360200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:24.872891400 - No Bearer token found in header
+2026-03-20T10:35:29.899601300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:35:29.901958600 - Token found for user: tan@gmail.com
+2026-03-20T10:35:29.905198800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:29.907852700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:39.898596700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:35:39.900564200 - Token found for user: tan@gmail.com
+2026-03-20T10:35:39.903869200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:39.906914700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:49.901735900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:35:49.903238100 - Token found for user: tan@gmail.com
+2026-03-20T10:35:49.908371200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:49.914240700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:35:59.899390300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:35:59.901884 - Token found for user: tan@gmail.com
+2026-03-20T10:35:59.905710700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:35:59.909253200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:36:10.276892600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:36:10.279063900 - Token found for user: tan@gmail.com
+2026-03-20T10:36:10.281727100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:36:10.283858 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:36:20.268616800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:36:20.270322600 - Token found for user: tan@gmail.com
+2026-03-20T10:36:20.272403400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:36:20.274496300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:36:30.268377600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:36:30.270415500 - Token found for user: tan@gmail.com
+2026-03-20T10:36:30.273256100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:36:30.274830500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:36:40.275282600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:36:40.276917900 - Token found for user: tan@gmail.com
+2026-03-20T10:36:40.280032900 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:36:40.282170100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:36:50.273231500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:36:50.274927400 - Token found for user: tan@gmail.com
+2026-03-20T10:36:50.277234200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:36:50.279319100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:37:00.280070 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:37:00.282190900 - Token found for user: tan@gmail.com
+2026-03-20T10:37:00.284883300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:37:00.286373100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:37:21.280110400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:37:21.282478300 - Token found for user: tan@gmail.com
+2026-03-20T10:37:21.285834800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:37:21.289088200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:06.498683100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:06.500410100 - Token found for user: tan@gmail.com
+2026-03-20T10:38:06.504797500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:06.509104200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:07.567763 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:38:07.570759300 - Token found for user: tan@gmail.com
+2026-03-20T10:38:07.709980400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:07.726704800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:07.733400100 - Token found for user: tan@gmail.com
+2026-03-20T10:38:07.732282600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:07.760544500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:07.774146800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:07.815867400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:07.820867200 - Token found for user: tan@gmail.com
+2026-03-20T10:38:07.825956800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:07.829599100 - Incoming request: GET /api/tasks/my-tasks/69b682ca82511756f4af86b0
+2026-03-20T10:38:07.831758600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:07.835502200 - Token found for user: tan@gmail.com
+2026-03-20T10:38:07.849691300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:07.863164900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:13.111661900 - Incoming request: GET /api/users
+2026-03-20T10:38:13.115592100 - Token found for user: tan@gmail.com
+2026-03-20T10:38:13.121086600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:13.124650200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:14.404745600 - Incoming request: GET /api/project-messages/project/69b7b0d538f55a832e69db19/user/69b682ca82511756f4af86b0
+2026-03-20T10:38:14.406534300 - Token found for user: tan@gmail.com
+2026-03-20T10:38:14.410764800 - Incoming request: GET /ws/info
+2026-03-20T10:38:14.410213300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:14.410764800 - Incoming request: GET /ws/info
+2026-03-20T10:38:14.411306 - No Bearer token found in header
+2026-03-20T10:38:14.411841 - No Bearer token found in header
+2026-03-20T10:38:14.414296800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:14.419150500 - Incoming request: GET /ws/621/fxvln1zw/websocket
+2026-03-20T10:38:14.420237800 - No Bearer token found in header
+2026-03-20T10:38:14.445671500 - Incoming request: GET /ws/743/vsxwf1t5/websocket
+2026-03-20T10:38:14.445671500 - No Bearer token found in header
+2026-03-20T10:38:14.566023400 - Incoming request: GET /api/project-messages/project/69b7b0d538f55a832e69db19/user/69b682ca82511756f4af86b0
+2026-03-20T10:38:14.567548300 - Token found for user: tan@gmail.com
+2026-03-20T10:38:14.573443500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:14.576658200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:17.595120900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:17.596417900 - Token found for user: tan@gmail.com
+2026-03-20T10:38:17.599631100 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:17.601481200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:28.267905800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:28.269281700 - Token found for user: tan@gmail.com
+2026-03-20T10:38:28.271834400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:28.274277800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:36.512479300 - Incoming request: POST /api/auth/login
+2026-03-20T10:38:36.513145200 - No Bearer token found in header
+2026-03-20T10:38:36.631051100 - Incoming request: GET /api/tasks/my-tasks/69b6830782511756f4af86b1
+2026-03-20T10:38:36.633660900 - Token found for user: sang@gmail.com
+2026-03-20T10:38:36.637238100 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:36.640459700 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:36.660018300 - Incoming request: GET /api/tasks/my-tasks/69b6830782511756f4af86b1
+2026-03-20T10:38:36.662221200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:36.662760100 - Token found for user: sang@gmail.com
+2026-03-20T10:38:36.663843400 - Token found for user: sang@gmail.com
+2026-03-20T10:38:36.666514100 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:36.667610500 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:36.669818800 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:36.669818800 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:36.678482200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:36.681129600 - Token found for user: sang@gmail.com
+2026-03-20T10:38:36.684693300 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:36.688628800 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:38.275422300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:38.277479200 - Token found for user: tan@gmail.com
+2026-03-20T10:38:38.280685600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:38.282856 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:39.018062800 - Incoming request: GET /api/users
+2026-03-20T10:38:39.019890 - Token found for user: sang@gmail.com
+2026-03-20T10:38:39.023100200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:39.026950300 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:41.910524200 - Incoming request: GET /api/project-messages/private/user/69b6830782511756f4af86b1/69b682ca82511756f4af86b0
+2026-03-20T10:38:41.913193500 - Incoming request: GET /ws/info
+2026-03-20T10:38:41.913193500 - Token found for user: sang@gmail.com
+2026-03-20T10:38:41.913740200 - No Bearer token found in header
+2026-03-20T10:38:41.917539700 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:41.918413600 - Incoming request: GET /ws/info
+2026-03-20T10:38:41.918920600 - No Bearer token found in header
+2026-03-20T10:38:41.921708400 - Incoming request: GET /ws/711/vqc34dfx/websocket
+2026-03-20T10:38:41.921156600 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:41.921708400 - No Bearer token found in header
+2026-03-20T10:38:41.936536100 - Incoming request: GET /ws/878/toztzv0q/websocket
+2026-03-20T10:38:41.937933700 - No Bearer token found in header
+2026-03-20T10:38:41.945643500 - Incoming request: GET /api/project-messages/private/user/69b6830782511756f4af86b1/69b682ca82511756f4af86b0
+2026-03-20T10:38:41.947831200 - Token found for user: sang@gmail.com
+2026-03-20T10:38:41.951063100 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:41.954426800 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:41.966335700 - Incoming request: GET /uploads/3f39fed3-d147-4c07-8393-d3bc95386227.png
+2026-03-20T10:38:41.966335700 - Incoming request: GET /uploads/dc6d6c90-b009-4bc5-b855-dc887bf94fb5.png
+2026-03-20T10:38:41.966335700 - No Bearer token found in header
+2026-03-20T10:38:41.967348500 - No Bearer token found in header
+2026-03-20T10:38:46.670279400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:46.672200100 - Token found for user: sang@gmail.com
+2026-03-20T10:38:46.674723200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:46.677251600 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:48.271299600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:48.273305700 - Token found for user: tan@gmail.com
+2026-03-20T10:38:48.276211200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:48.278764700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:52.889173400 - Incoming request: POST /api/project-messages/send
+2026-03-20T10:38:52.891322400 - Token found for user: sang@gmail.com
+2026-03-20T10:38:52.894644 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:52.897319100 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:56.666045 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:56.667971200 - Token found for user: sang@gmail.com
+2026-03-20T10:38:56.670035300 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:56.674166700 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:57.358947900 - Incoming request: GET /api/project-messages/project/69b7b0d538f55a832e69db19/user/69b6830782511756f4af86b1
+2026-03-20T10:38:57.360873700 - Incoming request: GET /ws/info
+2026-03-20T10:38:57.360873700 - Incoming request: GET /ws/info
+2026-03-20T10:38:57.362067800 - No Bearer token found in header
+2026-03-20T10:38:57.362067800 - No Bearer token found in header
+2026-03-20T10:38:57.362067800 - Token found for user: sang@gmail.com
+2026-03-20T10:38:57.365813600 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:57.367991 - Incoming request: GET /ws/818/fyuyyevp/websocket
+2026-03-20T10:38:57.368523800 - No Bearer token found in header
+2026-03-20T10:38:57.369054300 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:57.393680600 - Incoming request: GET /ws/988/0hlig1ho/websocket
+2026-03-20T10:38:57.394679800 - No Bearer token found in header
+2026-03-20T10:38:57.464660300 - Incoming request: GET /api/project-messages/project/69b7b0d538f55a832e69db19/user/69b6830782511756f4af86b1
+2026-03-20T10:38:57.464660300 - Token found for user: sang@gmail.com
+2026-03-20T10:38:57.468690200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:38:57.472584500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:38:58.280375900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:38:58.282148 - Token found for user: tan@gmail.com
+2026-03-20T10:38:58.285352600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:38:58.288017800 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:06.666045800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:06.668053800 - Token found for user: sang@gmail.com
+2026-03-20T10:39:06.670161800 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:06.672988100 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:07.056176300 - Incoming request: POST /api/project-messages/send
+2026-03-20T10:39:07.059065600 - Token found for user: sang@gmail.com
+2026-03-20T10:39:07.062247100 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:07.064910400 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:08.268399500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:08.270188900 - Token found for user: tan@gmail.com
+2026-03-20T10:39:08.272905400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:39:08.275047 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:16.666929900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:16.669020200 - Token found for user: sang@gmail.com
+2026-03-20T10:39:16.672075500 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:16.674581500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:18.266019600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:18.268718 - Token found for user: tan@gmail.com
+2026-03-20T10:39:18.271921500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:39:18.274595300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:26.667472800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:26.670050400 - Token found for user: sang@gmail.com
+2026-03-20T10:39:26.672832900 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:26.675519900 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:36.051138500 - Incoming request: POST /api/project-messages/send
+2026-03-20T10:39:36.053055800 - Token found for user: sang@gmail.com
+2026-03-20T10:39:36.055743200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:36.057869400 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:36.666010600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:36.669849600 - Token found for user: sang@gmail.com
+2026-03-20T10:39:36.675222400 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:36.677880500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:43.967264400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:43.992820300 - Token found for user: tan@gmail.com
+2026-03-20T10:39:43.997977500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:39:44.001922600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:47.271914400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:47.274124300 - Token found for user: sang@gmail.com
+2026-03-20T10:39:47.276846600 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:47.278960400 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:47.594388100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:47.597251900 - Token found for user: tan@gmail.com
+2026-03-20T10:39:47.600058500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:39:47.602568 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:57.270735100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:57.272489900 - Token found for user: sang@gmail.com
+2026-03-20T10:39:57.275944 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:39:57.278606300 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:39:57.591463600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:39:57.592998500 - Token found for user: tan@gmail.com
+2026-03-20T10:39:57.596236500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:39:57.598379600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:07.270110800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:07.271631200 - Token found for user: sang@gmail.com
+2026-03-20T10:40:07.274731 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:40:07.277383200 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:08.268887700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:08.268887700 - Token found for user: tan@gmail.com
+2026-03-20T10:40:08.273426700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:40:08.276214100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:17.273979400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:17.276500100 - Token found for user: sang@gmail.com
+2026-03-20T10:40:17.280509400 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:40:17.283735300 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:18.276536300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:18.279085400 - Token found for user: tan@gmail.com
+2026-03-20T10:40:18.281706700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:40:18.284203500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:27.267527500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:27.268956500 - Token found for user: sang@gmail.com
+2026-03-20T10:40:27.271012500 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:40:27.273375100 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:28.275212500 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:28.277234300 - Token found for user: tan@gmail.com
+2026-03-20T10:40:28.280752200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:40:28.282911500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:37.277173900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:37.279230600 - Token found for user: sang@gmail.com
+2026-03-20T10:40:37.281831700 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:40:37.283944500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:38.273891100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:38.276263400 - Token found for user: tan@gmail.com
+2026-03-20T10:40:38.278960800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:40:38.281643700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:48.278868200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:48.281575900 - Token found for user: tan@gmail.com
+2026-03-20T10:40:48.284397300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:40:48.287711200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:40:58.275278600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:40:58.277358200 - Token found for user: tan@gmail.com
+2026-03-20T10:40:58.280113800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:40:58.282451100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:41:21.271696700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:41:21.271696700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:41:21.273755700 - Token found for user: tan@gmail.com
+2026-03-20T10:41:21.273755700 - Token found for user: sang@gmail.com
+2026-03-20T10:41:21.277544500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:41:21.277014400 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:41:21.280210900 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:41:21.280210900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:42:21.268863800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:42:21.270371500 - Token found for user: sang@gmail.com
+2026-03-20T10:42:21.271397300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:42:21.273149100 - Token found for user: tan@gmail.com
+2026-03-20T10:42:21.274672100 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:42:21.277517200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:42:21.278025900 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:42:21.280675900 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:43:21.270147800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:43:21.270147800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:43:21.271924800 - Token found for user: tan@gmail.com
+2026-03-20T10:43:21.271924800 - Token found for user: sang@gmail.com
+2026-03-20T10:43:21.274056700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:43:21.274056700 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:43:21.275646700 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:43:21.275646700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:44:21.270540600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:44:21.270540600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:44:21.273415500 - Token found for user: sang@gmail.com
+2026-03-20T10:44:21.273415500 - Token found for user: tan@gmail.com
+2026-03-20T10:44:21.276087200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:44:21.276087200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:44:21.278234600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:44:21.277707100 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:45:21.273586300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:45:21.273586300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:45:21.276197800 - Token found for user: sang@gmail.com
+2026-03-20T10:45:21.276197800 - Token found for user: tan@gmail.com
+2026-03-20T10:45:21.278967500 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:45:21.278967500 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:45:21.281970200 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:45:21.281970200 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:46:21.272959100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:46:21.272959100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:46:21.275049200 - Token found for user: sang@gmail.com
+2026-03-20T10:46:21.275049200 - Token found for user: tan@gmail.com
+2026-03-20T10:46:21.277749700 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:46:21.277749700 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:46:21.280000900 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:46:21.280545 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:47:21.279219800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:47:21.279219800 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:47:21.280735200 - Token found for user: tan@gmail.com
+2026-03-20T10:47:21.280735200 - Token found for user: sang@gmail.com
+2026-03-20T10:47:21.283558400 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:47:21.283558400 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:47:21.287249500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:47:21.286707300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:48:21.272099900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:48:21.272099900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:48:21.274545100 - Token found for user: tan@gmail.com
+2026-03-20T10:48:21.274545100 - Token found for user: sang@gmail.com
+2026-03-20T10:48:21.277769800 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:48:21.277769800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:48:21.279866300 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:48:21.279866300 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:49:21.277895200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:49:21.277895200 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:49:21.279398600 - Token found for user: sang@gmail.com
+2026-03-20T10:49:21.279398600 - Token found for user: tan@gmail.com
+2026-03-20T10:49:21.283100600 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:49:21.283100600 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:49:21.285218700 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:49:21.285218700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:50:21.278488900 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:50:21.280045800 - Token found for user: sang@gmail.com
+2026-03-20T10:50:21.280591300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:50:21.282221700 - Token found for user: tan@gmail.com
+2026-03-20T10:50:21.284088500 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:50:21.284647800 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:50:21.286813100 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:50:21.286813100 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:51:21.270922600 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:51:21.271925100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:51:21.272849100 - Token found for user: sang@gmail.com
+2026-03-20T10:51:21.273365 - Token found for user: tan@gmail.com
+2026-03-20T10:51:21.276085 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:51:21.276085 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:51:21.278201500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:51:21.278201500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:52:21.268625 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:52:21.268625 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:52:21.271834 - Token found for user: tan@gmail.com
+2026-03-20T10:52:21.272363200 - Token found for user: sang@gmail.com
+2026-03-20T10:52:21.276087200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:52:21.276087200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:52:21.279008500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:52:21.279008500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:53:21.267055100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:53:21.267055100 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:53:21.269436700 - Token found for user: sang@gmail.com
+2026-03-20T10:53:21.269436700 - Token found for user: tan@gmail.com
+2026-03-20T10:53:21.272686200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:53:21.272686200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:53:21.275950400 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:53:21.275950400 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:54:21.280577400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:54:21.280577400 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:54:21.283593300 - Token found for user: sang@gmail.com
+2026-03-20T10:54:21.283593300 - Token found for user: tan@gmail.com
+2026-03-20T10:54:21.287442200 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:54:21.287442200 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:54:21.292120700 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:54:21.292120700 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:55:21.274427 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:55:21.274427 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:55:21.276875500 - Token found for user: tan@gmail.com
+2026-03-20T10:55:21.276875500 - Token found for user: sang@gmail.com
+2026-03-20T10:55:21.280137 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:55:21.280137 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:55:21.282873600 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:55:21.282873600 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:56:21.273627300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:56:21.273627300 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:56:21.275620100 - Token found for user: sang@gmail.com
+2026-03-20T10:56:21.275620100 - Token found for user: tan@gmail.com
+2026-03-20T10:56:21.278373300 - UserDetails loaded for: tan@gmail.com
+2026-03-20T10:56:21.278373300 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:56:21.282111500 - Authentication SET in SecurityContext for: tan@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:56:21.282111500 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]
+2026-03-20T10:57:21.282234700 - Incoming request: GET /api/notifications/unread-count
+2026-03-20T10:57:21.286347300 - Token found for user: sang@gmail.com
+2026-03-20T10:57:21.291767600 - UserDetails loaded for: sang@gmail.com
+2026-03-20T10:57:21.293522300 - Authentication SET in SecurityContext for: sang@gmail.com with roles: [ROLE_EMPLOYEE]

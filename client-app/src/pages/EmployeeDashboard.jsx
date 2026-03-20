@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
+import ProjectChatPanel from '../components/ProjectChatPanel';
+import PrivateChatPanel from '../components/PrivateChatPanel';
 
 const EmployeeDashboard = () => {
     const navigate = useNavigate();
@@ -13,6 +15,11 @@ const EmployeeDashboard = () => {
     const [updatePayload, setUpdatePayload] = useState({ status: '', percent: 0 });
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
 
+    // CHAT SUPPORT
+    const [activeTab, setActiveTab] = useState('TASKS'); // TASKS | CHAT
+    const [chatSelection, setChatSelection] = useState({ type: null, data: null }); // type: 'PROJECT' | 'USER'
+    const [chatUsers, setChatUsers] = useState([]);
+    const [chatProjects, setChatProjects] = useState([]);
     const fetchMyTasks = async (userId) => {
         try {
             const res = await axios.get(`/api/tasks/my-tasks/${userId}`);
@@ -28,6 +35,37 @@ const EmployeeDashboard = () => {
         setCurrentUser(userObj);
         fetchMyTasks(userObj.id);
     }, []);
+
+    const fetchMyTasks = async (userId) => {
+        try {
+            const res = await api.get(`/tasks/my-tasks/${userId}`);
+            setMyTasks(res.data);
+            
+            // Extract unique projects from tasks for chat
+            const projectsMap = {};
+            res.data.forEach(t => {
+                if (t.project) projectsMap[t.project.id] = t.project;
+            });
+            setChatProjects(Object.values(projectsMap));
+            
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchDepartmentUsers = async () => {
+        try {
+            const res = await api.get('/users');
+            // Show users in the same department (or manager)
+            const others = res.data.filter(u => u.id !== currentUser.id && u.department?.id === currentUser.department?.id);
+            setChatUsers(others);
+        } catch (err) { console.error(err); }
+    };
+
+    // Khi mở tab CHAT, fetch users
+    useEffect(() => {
+        if (activeTab === 'CHAT' && chatUsers.length === 0) {
+            fetchDepartmentUsers();
+        }
+    }, [activeTab]);
 
     const handleUpdate = async (e) => {
         e.preventDefault();
@@ -57,12 +95,17 @@ const EmployeeDashboard = () => {
                 <div className="container-fluid">
                     <div className="d-flex align-items-center text-white"><i className="bi bi-person-workspace fs-4 me-2"></i><span className="fw-bold tracking-wide">EMPLOYEE ZONE</span></div>
                     <div className="d-flex align-items-center gap-3 ms-auto">
-                        <NotificationBell />
-                        <button onClick={() => navigate('/profile')} className="btn btn-sm btn-light fw-bold text-primary">
-                            <i className="bi bi-person-fill me-1"></i>
-                            Tài khoản
+                        <button onClick={() => setActiveTab('TASKS')} className={`btn btn-sm fw-bold ${activeTab==='TASKS'?'btn-light text-primary':'btn-outline-light'}`}>
+                            <i className="bi bi-list-task me-1"></i> Công việc
                         </button>
-                        <button onClick={handleLogout} className="btn btn-sm btn-light fw-bold text-primary">Đăng xuất</button>
+                        <button onClick={() => setActiveTab('CHAT')} className={`btn btn-sm fw-bold ${activeTab==='CHAT'?'btn-light text-primary':'btn-outline-light'}`}>
+                            <i className="bi bi-chat-dots-fill me-1"></i> Tin nhắn
+                        </button>
+                        <NotificationBell />
+                        <button onClick={() => navigate('/profile')} className="btn btn-sm btn-outline-light fw-bold">
+                            <i className="bi bi-person-fill me-1"></i> Tài khoản
+                        </button>
+                        <button onClick={handleLogout} className="btn btn-sm btn-outline-light fw-bold">Đăng xuất</button>
                     </div>
                 </div>
             </nav>
@@ -89,7 +132,18 @@ const EmployeeDashboard = () => {
                              <span className="badge rounded-pill bg-success px-3 py-2">Done: {stats.done}</span>
                          </div>
                     </div>
+                    {activeTab === 'TASKS' && (
+                        <div className="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                             <div className="bg-white p-2 rounded-pill shadow-sm d-inline-flex gap-2">
+                                 <span className="badge rounded-pill bg-secondary px-3 py-2">To Do: {stats.todo}</span>
+                                 <span className="badge rounded-pill bg-warning text-dark px-3 py-2">Doing: {stats.progress}</span>
+                                 <span className="badge rounded-pill bg-success px-3 py-2">Done: {stats.done}</span>
+                             </div>
+                        </div>
+                    )}
                 </div>
+
+                {activeTab === 'TASKS' ? (
 
                 <div className="card shadow-sm border-0 mx-auto">
                     <div className="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -139,6 +193,67 @@ const EmployeeDashboard = () => {
                         </div>
                     </div>
                 </div>
+                ) : (
+                <div className="card shadow-sm border-0 mx-auto" style={{ minHeight: '600px' }}>
+                    <div className="row g-0 h-100">
+                        {/* Sidebar Chat */}
+                        <div className="col-md-4 col-lg-3 border-end bg-white" style={{ minHeight: '600px' }}>
+                            <div className="p-3 border-bottom bg-light fw-bold text-primary">
+                                <i className="bi bi-chat-left-text-fill me-2"></i> Khung Chat
+                            </div>
+                            
+                            <div className="p-2">
+                                <div className="text-muted small fw-bold mb-2 ps-2 mt-2">DỰ ÁN KHẢ DỤNG</div>
+                                {chatProjects.map(p => (
+                                    <div 
+                                        key={p.id} 
+                                        className={`p-2 mb-1 rounded cursor-pointer transition ${chatSelection.data?.id === p.id && chatSelection.type === 'PROJECT' ? 'bg-primary text-white' : 'hover-bg-light'}`}
+                                        onClick={() => setChatSelection({ type: 'PROJECT', data: p })}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <div className="fw-bold">📁 {p.name}</div>
+                                    </div>
+                                ))}
+                                {chatProjects.length === 0 && <div className="text-muted small ps-2">Chưa tham gia dự án nào</div>}
+
+                                <div className="text-muted small fw-bold mb-2 ps-2 mt-4">INBOX 1-1 (ĐỒNG NGHIỆP)</div>
+                                {chatUsers.map(u => (
+                                    <div 
+                                        key={u.id} 
+                                        className={`d-flex align-items-center p-2 mb-1 rounded cursor-pointer transition ${chatSelection.data?.id === u.id && chatSelection.type === 'USER' ? 'bg-primary text-white' : 'hover-bg-light'}`}
+                                        onClick={() => setChatSelection({ type: 'USER', data: u })}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <div className="bg-secondary bg-opacity-25 rounded-circle text-center me-2 fw-bold" style={{ width: 32, height: 32, lineHeight: '32px' }}>
+                                            {u.fullName.charAt(0)}
+                                        </div>
+                                        <div className="fw-bold text-truncate">{u.fullName}</div>
+                                    </div>
+                                ))}
+                                {chatUsers.length === 0 && <div className="text-muted small ps-2">Chưa có ai trong phòng ban</div>}
+                            </div>
+                        </div>
+                        
+                        {/* Main Chat Area */}
+                        <div className="col-md-8 col-lg-9 bg-light p-0 position-relative" style={{ height: '600px' }}>
+                            {chatSelection.type === 'PROJECT' && chatSelection.data && (
+                                <ProjectChatPanel project={chatSelection.data} currentUser={currentUser} />
+                            )}
+                            
+                            {chatSelection.type === 'USER' && chatSelection.data && (
+                                <PrivateChatPanel currentUser={currentUser} targetUser={chatSelection.data} />
+                            )}
+
+                            {!chatSelection.type && (
+                                <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                                    <i className="bi bi-chat-dots opacity-25" style={{ fontSize: '4rem' }}></i>
+                                    <h5>Chọn một đoạn chat để bắt đầu</h5>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                )}
             </div>
 
             {editingTask && (
@@ -166,7 +281,7 @@ const EmployeeDashboard = () => {
                 />
             )}
 
-            <style>{`.modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); } .task-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; } .transition { transition: all 0.3s ease; }`}</style>
+            <style>{`.modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); } .task-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; } .transition { transition: all 0.3s ease; } .hover-bg-light:hover { background-color: #f8f9fa; }`}</style>
         </div>
     );
 };

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Tạo axios instance với base URL
 const api = axios.create({
-    baseURL: '/api',
+    baseURL: 'http://localhost:8080/api',
 });
 
 // Interceptor để tự động thêm token vào header
@@ -24,7 +24,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token hết hạn hoặc không hợp lệ, xóa localStorage và chuyển về login
+            console.error("⛔ Unauthorized access detected at:", error.config.url);
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/';
