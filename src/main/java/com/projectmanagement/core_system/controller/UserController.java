@@ -14,6 +14,7 @@ import com.projectmanagement.core_system.model.UpdateUserRequest;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -54,6 +55,7 @@ public class UserController {
             @RequestParam(required = false) String deptId 
     ) {
         try {
+            // Auto active new user (default false in model)
             return ResponseEntity.ok(userService.createUser(user, deptId));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -148,9 +150,9 @@ public class UserController {
             user.setRole(com.projectmanagement.core_system.enums.ERole.valueOf(role));
             
             if (avatarFile != null && !avatarFile.isEmpty()) {
-                user.setAvatar(userService.convertFileToBase64(avatarFile));
+                user.setAvatarUrl(userService.convertFileToBase64(avatarFile));
             } else if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                user.setAvatar(userService.downloadImageFromUrl(avatarUrl));
+                user.setAvatarUrl(userService.downloadImageFromUrl(avatarUrl));
             }
             
             return ResponseEntity.ok(userService.createUser(user, deptId));
@@ -161,17 +163,19 @@ public class UserController {
         }
     }
 
-    // 8. Admin update employee (email, department, role)
-    @PatchMapping("/{id}")
-    public ResponseEntity<?> updateEmployee(
-            @PathVariable String id,
-            @RequestBody UpdateUserRequest request,
-            @RequestParam String adminEmail
-    ) {
+    // 🔥 5. API CẬP NHẬT AVATAR
+    @PutMapping("/{id}/avatar")
+    public ResponseEntity<?> updateAvatar(@PathVariable String id, @RequestBody Map<String, String> request) {
         try {
-            return ResponseEntity.ok(userService.updateEmployee(id, request, adminEmail));
+            String avatarUrl = request.get("avatarUrl");
+            if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("avatarUrl không được để trống!");
+            }
+            return ResponseEntity.ok(userService.updateAvatar(id, avatarUrl));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
         }
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Base64;
+import java.util.Map;
 
 import java.util.List;
 import java.io.IOException;
@@ -120,7 +121,7 @@ public class UserService {
 
         User user = getUserById(userId);
         String base64Avatar = convertFileToBase64(avatarFile);
-        user.setAvatar(base64Avatar);
+        user.setAvatarUrl(base64Avatar);
 
         return userRepository.save(user);
     }
@@ -147,7 +148,7 @@ public class UserService {
 
         User user = getUserById(userId);
         String base64Avatar = downloadImageFromUrl(imageUrl);
-        user.setAvatar(base64Avatar);
+        user.setAvatarUrl(base64Avatar);
 
         return userRepository.save(user);
     }
@@ -209,6 +210,15 @@ public class UserService {
             user.setRole(request.getRole());
         }
 
+        return userRepository.save(user);
+    }
+    // 🔥 6. MỚI: Cập nhật Avatar URL
+    public User updateAvatar(String userId, String avatarUrl) {
+        User user = getUserById(userId); // Validate tồn tại
+        if (!user.isActive()) {
+            throw new RuntimeException("Không thể cập nhật avatar cho tài khoản đã bị khóa!");
+        }
+        user.setAvatarUrl(avatarUrl.trim());
         return userRepository.save(user);
     }
 }
