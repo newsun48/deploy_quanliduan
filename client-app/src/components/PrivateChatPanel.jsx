@@ -2,9 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
-import './ProjectChatPanel.css';
 
-const ProjectChatPanel = ({ project, currentUser }) => {
+const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [file, setFile] = useState(null);
@@ -16,7 +15,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
     const stompClientRef = useRef(null);
 
     useEffect(() => {
-        if (!project || !currentUser) return;
+        if (!currentUser || !targetUser) return;
 
         fetchMessages();
         connectWebSocket();
@@ -26,7 +25,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
                 stompClientRef.current.disconnect();
             }
         };
-    }, [project, currentUser]);
+    }, [currentUser, targetUser]);
 
     useEffect(() => {
         scrollToBottom();
@@ -42,9 +41,19 @@ const ProjectChatPanel = ({ project, currentUser }) => {
         client.debug = () => {};
 
         client.connect({}, () => {
-            console.log('✅ WebSocket connected for Project:', project.id);
-            client.subscribe(`/topic/project/${project.id}`, (messageOutput) => {
+            console.log('✅ WebSocket connected for Private Chat:', currentUser.id);
+
+            // Subscribe to user-specific queue
+            client.subscribe(`/topic/user/${currentUser.id}/messages`, (messageOutput) => {
                 const newMsg = JSON.parse(messageOutput.body);
+
+                // Chỉ hiển thị tin nhắn giữa currentUser và targetUser
+                const isBetweenUs =
+                    (newMsg.sender?.id === currentUser.id && newMsg.receiver?.id === targetUser.id) ||
+                    (newMsg.sender?.id === targetUser.id && newMsg.receiver?.id === currentUser.id);
+
+                if (!isBetweenUs) return;
+
                 setMessages((prev) => {
                     const exists = prev.find(m => m.id === newMsg.id);
                     if (exists) {
@@ -65,17 +74,16 @@ const ProjectChatPanel = ({ project, currentUser }) => {
         try {
             setLoading(true);
             const res = await api.get(
-                `/project-messages/project/${project.id}/user/${currentUser.id}`
+                `/project-messages/private/user/${currentUser.id}/${targetUser.id}`
             );
             setMessages(res.data || []);
         } catch (err) {
-            console.error('Error fetching messages:', err);
+            console.error('Error fetching private messages:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    // Kiểm tra tin nhắn có thể sửa/xóa không (trong vòng 1 giờ)
     const canEditOrDelete = (msg) => {
         if (!msg.createdAt) return false;
         const created = new Date(msg.createdAt);
@@ -92,7 +100,6 @@ const ProjectChatPanel = ({ project, currentUser }) => {
             let fileUrl = null;
             let messageType = 'TEXT';
 
-            // Upload file nếu có
             if (file) {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -105,7 +112,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
 
             const payload = {
                 senderId: currentUser.id,
-                projectId: project.id,
+                receiverId: targetUser.id,
                 content: newMessage || (file ? file.name : ''),
                 messageType,
                 fileUrl,
@@ -144,13 +151,24 @@ const ProjectChatPanel = ({ project, currentUser }) => {
         }
     };
 
-    if (!project || !currentUser) return null;
+    if (!currentUser || !targetUser) return null;
 
     return (
-        <div className="project-chat-panel" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: '#f8f9fa', borderRadius: '8px', overflow: 'hidden' }}>
+
+            {/* Header */}
+            <div style={{ padding: '12px 16px', background: '#343a40', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <strong>💬 Chat với {targetUser.fullName}</strong>
+                    <div style={{ fontSize: '12px', opacity: 0.7 }}>{targetUser.email}</div>
+                </div>
+                {onClose && (
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}>✖</button>
+                )}
+            </div>
 
             {/* Form Gửi Tin Nhắn */}
-            <form onSubmit={handleSendMessage} style={{ flexShrink: 0, padding: '12px', background: 'white', borderBottom: '1px solid #e9ecef', borderRadius: '8px 8px 0 0' }}>
+            <form onSubmit={handleSendMessage} style={{ flexShrink: 0, padding: '12px', background: 'white', borderBottom: '1px solid #e9ecef' }}>
 
                 {/* Reply preview */}
                 {replyToMessage && (
@@ -191,13 +209,14 @@ const ProjectChatPanel = ({ project, currentUser }) => {
             </form>
 
             {/* Danh sách Tin Nhắn */}
-            <div className="messages-container" style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px', borderRadius: '0 0 8px 8px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {loading && messages.length === 0 ? (
                     <div style={{ textAlign: 'center', color: '#999' }}>Đang tải tin nhắn...</div>
                 ) : messages.length === 0 ? (
                     <div style={{ textAlign: 'center', color: '#999', marginTop: '20px' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '12px', opacity: 0.5 }}>💬</div>
+                        <div style={{ fontSize: '48px', marginBottom: '12px', opacity: 0.5 }}>📨</div>
                         <p>Chưa có tin nhắn nào</p>
+                        <small>Gửi tin nhắn đầu tiên cho {targetUser.fullName}!</small>
                     </div>
                 ) : (
                     messages.map((msg, index) => {
@@ -207,7 +226,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
                         return (
                             <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', marginBottom: '8px' }}>
                                 {showAuthor && (
-                                    <div style={{ fontSize: '12px', marginBottom: '4px', paddingLeft: isOwn ? '0' : '4px', paddingRight: isOwn ? '4px' : '0' }}>
+                                    <div style={{ fontSize: '12px', marginBottom: '4px' }}>
                                         <strong>{msg.sender?.fullName}</strong>
                                         <span style={{ color: '#999', marginLeft: '6px' }}>{new Date(msg.createdAt).toLocaleTimeString('vi-VN')}</span>
                                     </div>
@@ -236,12 +255,11 @@ const ProjectChatPanel = ({ project, currentUser }) => {
                                         borderBottomLeftRadius: isOwn ? '12px' : '2px',
                                         position: 'relative'
                                     }}>
-                                        {/* Tin nhắn đã thu hồi */}
                                         {msg.isDeleted || msg.deleted ? (
                                             <i style={{ opacity: 0.7 }}>🚫 Tin nhắn đã bị thu hồi</i>
                                         ) : (
                                             <>
-                                                {/* Reply reference */}
+                                                {/* Reply */}
                                                 {msg.replyTo && (
                                                     <div style={{ background: 'rgba(0,0,0,0.1)', padding: '6px', borderRadius: '6px', fontSize: '12px', marginBottom: '6px' }}>
                                                         <strong>@{msg.replyTo.sender?.fullName}:</strong> {msg.replyTo.content?.substring(0, 50)}
@@ -253,20 +271,20 @@ const ProjectChatPanel = ({ project, currentUser }) => {
                                                     <img src={`http://localhost:8080${msg.fileUrl}`} alt="Ảnh" style={{ maxWidth: '100%', borderRadius: '6px', marginBottom: '6px' }} />
                                                 )}
 
-                                                {/* File download */}
+                                                {/* File */}
                                                 {msg.messageType === 'FILE' && msg.fileUrl && (
                                                     <a href={`http://localhost:8080${msg.fileUrl}`} target="_blank" rel="noreferrer" style={{ display: 'block', color: 'inherit', textDecoration: 'underline', marginBottom: '6px', fontSize: '13px' }}>
                                                         📎 Tải xuống tài liệu
                                                     </a>
                                                 )}
 
-                                                {/* Text content */}
+                                                {/* Content */}
                                                 <div style={{ fontSize: '14px', lineHeight: 1.4, wordBreak: 'break-word' }}>
                                                     {msg.content}
                                                     {msg.isEdited && <span style={{ fontSize: '11px', opacity: 0.6, marginLeft: '6px' }}>(Đã chỉnh sửa)</span>}
                                                 </div>
 
-                                                {/* Action buttons */}
+                                                {/* Actions */}
                                                 <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '11px', justifyContent: 'flex-end', opacity: 0.8 }}>
                                                     <button onClick={() => setReplyToMessage(msg)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}>↩️ Trả lời</button>
                                                     {isOwn && canEditOrDelete(msg) && (
@@ -290,4 +308,4 @@ const ProjectChatPanel = ({ project, currentUser }) => {
     );
 };
 
-export default ProjectChatPanel;
+export default PrivateChatPanel;

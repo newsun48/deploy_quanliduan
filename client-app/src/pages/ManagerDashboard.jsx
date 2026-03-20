@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
 import ProjectChatPanel from '../components/ProjectChatPanel';
+import PrivateChatPanel from '../components/PrivateChatPanel';
 
 const ManagerDashboard = () => {
     const navigate = useNavigate();
@@ -25,6 +26,7 @@ const ManagerDashboard = () => {
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
+    const [privateChatUser, setPrivateChatUser] = useState(null);
     
     // FORMS
     const [newTask, setNewTask] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
@@ -316,7 +318,7 @@ const ManagerDashboard = () => {
                                                 {/* 🔥 FIX TRẮNG TRANG: Thêm || [] */}
                                                 {(selectedProject.members || []).length > 0 ? (
                                                     (selectedProject.members || []).map(m => (
-                                                        <div key={m.id} className="col-md-4 col-lg-3"><div className="bg-white p-3 rounded shadow-sm d-flex align-items-center"><div className="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold me-3" style={{width: 50, height: 50, fontSize: '1.2rem'}}>{m.fullName.charAt(0)}</div><div><h6 className="fw-bold mb-0">{m.fullName}</h6><small className="text-muted">{m.email}</small><div className="mt-1"><span className="badge bg-secondary">Employee</span></div></div></div></div>
+                                                        <div key={m.id} className="col-md-4 col-lg-3"><div className="bg-white p-3 rounded shadow-sm d-flex flex-column" style={{position: 'relative'}}><div className="d-flex align-items-center mb-2"><div className="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold me-3" style={{width: 50, height: 50, fontSize: '1.2rem'}}>{m.fullName.charAt(0)}</div><div><h6 className="fw-bold mb-0">{m.fullName}</h6><small className="text-muted">{m.email}</small></div></div>{m.id !== currentUser.id && <button className="btn btn-sm btn-outline-primary w-100 mt-2 rounded-pill fw-bold" onClick={() => setPrivateChatUser(m)}>💬 Nhắn tin ({m.fullName.split(' ').pop()})</button>}</div></div>
                                                     ))
                                                 ) : <div className="col-12 text-center text-muted">Chưa có thành viên nào.</div>}
                                             </div>
@@ -375,6 +377,12 @@ const ManagerDashboard = () => {
                         }
                     }}
                 />
+            )}
+
+            {privateChatUser && (
+                <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '360px', height: '500px', zIndex: 1060, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <PrivateChatPanel currentUser={currentUser} targetUser={privateChatUser} onClose={() => setPrivateChatUser(null)} />
+                </div>
             )}
 
             <style>{`.modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); } .hover-shadow:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; } .transition { transition: all 0.3s ease; }`}</style>

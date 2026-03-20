@@ -77,6 +77,9 @@ public class NotificationController {
     // Đánh dấu thông báo là đã đọc
     @PostMapping("/{notificationId}/mark-as-read")
     public ResponseEntity<?> markAsRead(@PathVariable String notificationId) {
+        if (notificationId == null || notificationId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("ID thông báo không hợp lệ!");
+        }
         try {
             Notification notification = notificationService.markAsRead(notificationId);
             return ResponseEntity.ok(notification);

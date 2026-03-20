@@ -13,6 +13,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.Customizer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -32,15 +38,52 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("x-auth-token"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
     // Cấu hình bảo mật với JWT
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(Customizer.withDefaults()) // Cho phép CORS
             .csrf(AbstractHttpConfigurer::disable) // Tắt CSRF
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/forgot-password").permitAll() // Cho phép login và forgot password
-                .anyRequest().authenticated() // Các API khác cần authentication
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // Cho phép tất cả OPTIONS
+                .requestMatchers("/api/auth/login", "/api/auth/forgot-password").permitAll()
+                .requestMatchers("/error").permitAll() // Quan trọng: Cho phép xem nội dung lỗi
+                .requestMatchers("/api/files/**").permitAll() // Cho phép upload file (tạm thời để debug)
+                .requestMatchers("/ws/**").permitAll()       // WebSocket handshake
+                .requestMatchers("/uploads/**").permitAll()   // Truy cập file uploads (ảnh/file)
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    String msg = "❌ EntryPoint: 401 Unauthorized - URL: " + request.getRequestURI() + " - Reason: " + authException.getMessage();
+                    System.err.println(msg);
+                    java.nio.file.Files.write(java.nio.file.Paths.get("auth_debug.txt"), 
+                        (new java.util.Date().toString() + " - " + msg + "\n").getBytes(), 
+                        java.nio.file.StandardOpenOption.APPEND);
+                    response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    String msg = "❌ AccessDeniedHandler: 403 Forbidden - URL: " + request.getRequestURI() + " - Reason: " + accessDeniedException.getMessage();
+                    System.err.println(msg);
+                    java.nio.file.Files.write(java.nio.file.Paths.get("auth_debug.txt"), 
+                        (new java.util.Date().toString() + " - " + msg + "\n").getBytes(), 
+                        java.nio.file.StandardOpenOption.APPEND);
+                    response.sendError(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN, accessDeniedException.getMessage());
+                })
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Thêm JWT filter
 
