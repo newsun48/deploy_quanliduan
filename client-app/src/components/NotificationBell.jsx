@@ -66,6 +66,17 @@ const NotificationBell = () => {
         }
     };
 
+    const getNotificationTitle = (type) => {
+        switch (type) {
+            case 'TASK_ASSIGNED': return '📋 Công Việc Mới';
+            case 'TASK_UPDATED': return '📈 Tiến Độ Cập Nhật';
+            case 'PROJECT_JOINED': return '🤝 Tham Gia Dự Án';
+            case 'PROJECT_CLOSED': return '🔒 Dự Án Hoàn Thành';
+            case 'COMMENT_ADDED': return '💬 Bình Luận Mới';
+            default: return '📢 Thông Báo';
+        }
+    };
+
     return (
         <div className="notification-bell-container position-relative">
             <button
@@ -134,7 +145,7 @@ const NotificationBell = () => {
                                         <div className="d-flex justify-content-between align-items-start">
                                             <div className="flex-grow-1">
                                                 <h6 className="mb-1 fw-bold">
-                                                    {notif.type === 'TASK_ASSIGNED' ? '📋 Công việc mới' : '📢 Thông báo'}
+                                                    {getNotificationTitle(notif.type)}
                                                 </h6>
                                                 <p className="mb-1 small text-dark">{notif.message}</p>
                                                 <small className="text-muted">

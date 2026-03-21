@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import './TaskDetailModal.css';
+import { askConfirm } from '../utils/confirm';
 
 const TaskDetailModal = ({ task, currentUser, onClose }) => {
     const [comments, setComments] = useState([]);
@@ -58,7 +59,7 @@ const TaskDetailModal = ({ task, currentUser, onClose }) => {
     };
 
     const handleDeleteComment = async (commentId) => {
-        if (window.confirm('Bạn chắc chắn muốn xóa bình luận này?')) {
+        if (await askConfirm('Bạn chắc chắn muốn xóa bình luận này?')) {
             try {
                 await api.delete(`/comments/${commentId}`);
                 setComments(comments.filter(c => c.id !== commentId));
@@ -122,6 +123,13 @@ const TaskDetailModal = ({ task, currentUser, onClose }) => {
                                 <label>Hạn chót:</label>
                                 <p>{task.deadline ? new Date(task.deadline).toLocaleDateString('vi-VN') : 'Không xác định'}</p>
                             </div>
+
+                            {task.submissionLink && (
+                                <div className="task-info-item">
+                                    <label>Link đính kèm:</label>
+                                    <p><a href={task.submissionLink.startsWith('http') ? task.submissionLink : `https://${task.submissionLink}`} target="_blank" rel="noopener noreferrer" className="text-primary text-break fw-bold">{task.submissionLink}</a></p>
+                                </div>
+                            )}
 
                             <div className="task-info-item">
                                 <label>Mô tả:</label>

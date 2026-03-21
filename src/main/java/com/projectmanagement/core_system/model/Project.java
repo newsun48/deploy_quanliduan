@@ -29,8 +29,10 @@ public class Project {
     private String name;
     private String description;
     
+    private LocalDate startDate;
     private LocalDate deadline;
     private Priority priority;
+    private String documentLink;
     
     private ProjectStatus status = ProjectStatus.OPEN;
 

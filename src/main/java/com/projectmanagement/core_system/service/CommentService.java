@@ -28,6 +28,9 @@ public class CommentService {
     @Autowired
     private ProjectRepository projectRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     // 1. Get all comments by Task ID
     public List<Comment> getCommentsByTaskId(String taskId) {
         return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId);
@@ -67,7 +70,33 @@ public class CommentService {
         comment.setCreatedAt(LocalDateTime.now());
         comment.setUpdatedAt(LocalDateTime.now());
 
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+
+        // 🔥 Bắn thông báo Comment
+        User assignee = task.getAssignee();
+        User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
+
+        String message = author.getFullName() + " đã bình luận về công việc: '" + task.getTitle() + "'";
+
+        // 1. Nếu người comment là Manager -> Báo cho Assignee
+        if (manager != null && author.getId().equals(manager.getId()) && assignee != null && !assignee.getId().equals(author.getId())) {
+            notificationService.createNotification(assignee, author, task, message, "COMMENT_ADDED");
+        } 
+        // 2. Nếu người comment là Assignee -> Báo cho Manager
+        else if (assignee != null && author.getId().equals(assignee.getId()) && manager != null && !manager.getId().equals(author.getId())) {
+            notificationService.createNotification(manager, author, task, message, "COMMENT_ADDED");
+        }
+        // 3. Người khác (Admin?) comment -> Báo cho cả 2
+        else {
+            if (assignee != null && !assignee.getId().equals(author.getId())) {
+                notificationService.createNotification(assignee, author, task, message, "COMMENT_ADDED");
+            }
+            if (manager != null && !manager.getId().equals(author.getId()) && (assignee == null || !manager.getId().equals(assignee.getId()))) {
+                notificationService.createNotification(manager, author, task, message, "COMMENT_ADDED");
+            }
+        }
+
+        return savedComment;
     }
 
     // 3. Update comment

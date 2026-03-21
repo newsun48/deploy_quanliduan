@@ -30,7 +30,7 @@ public class UserController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // 1. Lấy danh sách tất cả (Mặc định)
+    // 2. Lấy danh sách tất cả (Mặc định)
     @GetMapping
     public ResponseEntity<?> getAll() { 
         try {
@@ -39,6 +39,16 @@ public class UserController {
             e.printStackTrace();
             return ResponseEntity.status(500).body("Lỗi: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/fix-active")
+    public String fixActive() {
+        List<User> users = userRepository.findAll();
+        for (User u : users) {
+             u.setActive(true);
+             userRepository.save(u);
+        }
+        return "Fixed " + users.size() + " users";
     }
 
     // 2. 🔥 API MỚI: Tìm kiếm nhân viên
@@ -160,6 +170,44 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Lỗi tạo user với avatar: " + e.getMessage());
+        }
+    }
+
+    // 8. Cập nhật thông tin nhân viên (Admin)
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateUser(
+            @PathVariable String id,
+            @RequestBody UpdateUserRequest request,
+            @RequestParam String adminEmail
+    ) {
+        try {
+            return ResponseEntity.ok(userService.updateEmployee(id, request, adminEmail));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
+        }
+    }
+
+    // 8b. Cập nhật phòng ban cho NHIỀU nhân viên (🔥 MỚI)
+    @PatchMapping("/bulk-update-dept")
+    public ResponseEntity<?> bulkUpdateDept(
+            @RequestBody java.util.List<String> userIds,
+            @RequestParam String deptId,
+            @RequestParam String adminEmail
+    ) {
+        try {
+            java.util.List<User> updatedUsers = new java.util.ArrayList<>();
+            for (String userId : userIds) {
+                UpdateUserRequest request = new UpdateUserRequest();
+                request.setDeptId(deptId);
+                updatedUsers.add(userService.updateEmployee(userId, request, adminEmail));
+            }
+            return ResponseEntity.ok(updatedUsers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
         }
     }
 

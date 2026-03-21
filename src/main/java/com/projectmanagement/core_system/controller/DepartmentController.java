@@ -47,4 +47,14 @@ public class DepartmentController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // 4. Cập nhật
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable String id, @RequestBody Department department) {
+        try {
+            return ResponseEntity.ok(departmentService.updateDepartment(id, department));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

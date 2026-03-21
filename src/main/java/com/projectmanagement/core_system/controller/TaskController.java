@@ -52,10 +52,11 @@ public class TaskController {
         try {
             String statusStr = (String) payload.get("status");
             int percent = Integer.parseInt(payload.get("percent").toString());
+            String submissionLink = (String) payload.get("submissionLink");
 
             TaskStatus newStatus = TaskStatus.valueOf(statusStr); // Chuyển chuỗi thành Enum
 
-            return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent));
+            return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent, submissionLink));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi cập nhật: " + e.getMessage());
         }

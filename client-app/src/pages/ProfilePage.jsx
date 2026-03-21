@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordForm from '../components/ChangePasswordForm';
+import NotificationBell from '../components/NotificationBell';
 import api from '../api';
-import './ProfilePage.css';
+import './AdminDashboard.css';
 
 const ProfilePage = () => {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('PROFILE');
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarUrl, setAvatarUrl] = useState('');
@@ -99,9 +101,7 @@ const ProfilePage = () => {
             } else if (avatarUrl) {
                 formData.append('avatarUrl', avatarUrl);
             }
-            const response = await api.post('/users/upload-avatar', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const response = await api.post('/users/upload-avatar', formData);
             
             // Use the response from backend which contains the new avatar
             const updatedUser = response.data;
@@ -147,53 +147,102 @@ const ProfilePage = () => {
     }
 
     return (
-        <div className="min-vh-100 bg-light" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
-            {/* Header */}
-            <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow px-4 w-100">
-                <div className="container-fluid">
-                    <div className="d-flex align-items-center text-white">
-                        <div
-                            className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2"
-                            style={{ width: 40, height: 40 }}
+        <div className="admin-dashboard-container">
+            {/* Header Navbar */}
+            <div className="glass-header d-flex justify-content-between align-items-center">
+                {/* Logo - Fixed Width for Balance */}
+                <div className="d-flex align-items-center" style={{width: '280px', cursor: 'pointer'}} onClick={() => navigate(-1)}>
+                    <span className="fs-3 me-2">🚀</span>
+                    <span className="brand-text d-none d-md-block">
+                        {currentUser?.role === 'ADMIN' ? 'ADMIN PRO' : currentUser?.role === 'MANAGER' ? 'MANAGER PRO' : 'S-PRO'}
+                    </span>
+                </div>
+
+                {/* Centered Menu */}
+                {currentUser?.role === 'ADMIN' ? (
+                <div className="top-menu d-none d-xl-flex justify-content-center">
+                    <button className="top-menu-item" onClick={() => navigate('/admin')}>
+                        <i className="bi bi-people-fill top-menu-icon" style={{color: '#a3aed1'}}></i> Nhân sự
+                    </button>
+                    <button className="top-menu-item" onClick={() => navigate('/admin')}>
+                        <i className="bi bi-building top-menu-icon" style={{color: '#a3aed1'}}></i> Phòng Ban
+                    </button>
+                    <button className="top-menu-item" onClick={() => navigate('/admin')}>
+                        <i className="bi bi-folder-fill top-menu-icon" style={{color: '#a3aed1'}}></i> Dự Án
+                    </button>
+                    <button className="top-menu-item" onClick={() => navigate('/admin')}>
+                        <i className="bi bi-check-circle-fill top-menu-icon" style={{color: '#a3aed1'}}></i> Đã Hoàn Thành
+                    </button>
+                    <button className="top-menu-item" onClick={() => navigate('/admin')}>
+                        <i className="bi bi-trash-fill top-menu-icon" style={{color: '#a3aed1'}}></i> Thùng rác
+                    </button>
+                </div>
+                ) : (
+                <div className="top-menu d-none d-xl-flex justify-content-center">
+                    <button className="top-menu-item" onClick={() => navigate(-1)}>
+                        <i className="bi bi-arrow-left top-menu-icon" style={{color: '#a3aed1'}}></i> Quay lại Dashboard
+                    </button>
+                </div>
+                )}
+
+                {/* Right Profile Actions */}
+                <div className="d-flex align-items-center justify-content-end gap-3" style={{width: '280px'}}>
+                    <div className="d-none d-md-block"><NotificationBell /></div>
+                    
+                    <div className="dropdown position-relative ms-2">
+                        <div 
+                            className="d-flex align-items-center py-1 px-2 rounded-pill shadow-sm" 
+                            style={{cursor: 'pointer', background: showProfileMenu ? '#f4f7fe' : 'transparent', transition: 'all 0.2s', border: '1px solid #e2e8f0'}} 
+                            onClick={() => setShowProfileMenu(!showProfileMenu)}
                         >
-                            <i className="bi bi-person-fill"></i>
+                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden" style={{width: 36, height: 36}}>
+                                {currentUser?.avatarUrl ? (
+                                    <img src={currentUser.avatarUrl} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                ) : (
+                                    currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'A'
+                                )}
+                            </div>
+                            <div className="ms-2 me-2 d-none d-sm-block text-start">
+                                <div className="fw-bold text-dark" style={{fontSize: '0.85rem', lineHeight: '1.2'}}>{currentUser?.fullName}</div>
+                                <small className="text-muted" style={{fontSize: '0.7rem'}}>
+                                    {currentUser?.role === 'ADMIN' ? 'Administrator' : currentUser?.role === 'MANAGER' ? 'Manager' : 'Employee'}
+                                </small>
+                            </div>
+                            <i className="bi bi-chevron-down ms-1 text-muted me-2" style={{fontSize: '0.8rem'}}></i>
                         </div>
-                        <div>
-                            <div className="fw-bold">CÁ NHÂN</div>
-                            <div className="small opacity-75">Quản lý tài khoản</div>
-                        </div>
-                    </div>
-                    <div className="ms-auto d-flex align-items-center gap-3">
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="btn btn-outline-light btn-sm px-3 rounded-pill me-2"
-                        >
-                            <i className="bi bi-arrow-left me-1"></i>
-                            Quay lại
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            className="btn btn-outline-light btn-sm px-3 rounded-pill"
-                        >
-                            <i className="bi bi-box-arrow-right me-1"></i>
-                            Đăng xuất
-                        </button>
+                        
+                        {showProfileMenu && (
+                            <div className="dropdown-menu show shadow border-0 position-absolute end-0 mt-2 p-2 rounded-4" style={{minWidth: '220px', backgroundColor: '#fff', top: '100%', zIndex: 1050}}>
+                                <div className="px-3 py-2 mb-1 d-sm-none border-bottom">
+                                    <div className="fw-bold text-dark">{currentUser?.fullName}</div>
+                                    <small className="text-muted">{currentUser?.role}</small>
+                                </div>
+                                <button className="dropdown-item rounded-3 py-2 fw-bold text-dark mb-1 d-flex align-items-center modern-dropdown-item" onClick={() => { setShowProfileMenu(false); navigate(-1); }}>
+                                    <i className="bi bi-arrow-left-circle me-2 fs-5 text-primary"></i> Quay về Dashboard
+                                </button>
+                                <div className="dropdown-divider my-1 border-light"></div>
+                                <button className="dropdown-item rounded-3 py-2 fw-bold text-danger d-flex align-items-center modern-dropdown-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
+                                    <i className="bi bi-box-arrow-right me-2 fs-5"></i> Đăng xuất
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </nav>
+            </div>
 
-            {/* Main Content */}
-            <div className="container-fluid px-4 py-5">
-                <div className="row g-4">
+            {/* Main Content Areas */}
+            <div className="admin-main-wrapper p-4 p-md-5 animate-fade-in content-inner">
+                <div className="container-fluid p-0">
+                    <div className="row g-4">
                     {/* Sidebar */}
                     <div className="col-lg-3">
-                        <div className="card border-0 shadow-sm profile-card">
-                            <div className="card-body text-center">
+                        <div className="modern-card">
+                            <div className="card-body text-center p-4">
                                 <div className="position-relative d-inline-block mb-3">
                                     {avatarPreview ? (
                                         <img src={avatarPreview} alt="Avatar preview" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} onError={() => setAvatarPreview(null)} />
-                                    ) : currentUser?.avatar ? (
-                                        <img src={currentUser.avatar} alt="User avatar" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} onError={() => {}} />
+                                    ) : currentUser?.avatarUrl ? (
+                                        <img src={currentUser.avatarUrl} alt="User avatar" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} onError={() => {}} />
                                     ) : (
                                         <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style={{ width: 100, height: 100 }}>
                                             <i className="bi bi-person-fill text-white" style={{ fontSize: '36px' }}></i>
@@ -209,40 +258,17 @@ const ProfilePage = () => {
                                 </div>
                                 <input type="file" id="profileAvatarInput" accept="image/png,image/jpeg,image/jpg" onChange={handleAvatarSelect} style={{display: 'none'}} />
                                 <div className="d-flex gap-2 mb-3 justify-content-center flex-wrap">
-                                    <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={handleEditAvatar} title="Tải file ảnh từ máy tính" disabled={avatarUrl && avatarPreview}>
-                                        <i className="bi bi-upload me-1"></i>File
+                                    <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={handleEditAvatar} title="Tải file ảnh từ máy tính">
+                                        <i className="bi bi-upload me-1"></i>Thay Đổi
                                     </button>
                                     {avatarPreview && (
                                         <button type="button" className="btn btn-sm btn-outline-danger fw-bold" onClick={handleRemoveAvatar}>
-                                            <i className="bi bi-trash me-1"></i>Xóa
+                                            <i className="bi bi-trash me-1"></i>Hủy
                                         </button>
                                     )}
                                 </div>
-                                <div className="mb-3">
-                                    <div className="input-group input-group-sm mb-2">
-                                        <input 
-                                            type="url" 
-                                            className="form-control" 
-                                            placeholder="https://..."
-                                            value={avatarUrl}
-                                            onChange={handleAvatarUrlChange}
-                                            style={{fontSize: '0.8rem'}}
-                                            disabled={avatarFile}
-                                        />
-                                        <button 
-                                            type="button" 
-                                            className="btn btn-outline-success fw-bold btn-sm"
-                                            onClick={handleLoadAvatarFromUrl}
-                                            title="Tải ảnh từ URL"
-                                            disabled={avatarFile}
-                                        >
-                                            <i className="bi bi-globe"></i>
-                                        </button>
-                                    </div>
-                                    <small className="text-muted d-block">Chọn một trong hai: File hoặc URL</small>
-                                </div>
                                 {avatarPreview && (
-                                    <button type="button" className="btn btn-sm btn-success fw-bold w-100 mb-3" onClick={handleUploadAvatar}>
+                                    <button type="button" className="modern-btn-primary w-100 mb-3" onClick={handleUploadAvatar}>
                                         <i className="bi bi-upload me-1"></i>Lưu Avatar
                                     </button>
                                 )}
@@ -290,42 +316,30 @@ const ProfilePage = () => {
                     {/* Main Content */}
                     <div className="col-lg-9">
                         {/* Tabs Navigation */}
-                        <ul className="nav nav-tabs nav-pills flex-row mb-4" role="tablist">
-                            <li className="nav-item" role="presentation">
-                                <button
-                                    className={`nav-link rounded-top-3 ${activeTab === 'PROFILE' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('PROFILE')}
-                                    type="button"
-                                    role="tab"
-                                >
-                                    <i className="bi bi-person me-2"></i>
-                                    Thông Tin Cá Nhân
-                                </button>
-                            </li>
-                            <li className="nav-item" role="presentation">
-                                <button
-                                    className={`nav-link rounded-top-3 ${activeTab === 'PASSWORD' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('PASSWORD')}
-                                    type="button"
-                                    role="tab"
-                                >
-                                    <i className="bi bi-key me-2"></i>
-                                    Đổi Mật Khẩu
-                                </button>
-                            </li>
-                        </ul>
+                        <div className="top-menu d-inline-flex mb-4 p-1">
+                            <button
+                                className={`top-menu-item ${activeTab === 'PROFILE' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('PROFILE')}
+                            >
+                                <i className="bi bi-person top-menu-icon" style={{color: activeTab === 'PROFILE' ? '#4318ff' : '#a3aed1'}}></i> Hồ Sơ
+                            </button>
+                            <button
+                                className={`top-menu-item ${activeTab === 'PASSWORD' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('PASSWORD')}
+                            >
+                                <i className="bi bi-key top-menu-icon" style={{color: activeTab === 'PASSWORD' ? '#4318ff' : '#a3aed1'}}></i> Đổi Mật Khẩu
+                            </button>
+                        </div>
 
                         {/* Tab Content */}
                         {activeTab === 'PROFILE' && (
-                            <div className="card border-0 shadow-sm">
-                                <div className="card-header bg-primary text-white">
-                                    <h5 className="mb-0">
-                                        <i className="bi bi-person-badge me-2"></i>
-                                        Thông Tin Tài Khoản
-                                    </h5>
+                            <div className="modern-card">
+                                <div className="modern-card-header d-flex align-items-center bg-white text-primary-dark">
+                                    <i className="bi bi-person-badge me-2 fs-5"></i>
+                                    Thông Tin Tài Khoản
                                 </div>
-                                <div className="card-body p-4">
-                                    <div className="row g-4">
+                                <div className="card-body p-5">
+                                    <div className="row g-5">
                                         <div className="col-md-6">
                                             <div>
                                                 <label className="form-label fw-bold text-dark">Tên Đầy Đủ</label>
@@ -385,6 +399,7 @@ const ProfilePage = () => {
                         )}
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );
