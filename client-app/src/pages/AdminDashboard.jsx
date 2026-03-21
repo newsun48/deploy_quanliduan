@@ -484,11 +484,17 @@ const AdminDashboard = () => {
     const getCompletedProjectsByDept = (deptId) => { return completedProjects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
 
     return (
+<<<<<<< HEAD
         <div className="admin-dashboard-container">
+=======
+        <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
+
+            <div className="admin-dashboard-container">
+>>>>>>> 4b9455b (fixLoiConflict)
             {/* Header Navbar */}
-            <div className="glass-header d-flex justify-content-between align-items-center">
+            <div className="glass-header d-flex justify-content-between align-items-center shadow-sm w-100 sticky-top">
                 {/* Logo - Fixed Width for Balance */}
-                <div className="d-flex align-items-center" style={{width: '280px'}}>
+                <div className="d-flex align-items-center" style={{ width: '280px' }}>
                     <span className="fs-3 me-2">🚀</span>
                     <span className="brand-text d-none d-md-block">ADMIN PRO</span>
                 </div>
@@ -496,54 +502,57 @@ const AdminDashboard = () => {
                 {/* Centered Menu */}
                 <div className="top-menu d-none d-xl-flex justify-content-center">
                     <button className={`top-menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-                        <i className="bi bi-people-fill top-menu-icon" style={{color: activeTab === 'users' ? '#4318ff' : '#a3aed1'}}></i> Nhân sự
+                        <i className="bi bi-people-fill top-menu-icon" style={{ color: activeTab === 'users' ? '#4318ff' : '#a3aed1' }}></i> Nhân sự
                     </button>
                     <button className={`top-menu-item ${activeTab === 'departments' ? 'active' : ''}`} onClick={() => setActiveTab('departments')}>
-                        <i className="bi bi-building top-menu-icon" style={{color: activeTab === 'departments' ? '#4318ff' : '#a3aed1'}}></i> Phòng Ban
+                        <i className="bi bi-building top-menu-icon" style={{ color: activeTab === 'departments' ? '#4318ff' : '#a3aed1' }}></i> Phòng Ban
                     </button>
                     <button className={`top-menu-item ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
-                        <i className="bi bi-folder-fill top-menu-icon" style={{color: activeTab === 'projects' ? '#4318ff' : '#a3aed1'}}></i> Dự Án
+                        <i className="bi bi-folder-fill top-menu-icon" style={{ color: activeTab === 'projects' ? '#4318ff' : '#a3aed1' }}></i> Dự Án
                     </button>
                     <button className={`top-menu-item ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
-                        <i className="bi bi-check-circle-fill top-menu-icon" style={{color: activeTab === 'completed' ? '#4318ff' : '#a3aed1'}}></i> Đã Hoàn Thành
+                        <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: activeTab === 'completed' ? '#4318ff' : '#a3aed1' }}></i> Đã Hoàn Thành
                     </button>
-                    <button className={`top-menu-item ${activeTab === 'deleted' ? 'active' : ''}`} onClick={() => setActiveTab('deleted')}>
-                        <i className="bi bi-trash-fill top-menu-icon" style={{color: activeTab === 'deleted' ? '#4318ff' : '#a3aed1'}}></i> Thùng rác
+                    <button className={`top-menu-item`} onClick={() => navigate('/admin/statistics')}>
+                        <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> Thống kê
                     </button>
                 </div>
 
                 {/* Right Profile Actions */}
-                <div className="d-flex align-items-center justify-content-end gap-3" style={{width: '280px'}}>
+                <div className="d-flex align-items-center justify-content-end gap-3" style={{ width: '280px' }}>
                     <div className="d-none d-md-block"><NotificationBell /></div>
-                    
-                    <div className="dropdown position-relative ms-2">
-                        <div 
-                            className="d-flex align-items-center py-1 px-2 rounded-pill shadow-sm" 
-                            style={{cursor: 'pointer', background: showProfileMenu ? '#f4f7fe' : 'transparent', transition: 'all 0.2s', border: '1px solid #e2e8f0'}} 
+
+                    <div className="dropdown position-relative ms-1">
+                        <div
+                            className="d-flex align-items-center py-1 px-2 rounded-pill shadow-sm"
+                            style={{ cursor: 'pointer', background: showProfileMenu ? '#f4f7fe' : 'transparent', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
                         >
-                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden" style={{width: 36, height: 36}}>
+                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden" style={{ width: 36, height: 36 }}>
                                 {currentUser?.avatarUrl ? (
-                                    <img src={currentUser.avatarUrl} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                    <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
                                     currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'A'
                                 )}
                             </div>
-                            <div className="ms-2 me-2 d-none d-sm-block">
-                                <div className="fw-bold text-dark" style={{fontSize: '0.85rem', lineHeight: '1.2'}}>{currentUser.fullName}</div>
-                                <small className="text-muted" style={{fontSize: '0.7rem'}}>Administrator</small>
+                            <div className="ms-2 me-2 d-none d-sm-block text-start">
+                                <div className="fw-bold text-dark" style={{ fontSize: '0.85rem', lineHeight: '1.2' }}>{currentUser?.fullName}</div>
+                                <small className="text-muted" style={{ fontSize: '0.7rem' }}>Administrator</small>
                             </div>
-                            <i className="bi bi-chevron-down ms-1 text-muted me-2" style={{fontSize: '0.8rem'}}></i>
+                            <i className="bi bi-chevron-down ms-1 text-muted me-2" style={{ fontSize: '0.8rem' }}></i>
                         </div>
-                        
+
                         {showProfileMenu && (
-                            <div className="dropdown-menu show shadow border-0 position-absolute end-0 mt-2 p-2 rounded-4" style={{minWidth: '220px', backgroundColor: '#fff', top: '100%', zIndex: 1050}}>
+                            <div className="dropdown-menu show shadow border-0 position-absolute end-0 mt-2 p-2 rounded-4" style={{ minWidth: '220px', backgroundColor: '#fff', top: '100%', zIndex: 1050 }}>
                                 <div className="px-3 py-2 mb-1 d-sm-none border-bottom">
-                                    <div className="fw-bold text-dark">{currentUser.fullName}</div>
+                                    <div className="fw-bold text-dark">{currentUser?.fullName}</div>
                                     <small className="text-muted">Administrator</small>
                                 </div>
                                 <button className="dropdown-item rounded-3 py-2 fw-bold text-dark mb-1 d-flex align-items-center modern-dropdown-item" onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}>
                                     <i className="bi bi-person-fill me-2 fs-5 text-primary"></i> Tài khoản của tôi
+                                </button>
+                                <button className="dropdown-item rounded-3 py-2 fw-bold text-dark mb-1 d-flex align-items-center modern-dropdown-item" onClick={() => { setShowProfileMenu(false); setActiveTab('deleted'); }}>
+                                    <i className="bi bi-trash-fill me-2 fs-5 text-danger"></i> Thùng rác
                                 </button>
                                 <div className="dropdown-divider my-1 border-light"></div>
                                 <button className="dropdown-item rounded-3 py-2 fw-bold text-danger d-flex align-items-center modern-dropdown-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
@@ -560,11 +569,12 @@ const AdminDashboard = () => {
                 <div className="p-4 p-md-5 animate-fade-in content-inner">
                     <div className="d-flex justify-content-between align-items-center mb-4 d-xl-none bg-white p-3 rounded-4 shadow-sm">
                         <h4 className="page-title mb-0 fs-5">{activeTab === 'users' ? 'Quản lý Nhân sự' : activeTab === 'departments' ? 'Phòng Ban & Dự Án' : activeTab === 'completed' ? 'Dự án Hoàn thành' : 'Thùng rác'}</h4>
-                        <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value={activeTab} onChange={(e) => setActiveTab(e.target.value)}>
+                        <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value={activeTab} onChange={(e) => { if(e.target.value === 'stats') navigate('/admin/statistics'); else setActiveTab(e.target.value); }}>
                             <option value="users">Nhân sự</option>
                             <option value="departments">Phòng ban</option>
                             <option value="completed">Đã hoàn thành</option>
                             <option value="deleted">Thùng rác</option>
+                            <option value="stats">Thống kê</option>
                         </select>
                     </div>
                     {activeTab === 'users' && (
@@ -1128,10 +1138,9 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
-                </div>
-            </div>
 
-            {showDeptMemberModal && selectedDeptForMember && (
+
+        {showDeptMemberModal && selectedDeptForMember && (
                 <div className="modal-backdrop-custom">
                     <div className="card shadow-lg border-0" style={{width: 500, borderRadius: '1rem', overflow: 'hidden'}}>
                         <div className="card-header bg-success p-4 border-0 text-white d-flex flex-column position-relative">
@@ -1295,7 +1304,10 @@ const AdminDashboard = () => {
                 </div>
             )}
             <style>{`.bg-blue-light { background-color: #e7f1ff; } .modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }`}</style>
+                </div>
+            </div>
         </div>
+    </div>
     );
 };
 export default AdminDashboard;

@@ -19,7 +19,8 @@ public class NotificationService {
     private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     // Gửi tín hiệu update real-time qua WebSocket (🔥 MỚI)
-    public void sendRealTimeUpdate(String destination, Object payload) {
+    public void sendRealTimeUpdate(@org.springframework.lang.NonNull String destination, @org.springframework.lang.NonNull Object payload) {
+        if (destination == null || payload == null) return;
         try {
             messagingTemplate.convertAndSend(destination, payload);
         } catch (Exception e) {
