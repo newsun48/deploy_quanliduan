@@ -14,12 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-<<<<<<< HEAD
-=======
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
->>>>>>> 4b9455b (fixLoiConflict)
+import java.util.Map;
 
 @Service
 public class TaskService {
@@ -115,8 +113,6 @@ public class TaskService {
         u.setId(userId);
         return taskRepository.findByAssignee(u);
     }
-<<<<<<< HEAD
-=======
 
     // 5. Thống kê Toàn diện
     public Map<String, Object> getTaskStatistics() {
@@ -126,6 +122,12 @@ public class TaskService {
         List<Department> allDepts = departmentRepository.findAll();
         
         // --- TASK STATS ---
+
+    // 5. Thống kê Task
+    public Map<String, Object> getTaskStatistics() {
+        List<Task> allTasks = taskRepository.findAll();
+        
+        // Đếm theo status
         long todoCount = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.TO_DO).count();
         long inProgressCount = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.IN_PROGRESS).count();
         long doneCount = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
@@ -168,6 +170,23 @@ public class TaskService {
             "totalProjects", allProjects.size(),
             "totalUsers", allUsers.size(),
             "totalDepts", allDepts.size(),
+        // Đếm theo project
+        Map<String, Long> byProject = allTasks.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                t -> t.getProject() != null ? t.getProject().getName() : "Không có dự án",
+                java.util.stream.Collectors.counting()
+            ));
+        
+        // Đếm theo người giao
+        Map<String, Long> byAssignee = allTasks.stream()
+            .filter(t -> t.getAssignee() != null)
+            .collect(java.util.stream.Collectors.groupingBy(
+                t -> t.getAssignee().getFullName(),
+                java.util.stream.Collectors.counting()
+            ));
+        
+        return Map.of(
+            "total", allTasks.size(),
             "byStatus", Map.of(
                 "TO_DO", todoCount,
                 "IN_PROGRESS", inProgressCount,
@@ -188,5 +207,8 @@ public class TaskService {
             "userDept", byDepartment
         );
     }
->>>>>>> 4b9455b (fixLoiConflict)
+
+            "byAssignee", byAssignee
+        );
+    }
 }

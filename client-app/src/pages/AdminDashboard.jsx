@@ -484,13 +484,26 @@ const AdminDashboard = () => {
     const getCompletedProjectsByDept = (deptId) => { return completedProjects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
 
     return (
-<<<<<<< HEAD
+        <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
+            <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4 sticky-top border-bottom w-100">
+                <div className="container-fluid">
+                    <div className="d-flex align-items-center"><span className="fs-4 me-2">🚀</span><span className="navbar-brand fw-bold text-primary tracking-wide">ADMIN PORTAL</span></div>
+                    <div className="ms-auto d-flex align-items-center gap-3">
+                        <button onClick={() => navigate('/admin/statistics')} className="btn btn-success btn-sm rounded-pill px-3 fw-bold">
+                            <i className="bi bi-bar-chart-fill me-1"></i>
+                            Thống kê
+                        </button>
+                        <NotificationBell />
+                        <button onClick={() => navigate('/profile')} className="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold">
+                            <i className="bi bi-person-fill me-1"></i>
+                            Tài khoản
+                        </button>
+                        <button onClick={handleLogout} className="btn btn-outline-dark btn-sm rounded-pill px-4 fw-bold">Đăng xuất</button>
+                    </div>
         <div className="admin-dashboard-container">
-=======
         <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
 
             <div className="admin-dashboard-container">
->>>>>>> 4b9455b (fixLoiConflict)
             {/* Header Navbar */}
             <div className="glass-header d-flex justify-content-between align-items-center shadow-sm w-100 sticky-top">
                 {/* Logo - Fixed Width for Balance */}
