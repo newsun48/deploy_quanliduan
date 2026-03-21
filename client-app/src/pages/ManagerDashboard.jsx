@@ -1,3 +1,113 @@
+import { useEffect, useState } from 'react';
+import api from '../api';
+import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
+import TaskDetailModal from '../components/TaskDetailModal';
+import ProjectChatPanel from '../components/ProjectChatPanel';
+import PrivateChatPanel from '../components/PrivateChatPanel';
+
+const ManagerDashboard = () => {
+    const navigate = useNavigate();
+    const [currentUser, setCurrentUser] = useState(null);
+    const [myDepartment, setMyDepartment] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    // DATA
+    const [deptMembers, setDeptMembers] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [tasks, setTasks] = useState([]);
+
+    // UI CONTROLS
+    const [activeTab, setActiveTab] = useState('DASHBOARD');
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [projectTab, setProjectTab] = useState('TASKS');
+    
+    // MODAL STATE
+    const [showMemberModal, setShowMemberModal] = useState(false);
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
+    const [privateChatUser, setPrivateChatUser] = useState(null);
+    
+    // FORMS
+    const [newTask, setNewTask] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
+    const [selectedMemberToAdd, setSelectedMemberToAdd] = useState('');
+
+    useEffect(() => {
+        const userJson = localStorage.getItem('user');
+        if (!userJson) { navigate('/'); return; }
+        try {
+            const userObj = JSON.parse(userJson);
+            fetchManagerInfo(userObj.id);
+        } catch (e) { console.error(e); navigate('/'); }
+    }, []);
+
+    const fetchManagerInfo = async (userId) => {
+        setIsLoading(true);
+        try {
+            const res = await api.get('/users');
+            // Dùng == để so sánh ID (tránh lỗi string vs number)
+            const foundUser = res.data.find(u => u.id == userId);
+            
+            if (foundUser) {
+                setCurrentUser(foundUser);
+                if (foundUser.department) {
+                    setMyDepartment(foundUser.department);
+                    await fetchDeptData(foundUser.department.id);
+                }
+            }
+        } catch (err) { 
+            console.error("Lỗi tải dữ liệu user:", err); 
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchDeptData = async (deptId) => {
+        try {
+            const [usersRes, projectsRes] = await Promise.all([
+                api.get('/users'),
+                api.get('/projects')
+            ]);
+            
+            // 🔥 SỬA: Dùng == để so sánh ID
+            const members = usersRes.data.filter(u => 
+                u.department && 
+                u.department.id == deptId && 
+                u.role === 'EMPLOYEE'
+            );
+            setDeptMembers(members);
+            
+            // 🔥 SỬA: Lọc dự án (cả dự án tạo bởi deptId hoặc object department)
+            setProjects(projectsRes.data.filter(p => {
+                const pDeptId = p.deptId || (p.department ? p.department.id : null);
+                return pDeptId == deptId;
+            }));
+        } catch (err) { console.error("Lỗi tải dữ liệu phòng:", err); }
+    };
+
+    const handleSelectProject = async (project) => {
+        setSelectedProject(project);
+        setActiveTab('PROJECT_DETAIL');
+        try {
+            const res = await api.get(`/tasks/project/${project.id}`);
+            // 🔥 SỬA: Đảm bảo tasks luôn là mảng để tránh crash
+            setTasks(Array.isArray(res.data) ? res.data : []);
+        } catch (e) { 
+            setTasks([]); // Nếu lỗi thì set rỗng
+            console.error(e); 
+        }
+    };
+
+    const handleCompleteProject = async () => {
+        if (!window.confirm("⚠️ CẢNH BÁO: Dự án sẽ chuyển sang trạng thái 'ĐÃ ĐÓNG'. Bạn có chắc chắn không?")) return;
+        try {
+            await api.put(`/projects/${selectedProject.id}/complete`);
+            alert("🎉 Chúc mừng! Dự án đã hoàn thành và đóng lại.");
+            const updatedProject = { ...selectedProject, status: 'CLOSED' };
+            setSelectedProject(updatedProject);
+            // Cập nhật lại list projects bên ngoài
+            setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+        } catch (err) { alert("Lỗi: " + err.message); }
 import { useEffect, useState, useRef } from "react";
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
@@ -113,6 +223,28 @@ const ManagerDashboard = () => {
     stompClientRef.current = client;
   };
 
+        try {
+            const response = await api.post(`/projects/${selectedProject.id}/add-member/${selectedMemberToAdd}`);
+            alert("✅ Đã thêm thành công!");
+            setShowMemberModal(false);
+            setSelectedMemberToAdd('');
+            
+            // 🔥 CỰC KỲ QUAN TRỌNG: Cập nhật selectedProject ngay với dữ liệu mới từ API
+            setSelectedProject(response.data);
+            
+            // Reload dữ liệu phòng để cập nhật lại danh sách members khả dụng
+            console.log("🔄 Đang reload dữ liệu phòng...");
+            await fetchDeptData(myDepartment.id);
+            
+            // Reload lại project hiện tại để thấy member mới
+            const res = await api.get('/projects');
+            const updated = res.data.find(p => p.id == selectedProject.id);
+            if(updated) setSelectedProject(updated);
+            
+        } catch (err) {
+            console.error("❌ Lỗi thêm member:", err);
+            const errorMessage = err.response?.data?.message || err.response?.data || err.message || "Thất bại";
+            alert("Lỗi: " + errorMessage);
   const fetchManagerInfo = async (userId) => {
     setIsLoading(true);
     try {
@@ -134,6 +266,17 @@ const ManagerDashboard = () => {
     }
   };
 
+    const handleCreateTask = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post(`/tasks/create?projectId=${selectedProject.id}&assigneeId=${newTask.assigneeId}`, newTask);
+            alert("✅ Giao việc thành công!");
+            setShowTaskModal(false);
+            setNewTask({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
+            const res = await api.get(`/tasks/project/${selectedProject.id}`);
+            setTasks(Array.isArray(res.data) ? res.data : []);
+        } catch (err) { alert("Lỗi: " + (err.response?.data || err.message)); }
+    };
   const fetchDeptData = async (deptId) => {
     try {
       const [usersRes, projectsRes] = await Promise.all([

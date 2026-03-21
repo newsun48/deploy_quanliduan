@@ -21,7 +21,12 @@ const EmployeeDashboard = () => {
     const [chatSelection, setChatSelection] = useState({ type: null, data: null }); // type: 'PROJECT' | 'USER'
     const [chatUsers, setChatUsers] = useState([]);
     const [chatProjects, setChatProjects] = useState([]);
-
+    const fetchMyTasks = async (userId) => {
+        try {
+            const res = await api.get(`/tasks/my-tasks/${userId}`);
+            setMyTasks(res.data);
+        } catch (err) { console.error(err); }
+    };
 
     useEffect(() => {
         const userJson = localStorage.getItem('user');
@@ -32,7 +37,7 @@ const EmployeeDashboard = () => {
         fetchMyTasks(userObj.id);
     }, []);
 
-    const fetchMyTasks = async (userId) => {
+    const fetchMyTasks1 = async (userId) => {
         try {
             const res = await api.get(`/tasks/my-tasks/${userId}`);
             setMyTasks(res.data);
@@ -66,7 +71,7 @@ const EmployeeDashboard = () => {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
-            await axios.put(`/api/tasks/${editingTask.id}/status`, {
+            await api.put(`/tasks/${editingTask.id}/status`, {
                 status: updatePayload.status,
                 percent: parseInt(updatePayload.percent),
                 submissionLink: updatePayload.submissionLink
