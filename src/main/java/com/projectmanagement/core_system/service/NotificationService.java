@@ -15,6 +15,18 @@ public class NotificationService {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+
+    // Gửi tín hiệu update real-time qua WebSocket (🔥 MỚI)
+    public void sendRealTimeUpdate(String destination, Object payload) {
+        try {
+            messagingTemplate.convertAndSend(destination, payload);
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi gửi WebSocket: " + e.getMessage());
+        }
+    }
+
     // Tạo thông báo mới
     public Notification createNotification(User receiver, User sender, Task task, String message, String type) {
         Notification notification = new Notification();

@@ -62,4 +62,44 @@ public class DepartmentService {
 
         departmentRepository.deleteById(id);
     }
+
+    // 4. Cập nhật tên phòng ban
+    public Department updateDepartment(String id, Department updatedData) {
+        if (!StringUtils.hasText(updatedData.getName())) {
+            throw new RuntimeException("Tên phòng ban không được để trống!");
+        }
+        
+        Department existingDept = departmentRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
+
+        // Cập nhật nếu tên thay đổi
+        if (!existingDept.getName().equalsIgnoreCase(updatedData.getName())) {
+            if (departmentRepository.existsByNameIgnoreCase(updatedData.getName())) {
+                throw new RuntimeException("Phòng ban '" + updatedData.getName() + "' đã tồn tại!");
+            }
+            existingDept.setName(updatedData.getName());
+        }
+
+        if (updatedData.getDescription() != null) {
+            existingDept.setDescription(updatedData.getDescription());
+        }
+
+        if (updatedData.getManager() != null && updatedData.getManager().getId() != null) {
+            com.projectmanagement.core_system.model.User newManager = userRepository.findById(updatedData.getManager().getId())
+                    .orElseThrow(() -> new RuntimeException("Trưởng phòng không tồn tại!"));
+            
+            if (newManager.getRole() != com.projectmanagement.core_system.enums.ERole.MANAGER) {
+                throw new RuntimeException("Người dùng vừa chọn không phải là Trưởng phòng!");
+            }
+
+            existingDept.setManager(newManager);
+            
+            newManager.setDepartment(existingDept);
+            userRepository.save(newManager);
+        } else if (updatedData.getManager() == null) {
+            existingDept.setManager(null);
+        }
+
+        return departmentRepository.save(existingDept);
+    }
 }

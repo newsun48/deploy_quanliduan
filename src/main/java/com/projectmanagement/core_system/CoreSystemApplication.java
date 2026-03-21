@@ -55,18 +55,25 @@ public CommandLineRunner initData(DepartmentRepository departmentRepository, Use
             System.out.println("Dữ liệu đã tồn tại, bỏ qua khởi tạo");
         }
 
-        // Tạo tài khoản admin mẫu nếu chưa có
-        if (!userRepository.existsByEmail("admin@gmail.com")) {
-            User admin = new User();
-            // Để MongoDB tự tạo ID (ObjectId)
-            admin.setFullName("Admin");
-            admin.setEmail("admin@gmail.com");
-            admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.setRole(ERole.ADMIN);
-            admin.setActive(true);
-            userRepository.save(admin);
-            System.out.println("✅ Tạo tài khoản admin: admin@gmail.com / admin123");
-        }
+        // Khôi phục hoặc tạo mới tài khoản admin
+        User admin = userRepository.findByEmail("admin@gmail.com").orElse(new User());
+        admin.setFullName("Admin");
+        admin.setEmail("admin@gmail.com");
+        admin.setPassword(passwordEncoder.encode("admin123"));
+        admin.setRole(ERole.ADMIN);
+        admin.setActive(true);
+        userRepository.save(admin);
+        System.out.println("✅ Đã khôi phục tài khoản admin: admin@gmail.com / admin123");
+
+        // Khôi phục hoặc tạo mới tài khoản manager
+        User manager = userRepository.findByEmail("manage@gmail.com").orElse(new User());
+        manager.setFullName("Manage");
+        manager.setEmail("manage@gmail.com");
+        manager.setPassword(passwordEncoder.encode("manage123"));
+        manager.setRole(ERole.MANAGER);
+        manager.setActive(true);
+        userRepository.save(manager);
+        System.out.println("✅ Đã khôi phục tài khoản manager: manage@gmail.com / manage123");
     };
 }
 }

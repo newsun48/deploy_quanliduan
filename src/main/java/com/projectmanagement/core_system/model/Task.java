@@ -31,6 +31,7 @@ public class Task {
     
     private TaskStatus status = TaskStatus.TO_DO;
     private int completionPercentage = 0;
+    private String submissionLink;
 
     @DBRef
     @JsonIgnoreProperties({"department", "members"})

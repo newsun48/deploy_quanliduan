@@ -58,7 +58,16 @@ public class UserService {
         // Mã hóa pass - ID để MongoDB tự tạo
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         
-        return userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Auto assign as manager if role is MANAGER
+        if (user.getRole() == com.projectmanagement.core_system.enums.ERole.MANAGER && user.getDepartment() != null) {
+            Department dept = user.getDepartment();
+            dept.setManager(user);
+            departmentRepository.save(dept);
+        }
+
+        return user;
     }
 
     // 2. Lấy tất cả
@@ -68,7 +77,10 @@ public class UserService {
 
     // 3. Xóa User
     public void deleteUser(String userId) {
-        if (!userRepository.existsById(userId)) throw new RuntimeException("User không tồn tại!");
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User không tồn tại!"));
+        if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
+            throw new RuntimeException("Không được phép xóa tài khoản Quản trị viên (ADMIN)!");
+        }
         userRepository.deleteById(userId);
     }
 
@@ -192,6 +204,10 @@ public class UserService {
     public User updateEmployee(String userId, UpdateUserRequest request, String adminEmail) {
         User user = getUserById(userId);
 
+        if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
+            throw new RuntimeException("Không được phép chỉnh sửa thông tin của Quản trị viên (ADMIN)!");
+        }
+
         // Optional fields only
         if (request.getEmail() != null && !request.getEmail().isEmpty()) {
             if (userRepository.existsByEmail(request.getEmail()) && !user.getEmail().equals(request.getEmail())) {
@@ -199,6 +215,9 @@ public class UserService {
             }
             user.setEmail(request.getEmail());
         }
+
+        Department oldDepartment = user.getDepartment();
+        com.projectmanagement.core_system.enums.ERole oldRole = user.getRole();
 
         if (request.getDeptId() != null && !request.getDeptId().isEmpty()) {
             Department dept = departmentRepository.findById(request.getDeptId())
@@ -210,7 +229,34 @@ public class UserService {
             user.setRole(request.getRole());
         }
 
-        return userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Bidirectional Manager Sync
+        boolean roleChanged = request.getRole() != null && oldRole != request.getRole();
+        boolean deptChanged = request.getDeptId() != null && !request.getDeptId().isEmpty() && 
+                              (oldDepartment == null || !oldDepartment.getId().equals(request.getDeptId()));
+
+        // 1. If user was a MANAGER and either their role changed OR they moved to a different department,
+        // we must remove them as manager from their OLD department.
+        if (oldRole == com.projectmanagement.core_system.enums.ERole.MANAGER && (roleChanged || deptChanged)) {
+            if (oldDepartment != null && oldDepartment.getManager() != null 
+                && oldDepartment.getManager().getId().equals(user.getId())) {
+                oldDepartment.setManager(null);
+                departmentRepository.save(oldDepartment);
+            }
+        }
+
+        // 2. If user is NOW a MANAGER and their role changed OR they moved to a new department,
+        // we must assign them as manager to their NEW department.
+        if (user.getRole() == com.projectmanagement.core_system.enums.ERole.MANAGER && (roleChanged || deptChanged)) {
+            if (user.getDepartment() != null) {
+                Department currentDept = user.getDepartment();
+                currentDept.setManager(user);
+                departmentRepository.save(currentDept);
+            }
+        }
+
+        return user;
     }
     // 🔥 6. MỚI: Cập nhật Avatar URL
     public User updateAvatar(String userId, String avatarUrl) {

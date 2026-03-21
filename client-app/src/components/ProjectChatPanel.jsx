@@ -3,6 +3,7 @@ import api from '../api';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import './ProjectChatPanel.css';
+import { askConfirm } from '../utils/confirm';
 
 const ProjectChatPanel = ({ project, currentUser }) => {
     const [messages, setMessages] = useState([]);
@@ -135,7 +136,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
     };
 
     const handleDeleteMessage = async (messageId) => {
-        if (window.confirm('Bạn chắc chắn muốn thu hồi tin nhắn này?')) {
+        if (await askConfirm('Bạn chắc chắn muốn thu hồi tin nhắn này?')) {
             try {
                 await api.delete(`/project-messages/${messageId}`);
             } catch (err) {

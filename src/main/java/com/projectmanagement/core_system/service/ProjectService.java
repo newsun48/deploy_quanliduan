@@ -26,6 +26,9 @@ public class ProjectService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     // 1. Tạo dự án mới
     public Project createProject(Project project, String departmentId, String creatorEmail) {
         // 🔥 Validate: Tên dự án không được để trống
@@ -48,49 +51,100 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
+    // 1b. Cập nhật dự án
+    public Project updateProject(String id, Project updatedInfo) {
+        Project project = projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
+        if (StringUtils.hasText(updatedInfo.getName())) {
+            project.setName(updatedInfo.getName());
+        }
+        if (StringUtils.hasText(updatedInfo.getDescription())) {
+            project.setDescription(updatedInfo.getDescription());
+        }
+        if (updatedInfo.getStartDate() != null) {
+            project.setStartDate(updatedInfo.getStartDate());
+        }
+        if (updatedInfo.getDeadline() != null) {
+            project.setDeadline(updatedInfo.getDeadline());
+        }
+        if (updatedInfo.getDocumentLink() != null) {
+            project.setDocumentLink(updatedInfo.getDocumentLink());
+        }
+        return projectRepository.save(project);
+    }
+
     // 2. Thêm thành viên vào dự án
     public Project addMember(String projectId, String userId) {
-        System.out.println("🔵 [DEBUG] Thêm member: projectId=" + projectId + ", userId=" + userId);
-        
+        return addMembers(projectId, List.of(userId));
+    }
+
+    // 2b. Thêm nhiều thành viên vào dự án (🔥 MỚI)
+    public Project addMembers(String projectId, List<String> userIds) {
+        System.out.println("🔵 [DEBUG] Thêm nhiều members: projectId=" + projectId + ", userIds=" + userIds);
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Dự án không tìm thấy!"));
-        System.out.println("✅ [DEBUG] Found project: " + project.getName());
 
-        // Check trạng thái trước khi thêm
         if (project.getStatus() == ProjectStatus.CLOSED) {
             throw new RuntimeException("Dự án đã đóng, không thể thêm thành viên!");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Nhân viên không tìm thấy!"));
-        System.out.println("✅ [DEBUG] Found user: " + user.getFullName());
-
-        // Check cùng phòng ban
+        User manager = project.getDepartment() != null ? project.getDepartment().getManager() : null;
         String projectDeptId = project.getDepartment().getId();
-        String userDeptId = (user.getDepartment() != null) ? user.getDepartment().getId() : null;
-        System.out.println("🔍 [DEBUG] projectDeptId=" + projectDeptId + ", userDeptId=" + userDeptId);
 
-        if (!projectDeptId.equals(userDeptId)) {
-            throw new RuntimeException("LỖI: Nhân viên này thuộc phòng ban khác!");
+        for (String userId : userIds) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Nhân viên " + userId + " không tìm thấy!"));
+
+            // Check cùng phòng ban
+            String userDeptId = (user.getDepartment() != null) ? user.getDepartment().getId() : null;
+            if (!projectDeptId.equals(userDeptId)) {
+                throw new RuntimeException("LỖI: Nhân viên " + user.getFullName() + " thuộc phòng ban khác!");
+            }
+
+            // Check trùng lặp
+            boolean exists = project.getMembers().stream().anyMatch(m -> m.getId().equals(userId));
+            if (!exists) {
+                project.getMembers().add(user);
+                // Bắn thông báo
+                String message = "Bạn đã được thêm vào dự án: " + project.getName();
+                notificationService.createNotification(user, manager, null, message, "PROJECT_JOINED");
+            }
         }
 
-        // Check trùng lặp: Nếu user đã có trong list rồi thì thôi
-        boolean exists = project.getMembers().stream().anyMatch(m -> m.getId().equals(userId));
-        if (exists) {
-            throw new RuntimeException("Nhân viên này đã tham gia dự án rồi!");
-        }
-
-        System.out.println("➕ [DEBUG] Adding member to project...");
-        project.getMembers().add(user);
         Project saved = projectRepository.save(project);
-        System.out.println("✅ [DEBUG] Member added successfully! Total members: " + saved.getMembers().size());
-        
+
+        // Broadcast real-time update to the department topic (🔥 MỚI)
+        if (projectDeptId != null) {
+            notificationService.sendRealTimeUpdate("/topic/department/" + projectDeptId + "/update", "REFRESH_PROJECTS");
+        }
+
         return saved;
     }
 
     // 3. Lấy tất cả
     public List<Project> getAllProjects() {
         return projectRepository.findByIsDeletedFalse();
+    }
+
+    // 3b. Đóng dự án
+    public void completeProject(String projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
+
+        if (project.getStatus() == ProjectStatus.CLOSED) {
+            throw new RuntimeException("Dự án đã đóng rồi!");
+        }
+
+        project.setStatus(ProjectStatus.CLOSED);
+        projectRepository.save(project);
+
+        // 🔥 Bắn thông báo: Dự án đóng cho tất cả thành viên
+        User manager = project.getDepartment() != null ? project.getDepartment().getManager() : null;
+        String message = "Dự án '" + project.getName() + "' đã hoàn thành và chính thức đóng lại!";
+        
+        for (User member : project.getMembers()) {
+            notificationService.createNotification(member, manager, null, message, "PROJECT_CLOSED");
+        }
     }
 
     // 4. 🔥 MỚI: Tìm kiếm dự án

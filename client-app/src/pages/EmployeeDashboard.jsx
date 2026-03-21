@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
@@ -12,7 +13,7 @@ const EmployeeDashboard = () => {
     const [myTasks, setMyTasks] = useState([]);
     const [filterStatus, setFilterStatus] = useState('ALL'); 
     const [editingTask, setEditingTask] = useState(null);
-    const [updatePayload, setUpdatePayload] = useState({ status: '', percent: 0 });
+    const [updatePayload, setUpdatePayload] = useState({ status: '', percent: 0, submissionLink: '' });
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
 
     // CHAT SUPPORT
@@ -72,7 +73,8 @@ const EmployeeDashboard = () => {
         try {
             await api.put(`/tasks/${editingTask.id}/status`, {
                 status: updatePayload.status,
-                percent: parseInt(updatePayload.percent)
+                percent: parseInt(updatePayload.percent),
+                submissionLink: updatePayload.submissionLink
             });
             alert("🎉 Đã cập nhật tiến độ!");
             setEditingTask(null);
@@ -181,7 +183,7 @@ const EmployeeDashboard = () => {
                                                     {task.project?.status === 'CLOSED' ? (
                                                         <button className="btn btn-sm btn-secondary disabled rounded-pill px-3" title="Dự án đã đóng" disabled>🔒</button>
                                                     ) : (
-                                                        <button className="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onClick={()=>{setEditingTask(task); setUpdatePayload({status: task.status, percent: task.completionPercentage});}}>Cập nhật</button>
+                                                        <button className="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3" onClick={()=>{setEditingTask(task); setUpdatePayload({status: task.status, percent: task.completionPercentage, submissionLink: task.submissionLink || ''});}}>Cập nhật</button>
                                                     )}
                                                 </div>
                                             </div>
@@ -265,6 +267,7 @@ const EmployeeDashboard = () => {
                             <form onSubmit={handleUpdate}>
                                 <div className="mb-3"><label className="form-label fw-bold small text-muted">TRẠNG THÁI</label><select className="form-select" value={updatePayload.status} onChange={e=>setUpdatePayload({...updatePayload, status: e.target.value})}><option value="TO_DO">To Do (Mới nhận)</option><option value="IN_PROGRESS">In Progress (Đang làm)</option><option value="DONE">Done (Hoàn thành)</option></select></div>
                                 <div className="mb-4"><label className="form-label fw-bold small text-muted">TIẾN ĐỘ ({updatePayload.percent}%)</label><input type="range" className="form-range" min="0" max="100" value={updatePayload.percent} onChange={e=>setUpdatePayload({...updatePayload, percent: e.target.value})} /></div>
+                                <div className="mb-4"><label className="form-label fw-bold small text-muted">LINK NỘP BÀI (Google Drive, GitHub...)</label><input type="text" className="form-control" placeholder="Dán link bài nộp vào đây..." value={updatePayload.submissionLink || ''} onChange={e=>setUpdatePayload({...updatePayload, submissionLink: e.target.value})} /></div>
                                 <div className="d-flex gap-2"><button type="button" className="btn btn-light w-50 fw-bold" onClick={()=>setEditingTask(null)}>Hủy</button><button className="btn btn-primary w-50 fw-bold">LƯU LẠI</button></div>
                             </form>
                         </div>
