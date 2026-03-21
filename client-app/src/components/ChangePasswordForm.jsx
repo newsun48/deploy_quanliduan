@@ -91,15 +91,13 @@ const ChangePasswordForm = ({ onSuccess }) => {
     };
 
     return (
-        <div className="change-password-form card border-0 shadow-sm">
-            <div className="card-header bg-primary text-white">
-                <h5 className="mb-0">
-                    <i className="bi bi-key-fill me-2"></i>
-                    Đổi Mật Khẩu
-                </h5>
+        <div className="modern-card">
+            <div className="modern-card-header d-flex align-items-center bg-white text-primary-dark">
+                <i className="bi bi-key-fill me-2 fs-5"></i>
+                Đổi Mật Khẩu
             </div>
 
-            <div className="card-body p-4">
+            <div className="card-body p-5">
                 {error && (
                     <div className="alert alert-danger alert-dismissible fade show" role="alert">
                         <i className="bi bi-exclamation-circle me-2"></i>
@@ -129,22 +127,24 @@ const ChangePasswordForm = ({ onSuccess }) => {
                         <label htmlFor="oldPassword" className="form-label fw-bold">
                             Mật Khẩu Cũ <span className="text-danger">*</span>
                         </label>
-                        <div className="input-group">
+                        <div className="position-relative">
                             <input
                                 type={showPasswords.old ? 'text' : 'password'}
-                                className="form-control border-1"
+                                className="form-control modern-input w-100"
                                 id="oldPassword"
                                 name="oldPassword"
                                 value={formData.oldPassword}
                                 onChange={handleChange}
                                 placeholder="Nhập mật khẩu cũ..."
                                 disabled={isLoading}
+                                style={{ paddingRight: '45px' }}
                             />
                             <button
                                 type="button"
-                                className="btn btn-outline-secondary"
+                                className="btn position-absolute border-0 text-muted"
                                 onClick={() => handleTogglePasswordVisibility('old')}
                                 disabled={isLoading}
+                                style={{ right: '5px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'transparent' }}
                             >
                                 <i className={`bi bi-eye${showPasswords.old ? '-slash' : ''}-fill`}></i>
                             </button>
@@ -156,22 +156,24 @@ const ChangePasswordForm = ({ onSuccess }) => {
                         <label htmlFor="newPassword" className="form-label fw-bold">
                             Mật Khẩu Mới <span className="text-danger">*</span>
                         </label>
-                        <div className="input-group">
+                        <div className="position-relative">
                             <input
                                 type={showPasswords.new ? 'text' : 'password'}
-                                className="form-control border-1"
+                                className="form-control modern-input w-100"
                                 id="newPassword"
                                 name="newPassword"
                                 value={formData.newPassword}
                                 onChange={handleChange}
                                 placeholder="Nhập mật khẩu mới..."
                                 disabled={isLoading}
+                                style={{ paddingRight: '45px' }}
                             />
                             <button
                                 type="button"
-                                className="btn btn-outline-secondary"
+                                className="btn position-absolute border-0 text-muted"
                                 onClick={() => handleTogglePasswordVisibility('new')}
                                 disabled={isLoading}
+                                style={{ right: '5px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'transparent' }}
                             >
                                 <i className={`bi bi-eye${showPasswords.new ? '-slash' : ''}-fill`}></i>
                             </button>
@@ -186,22 +188,24 @@ const ChangePasswordForm = ({ onSuccess }) => {
                         <label htmlFor="confirmPassword" className="form-label fw-bold">
                             Xác Nhận Mật Khẩu Mới <span className="text-danger">*</span>
                         </label>
-                        <div className="input-group">
+                        <div className="position-relative">
                             <input
                                 type={showPasswords.confirm ? 'text' : 'password'}
-                                className="form-control border-1"
+                                className="form-control modern-input w-100"
                                 id="confirmPassword"
                                 name="confirmPassword"
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
                                 placeholder="Nhập lại mật khẩu mới..."
                                 disabled={isLoading}
+                                style={{ paddingRight: '45px' }}
                             />
                             <button
                                 type="button"
-                                className="btn btn-outline-secondary"
+                                className="btn position-absolute border-0 text-muted"
                                 onClick={() => handleTogglePasswordVisibility('confirm')}
                                 disabled={isLoading}
+                                style={{ right: '5px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'transparent' }}
                             >
                                 <i className={`bi bi-eye${showPasswords.confirm ? '-slash' : ''}-fill`}></i>
                             </button>
@@ -212,7 +216,7 @@ const ChangePasswordForm = ({ onSuccess }) => {
                     <div className="d-grid gap-2 mt-4">
                         <button
                             type="submit"
-                            className="btn btn-primary btn-lg fw-bold"
+                            className="modern-btn-primary btn-lg fw-bold shadow-sm"
                             disabled={isLoading}
                         >
                             {isLoading ? (

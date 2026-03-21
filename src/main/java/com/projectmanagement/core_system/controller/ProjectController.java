@@ -18,9 +18,6 @@ public class ProjectController {
     @Autowired
     private ProjectService projectService;
 
-    @Autowired
-    private ProjectRepository projectRepository;
-
     // 1. Tạo dự án
     @PostMapping("/create")
     public ResponseEntity<?> createProject(
@@ -35,11 +32,31 @@ public class ProjectController {
         }
     }
 
+    // 1b. Cập nhật dự án
+    @PutMapping("/{id}/update")
+    public ResponseEntity<?> updateProject(@PathVariable String id, @RequestBody Project projectDetails) {
+        try {
+            return ResponseEntity.ok(projectService.updateProject(id, projectDetails));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // 2. Thêm thành viên
     @PostMapping("/{projectId}/add-member/{userId}")
     public ResponseEntity<?> addMember(@PathVariable String projectId, @PathVariable String userId) {
         try {
             return ResponseEntity.ok(projectService.addMember(projectId, userId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // 2b. Thêm NHIỀU thành viên (🔥 MỚI)
+    @PostMapping("/{projectId}/add-members")
+    public ResponseEntity<?> addMembers(@PathVariable String projectId, @RequestBody List<String> userIds) {
+        try {
+            return ResponseEntity.ok(projectService.addMembers(projectId, userIds));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -79,12 +96,7 @@ public class ProjectController {
     @PutMapping("/{id}/complete")
     public ResponseEntity<?> completeProject(@PathVariable String id) {
         try {
-            Project project = projectRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
-
-            project.setStatus(ProjectStatus.CLOSED);
-            
-            projectRepository.save(project);
+            projectService.completeProject(id);
             return ResponseEntity.ok("Dự án đã được đóng thành công!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

@@ -36,7 +36,7 @@ public class User {
     @JsonIgnoreProperties({"manager", "members"})
     private Department department;
 
-    private boolean isActive = false; 
+    private boolean isActive = true; 
     private Long createdAt = System.currentTimeMillis();
     
     private String avatarUrl;

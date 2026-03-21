@@ -72,7 +72,7 @@ public class TaskService {
     }
 
     // 2. Update Status & Tiến độ
-    public Task updateStatus(String taskId, TaskStatus newStatus, int percent) {
+    public Task updateStatus(String taskId, TaskStatus newStatus, int percent, String submissionLink) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
 
@@ -83,7 +83,20 @@ public class TaskService {
 
         task.setStatus(newStatus);
         task.setCompletionPercentage(percent);
-        return taskRepository.save(task);
+        if (submissionLink != null && !submissionLink.trim().isEmpty()) {
+            task.setSubmissionLink(submissionLink);
+        }
+        
+        Task savedTask = taskRepository.save(task);
+
+        // 🔥 Bắn thông báo: Báo cáo tiến độ cho Quản lý dự án
+        User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
+        if (manager != null && !manager.getId().equals(task.getAssignee().getId())) {
+            String message = task.getAssignee().getFullName() + " đã cập nhật tiến độ công việc '" + task.getTitle() + "' thành " + percent + "%.";
+            notificationService.createNotification(manager, task.getAssignee(), savedTask, message, "TASK_UPDATED");
+        }
+
+        return savedTask;
     }
 
     // 3. 🔥 SỬA LẠI: Tìm Task theo Object Project (Fix lỗi không hiện task)
