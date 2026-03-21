@@ -53,7 +53,9 @@ public class TaskController {
             String statusStr = (String) payload.get("status");
             int percent = Integer.parseInt(payload.get("percent").toString());
             String submissionLink = (String) payload.get("submissionLink");
-
+            
+            System.out.println("🔵 [DEBUG] Cập nhật TaskID: " + taskId + ", Status: " + statusStr + ", Percent: " + percent + ", Link: " + submissionLink);
+            
             TaskStatus newStatus = TaskStatus.valueOf(statusStr); // Chuyển chuỗi thành Enum
 
             return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent, submissionLink));

@@ -66,6 +66,9 @@ const AdminDashboard = () => {
     const [availableDeptMembers, setAvailableDeptMembers] = useState([]);
     const [selectedDeptMembersToAdd, setSelectedDeptMembersToAdd] = useState([]);
 
+    const [showDeptPersonnelModal, setShowDeptPersonnelModal] = useState(false);
+    const [selectedDeptForPersonnel, setSelectedDeptForPersonnel] = useState(null);
+
     const fetchData = async () => {
         try {
             const [usersRes, deptsRes, projectsRes, deletedRes] = await Promise.all([
@@ -485,25 +488,6 @@ const AdminDashboard = () => {
 
     return (
         <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
-            <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4 sticky-top border-bottom w-100">
-                <div className="container-fluid">
-                    <div className="d-flex align-items-center"><span className="fs-4 me-2">🚀</span><span className="navbar-brand fw-bold text-primary tracking-wide">ADMIN PORTAL</span></div>
-                    <div className="ms-auto d-flex align-items-center gap-3">
-                        <button onClick={() => navigate('/admin/statistics')} className="btn btn-success btn-sm rounded-pill px-3 fw-bold">
-                            <i className="bi bi-bar-chart-fill me-1"></i>
-                            Thống kê
-                        </button>
-                        <NotificationBell />
-                        <button onClick={() => navigate('/profile')} className="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold">
-                            <i className="bi bi-person-fill me-1"></i>
-                            Tài khoản
-                        </button>
-                        <button onClick={handleLogout} className="btn btn-outline-dark btn-sm rounded-pill px-4 fw-bold">Đăng xuất</button>
-                    </div>
-        <div className="admin-dashboard-container">
-        <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
-
-            <div className="admin-dashboard-container">
             {/* Header Navbar */}
             <div className="glass-header d-flex justify-content-between align-items-center shadow-sm w-100 sticky-top">
                 {/* Logo - Fixed Width for Balance */}
@@ -796,6 +780,17 @@ const AdminDashboard = () => {
                                                                 <i className="bi bi-people-fill text-primary text-opacity-75 me-1"></i>
                                                                 {users.filter(u => u.department?.id === d.id).length} nhân sự
                                                             </div>
+                                                            <button 
+                                                                className="btn btn-sm btn-light border rounded-pill px-3 fw-bold text-primary shadow-sm"
+                                                                style={{ fontSize: '0.75rem' }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedDeptForPersonnel(d);
+                                                                    setShowDeptPersonnelModal(true);
+                                                                }}
+                                                            >
+                                                                <i className="bi bi-eye-fill me-1"></i> Xem danh sách
+                                                            </button>
                                                         </div>
                                                         <div className="d-flex align-items-center bg-light p-2 rounded border">
                                                             <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style={{width: 32, height: 32}}>
@@ -1316,11 +1311,71 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             )}
-            <style>{`.bg-blue-light { background-color: #e7f1ff; } .modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }`}</style>
+
+            {showDeptPersonnelModal && selectedDeptForPersonnel && (
+                <div className="modal-backdrop-custom">
+                    <div className="modern-card shadow-lg animate-fade-in" style={{ width: '100%', maxWidth: '550px', borderRadius: '1.25rem', overflow: 'hidden' }}>
+                        <div className="bg-primary p-4 text-white position-relative">
+                            <h5 className="fw-bold mb-1 text-white">Thành viên phòng ban</h5>
+                            <p className="small mb-0 text-white-50">{formatDeptName(selectedDeptForPersonnel.name)}</p>
+                            <button className="btn-close btn-close-white position-absolute top-0 end-0 m-4" onClick={() => setShowDeptPersonnelModal(false)}></button>
+                        </div>
+                        <div className="p-0">
+                            <div className="list-group list-group-flush custom-scrollbar" style={{ maxHeight: '450px', overflowY: 'auto' }}>
+                                {users.filter(u => u.department?.id === selectedDeptForPersonnel.id).length > 0 ? (
+                                    users.filter(u => u.department?.id === selectedDeptForPersonnel.id).map(user => (
+                                        <div key={user.id} className="list-group-item p-3 border-0 border-bottom d-flex align-items-center justify-content-between hover-bg-light transition">
+                                            <div className="d-flex align-items-center">
+                                                <div className="flex-shrink-0 me-3">
+                                                    {user.avatarUrl ? (
+                                                        <img src={user.avatarUrl} alt={user.fullName} className="rounded-circle shadow-sm border border-2 border-white" style={{ width: 45, height: 45, objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style={{ width: 45, height: 45, fontSize: '1.1rem' }}>
+                                                            {user.fullName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.95rem' }}>{user.fullName}</div>
+                                                    <div className="text-muted small text-truncate"><i className="bi bi-envelope me-1"></i> {user.email}</div>
+                                                    <span className={`badge ${user.role === 'ADMIN' ? 'bg-danger' : user.role === 'MANAGER' ? 'bg-warning text-dark' : 'bg-info text-white'} rounded-pill mt-1`} style={{ fontSize: '0.65rem' }}>
+                                                        {user.role}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-end">
+                                                <button 
+                                                    className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" 
+                                                    style={{ fontSize: '0.75rem' }}
+                                                    onClick={() => {
+                                                        setShowDeptPersonnelModal(false);
+                                                        setActiveTab('users');
+                                                        handleEditUser(user.id);
+                                                    }}
+                                                >
+                                                    Chỉnh sửa
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-5 text-muted">
+                                        <i className="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                                        Chưa có nhân viên nào trong phòng này.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-3 bg-light border-top">
+                                <button className="btn btn-secondary w-100 rounded-pill fw-bold" onClick={() => setShowDeptPersonnelModal(false)}>Đóng</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <style>{`.bg-blue-light { background-color: #e7f1ff; } .modal-backdrop-custom { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); } .hover-bg-light:hover { background-color: #f8f9fa; } .transition { transition: all 0.2s ease; }`}</style>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
     );
 };
 export default AdminDashboard;
