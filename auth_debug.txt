@@ -9716,3 +9716,19 @@ Sat Mar 21 22:58:35 ICT 2026 - ? EntryPoint: 401 Unauthorized - URL: /favicon.ic
 2026-03-21T23:01:13.239476400 - Authentication SET in SecurityContext for: manage@gmail.com with roles: [ROLE_MANAGER]
 2026-03-21T23:01:13.240477300 - UserDetails loaded for: admin@gmail.com
 2026-03-21T23:01:13.242476800 - Authentication SET in SecurityContext for: admin@gmail.com with roles: [ROLE_ADMIN]
+2026-03-21T23:02:13.193167 - Incoming request: GET /api/notifications/unread-count
+2026-03-21T23:02:13.195166300 - Token found for user: admin@gmail.com
+2026-03-21T23:02:13.200167300 - UserDetails loaded for: admin@gmail.com
+2026-03-21T23:02:13.201166900 - Incoming request: GET /api/notifications/unread-count
+2026-03-21T23:02:13.202164700 - Token found for user: manage@gmail.com
+2026-03-21T23:02:13.202164700 - Authentication SET in SecurityContext for: admin@gmail.com with roles: [ROLE_ADMIN]
+2026-03-21T23:02:13.206167400 - UserDetails loaded for: manage@gmail.com
+2026-03-21T23:02:13.209166400 - Authentication SET in SecurityContext for: manage@gmail.com with roles: [ROLE_MANAGER]
+2026-03-21T23:03:13.206980100 - Incoming request: GET /api/notifications/unread-count
+2026-03-21T23:03:13.211978900 - Incoming request: GET /api/notifications/unread-count
+2026-03-21T23:03:13.211978900 - Token found for user: admin@gmail.com
+2026-03-21T23:03:13.215979800 - Token found for user: manage@gmail.com
+2026-03-21T23:03:13.221978600 - UserDetails loaded for: admin@gmail.com
+2026-03-21T23:03:13.226978400 - UserDetails loaded for: manage@gmail.com
+2026-03-21T23:03:13.227979900 - Authentication SET in SecurityContext for: admin@gmail.com with roles: [ROLE_ADMIN]
+2026-03-21T23:03:13.237141300 - Authentication SET in SecurityContext for: manage@gmail.com with roles: [ROLE_MANAGER]
