@@ -88,7 +88,10 @@ public class ProjectService {
             throw new RuntimeException("Dự án đã đóng, không thể thêm thành viên!");
         }
 
-        User manager = project.getDepartment() != null ? project.getDepartment().getManager() : null;
+        if (project.getDepartment() == null) {
+            throw new RuntimeException("Dự án này không thuộc về phòng ban nào!");
+        }
+        User manager = project.getDepartment().getManager();
         String projectDeptId = project.getDepartment().getId();
 
         for (String userId : userIds) {

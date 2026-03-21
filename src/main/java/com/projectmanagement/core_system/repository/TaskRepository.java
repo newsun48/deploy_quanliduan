@@ -10,9 +10,14 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends MongoRepository<Task, String> {
 
+    // ✅ SỬA LẠI: Tìm theo ID bên trong đối tượng Project (@DBRef)
+    List<Task> findByProject_Id(String projectId);
+
     // ✅ SỬA LẠI: Tìm theo đối tượng Project
-    // Spring Data sẽ tự hiểu và so sánh ID bên trong DBRef
     List<Task> findByProject(Project project);
+
+    // ✅ SỬA LẠI: Tìm theo ID bên trong đối tượng User (Assignee @DBRef)
+    List<Task> findByAssignee_Id(String userId);
 
     // ✅ SỬA LẠI: Tìm theo đối tượng User (Assignee)
     List<Task> findByAssignee(User assignee);

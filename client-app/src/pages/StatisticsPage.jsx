@@ -217,42 +217,42 @@ const StatisticsPage = () => {
                             </button>
                         </div>
 
-                        {/* Summary Cards */}
+                        {/* Summary Cards - Specific to Task Status per user snippet */}
                         <div className="row g-4 mb-5">
                             <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-primary">
+                                <div className="modern-card p-4 border-bottom-primary h-100">
                                     <div className="stat-icon bg-primary-light text-primary">
-                                        <i className="bi bi-list-check"></i>
+                                        <i className="bi bi-list-task"></i>
                                     </div>
-                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Công việc</div>
-                                    <div className="fs-2 fw-bold text-dark">{stats.totalTasks || 0}</div>
+                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Tổng số TASK</div>
+                                    <div className="fs-1 fw-bold text-dark">{stats.totalTasks || 0}</div>
                                 </div>
                             </div>
                             <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-success">
+                                <div className="modern-card p-4 border-bottom-secondary h-100">
+                                    <div className="stat-icon bg-secondary-light text-secondary">
+                                        <i className="bi bi-clock-history"></i>
+                                    </div>
+                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Chưa làm (To Do)</div>
+                                    <div className="fs-1 fw-bold text-secondary">{statusData[0].value}</div>
+                                </div>
+                            </div>
+                            <div className="col-md-3">
+                                <div className="modern-card p-4 border-bottom-primary h-100">
+                                    <div className="stat-icon bg-primary-light text-primary" style={{ backgroundColor: 'rgba(67, 24, 255, 0.1)' }}>
+                                        <i className="bi bi-play-fill"></i>
+                                    </div>
+                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Đang làm (In Progress)</div>
+                                    <div className="fs-1 fw-bold text-primary">{statusData[1].value}</div>
+                                </div>
+                            </div>
+                            <div className="col-md-3">
+                                <div className="modern-card p-4 border-bottom-success h-100">
                                     <div className="stat-icon bg-success-light text-success">
-                                        <i className="bi bi-folder2-open"></i>
+                                        <i className="bi bi-check-all"></i>
                                     </div>
-                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Dự án</div>
-                                    <div className="fs-2 fw-bold text-dark">{stats.totalProjects || 0}</div>
-                                </div>
-                            </div>
-                            <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-info">
-                                    <div className="stat-icon bg-info-light text-info">
-                                        <i className="bi bi-people"></i>
-                                    </div>
-                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Nhân sự</div>
-                                    <div className="fs-2 fw-bold text-dark">{stats.totalUsers || 0}</div>
-                                </div>
-                            </div>
-                            <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-warning">
-                                    <div className="stat-icon bg-warning-light text-warning">
-                                        <i className="bi bi-building"></i>
-                                    </div>
-                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Phòng ban</div>
-                                    <div className="fs-2 fw-bold text-dark">{stats.totalDepts || 0}</div>
+                                    <div className="text-muted mb-1 small fw-bold text-uppercase">Hoàn thành (Done)</div>
+                                    <div className="fs-1 fw-bold text-success">{statusData[2].value}</div>
                                 </div>
                             </div>
                         </div>
@@ -417,193 +417,6 @@ const StatisticsPage = () => {
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
-    }));
-
-    return (
-        <div className="min-vh-100 bg-light d-flex flex-column" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
-            <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow px-4 w-100">
-                <div className="container-fluid">
-                    <div className="d-flex align-items-center text-white">
-                        <i className="bi bi-bar-chart-fill fs-4 me-2"></i>
-                        <span className="fw-bold tracking-wide">THỐNG KÊ DỰ ÁN</span>
-                    </div>
-                    <div className="ms-auto d-flex align-items-center gap-3">
-                        <NotificationBell />
-                        <button onClick={() => navigate('/admin')} className="btn btn-outline-light btn-sm fw-bold rounded-pill">
-                            <i className="bi bi-arrow-left me-1"></i> Quay lại
-                        </button>
-                        <button onClick={handleLogout} className="btn btn-outline-light btn-sm fw-bold rounded-pill">Đăng xuất</button>
-                    </div>
-                </div>
-            </nav>
-
-            <div className="container-fluid px-4 py-4 flex-grow-1">
-                <div className="row g-4 mb-4">
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-body text-center">
-                                <div className="fs-1 fw-bold text-primary">{stats.total || 0}</div>
-                                <div className="text-muted small">Tổng số Task</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-body text-center">
-                                <div className="fs-1 fw-bold text-secondary">{statusData[0].value}</div>
-                                <div className="text-muted small">Chưa làm (To Do)</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-body text-center">
-                                <div className="fs-1 fw-bold text-primary">{statusData[1].value}</div>
-                                <div className="text-muted small">Đang làm (In Progress)</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-body text-center">
-                                <div className="fs-1 fw-bold text-success">{statusData[2].value}</div>
-                                <div className="text-muted small">Hoàn thành (Done)</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="row g-4">
-                    <div className="col-lg-6">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-header bg-white py-3">
-                                <h5 className="mb-0 text-primary fw-bold">
-                                    <i className="bi bi-pie-chart-fill me-2"></i>Task theo Trạng thái
-                                </h5>
-                            </div>
-                            <div className="card-body d-flex align-items-center justify-content-center">
-                                {statusData.every(d => d.value === 0) ? (
-                                    <div className="text-muted text-center py-5">
-                                        <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                        Chưa có dữ liệu
-                                    </div>
-                                ) : (
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <PieChart>
-                                            <Pie
-                                                data={statusData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={100}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            >
-                                                {statusData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip formatter={(value) => `${value} task`} />
-                                            <Legend />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="col-lg-6">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-header bg-white py-3">
-                                <h5 className="mb-0 text-danger fw-bold">
-                                    <i className="bi bi-pie-chart-fill me-2"></i>Task theo Độ ưu tiên
-                                </h5>
-                            </div>
-                            <div className="card-body d-flex align-items-center justify-content-center">
-                                {priorityData.every(d => d.value === 0) ? (
-                                    <div className="text-muted text-center py-5">
-                                        <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                        Chưa có dữ liệu
-                                    </div>
-                                ) : (
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <PieChart>
-                                            <Pie
-                                                data={priorityData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={100}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            >
-                                                {priorityData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip formatter={(value) => `${value} task`} />
-                                            <Legend />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="col-lg-6">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-header bg-white py-3">
-                                <h5 className="mb-0 text-info fw-bold">
-                                    <i className="bi bi-bar-chart-fill me-2"></i>Task theo Dự án
-                                </h5>
-                            </div>
-                            <div className="card-body">
-                                {projectData.length === 0 ? (
-                                    <div className="text-muted text-center py-5">
-                                        <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                        Chưa có dữ liệu
-                                    </div>
-                                ) : (
-                                    <ResponsiveContainer width="100%" height={350}>
-                                        <BarChart data={projectData} layout="vertical">
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis type="number" />
-                                            <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
-                                            <Tooltip formatter={(value) => `${value} task`} />
-                                            <Bar dataKey="value" fill="#0dcaf0" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="col-lg-6">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-header bg-white py-3">
-                                <h5 className="mb-0 text-warning fw-bold">
-                                    <i className="bi bi-bar-chart-fill me-2"></i>Task theo Người thực hiện
-                                </h5>
-                            </div>
-                            <div className="card-body">
-                                {assigneeData.length === 0 ? (
-                                    <div className="text-muted text-center py-5">
-                                        <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                        Chưa có dữ liệu
-                                    </div>
-                                ) : (
-                                    <ResponsiveContainer width="100%" height={350}>
-                                        <BarChart data={assigneeData} layout="vertical">
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis type="number" />
-                                            <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
-                                            <Tooltip formatter={(value) => `${value} task`} />
-                                            <Bar dataKey="value" fill="#ffc107" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                )}
                             </div>
                         </div>
                     </div>
