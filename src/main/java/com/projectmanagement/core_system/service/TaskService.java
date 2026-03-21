@@ -5,13 +5,18 @@ import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.User;
+import com.projectmanagement.core_system.model.Department;
 import com.projectmanagement.core_system.repository.ProjectRepository;
 import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
+import com.projectmanagement.core_system.repository.DepartmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 import java.util.Map;
 
 @Service
@@ -24,6 +29,9 @@ public class TaskService {
     private ProjectRepository projectRepository;
 
     @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -34,7 +42,6 @@ public class TaskService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
 
-        // 🔥 Check: Nếu dự án đã đóng thì không cho tạo task
         if (project.getStatus() == ProjectStatus.CLOSED) {
             throw new RuntimeException("Dự án đã đóng, không thể giao việc mới!");
         }
@@ -55,7 +62,6 @@ public class TaskService {
             }
         }
 
-        // Để MongoDB tự tạo ID
         task.setProject(project);
         task.setAssignee(assignee);
         task.setStatus(TaskStatus.TO_DO);
@@ -63,9 +69,7 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
 
-        // 🔥 TẠO THÔNG BÁO cho người được gán công việc
-        // Lấy manager (người tạo task) - lấy từ department nếu có
-        User sender = assignee;  // Mặc định sender là người được gán (có thể thay đổi sau)
+        User sender = assignee; 
         String message = "Bạn được giao công việc mới: " + savedTask.getTitle() + " từ dự án: " + project.getName();
         notificationService.createNotification(assignee, sender, savedTask, message, "TASK_ASSIGNED");
 
@@ -77,7 +81,6 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
 
-        // 🔥 LOGIC MỚI: Chặn update nếu dự án đã ĐÓNG
         if (task.getProject().getStatus() == ProjectStatus.CLOSED) {
             throw new RuntimeException("KHÔNG THỂ CẬP NHẬT: Dự án này đã bị đóng!");
         }
@@ -90,7 +93,6 @@ public class TaskService {
         
         Task savedTask = taskRepository.save(task);
 
-        // 🔥 Bắn thông báo: Báo cáo tiến độ cho Quản lý dự án
         User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
         if (manager != null && !manager.getId().equals(task.getAssignee().getId())) {
             String message = task.getAssignee().getFullName() + " đã cập nhật tiến độ công việc '" + task.getTitle() + "' thành " + percent + "%.";
@@ -100,19 +102,26 @@ public class TaskService {
         return savedTask;
     }
 
-    // 3. 🔥 SỬA LẠI: Tìm Task theo Object Project (Fix lỗi không hiện task)
     public List<Task> getTasksByProject(String projectId) {
         Project p = new Project();
         p.setId(projectId);
         return taskRepository.findByProject(p);
     }
 
-    // 4. 🔥 SỬA LẠI: Tìm Task theo Object User
     public List<Task> getMyTasks(String userId) {
         User u = new User();
         u.setId(userId);
         return taskRepository.findByAssignee(u);
     }
+
+    // 5. Thống kê Toàn diện
+    public Map<String, Object> getTaskStatistics() {
+        List<Task> allTasks = taskRepository.findAll();
+        List<Project> allProjects = projectRepository.findAll();
+        List<User> allUsers = userRepository.findAll();
+        List<Department> allDepts = departmentRepository.findAll();
+        
+        // --- TASK STATS ---
 
     // 5. Thống kê Task
     public Map<String, Object> getTaskStatistics() {
@@ -123,11 +132,44 @@ public class TaskService {
         long inProgressCount = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.IN_PROGRESS).count();
         long doneCount = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
         
-        // Đếm theo priority
         long highPriority = allTasks.stream().filter(t -> t.getPriority() == com.projectmanagement.core_system.enums.Priority.HIGH).count();
         long mediumPriority = allTasks.stream().filter(t -> t.getPriority() == com.projectmanagement.core_system.enums.Priority.MEDIUM).count();
         long lowPriority = allTasks.stream().filter(t -> t.getPriority() == com.projectmanagement.core_system.enums.Priority.LOW).count();
         
+        Map<String, Long> byProject = new HashMap<>();
+        allProjects.forEach(p -> byProject.put(p.getName(), 0L));
+        allTasks.forEach(t -> {
+            if (t.getProject() != null) {
+                String pName = t.getProject().getName();
+                byProject.put(pName, byProject.getOrDefault(pName, 0L) + 1);
+            }
+        });
+        
+        Map<String, Long> byAssignee = allTasks.stream()
+            .filter(t -> t.getAssignee() != null)
+            .collect(Collectors.groupingBy(
+                t -> t.getAssignee().getFullName(),
+                Collectors.counting()
+            ));
+
+        // --- PROJECT STATS ---
+        long openProjects = allProjects.stream().filter(p -> p.getStatus() == ProjectStatus.OPEN).count();
+        long closedProjects = allProjects.stream().filter(p -> p.getStatus() == ProjectStatus.CLOSED).count();
+        long draftProjects = allProjects.stream().filter(p -> p.getStatus() == ProjectStatus.DRAFT).count();
+
+        // --- USER STATS ---
+        Map<String, Long> byDepartment = allUsers.stream()
+            .filter(u -> u.getDepartment() != null)
+            .collect(Collectors.groupingBy(
+                u -> u.getDepartment().getName(),
+                Collectors.counting()
+            ));
+        
+        return Map.of(
+            "totalTasks", allTasks.size(),
+            "totalProjects", allProjects.size(),
+            "totalUsers", allUsers.size(),
+            "totalDepts", allDepts.size(),
         // Đếm theo project
         Map<String, Long> byProject = allTasks.stream()
             .collect(java.util.stream.Collectors.groupingBy(
@@ -156,6 +198,16 @@ public class TaskService {
                 "LOW", lowPriority
             ),
             "byProject", byProject,
+            "byAssignee", byAssignee,
+            "projectStatus", Map.of(
+                "OPEN", openProjects,
+                "CLOSED", closedProjects,
+                "DRAFT", draftProjects
+            ),
+            "userDept", byDepartment
+        );
+    }
+
             "byAssignee", byAssignee
         );
     }
