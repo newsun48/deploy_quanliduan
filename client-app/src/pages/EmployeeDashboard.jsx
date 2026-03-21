@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -22,7 +22,7 @@ const EmployeeDashboard = () => {
     const [chatProjects, setChatProjects] = useState([]);
     const fetchMyTasks = async (userId) => {
         try {
-            const res = await axios.get(`/api/tasks/my-tasks/${userId}`);
+            const res = await api.get(`/tasks/my-tasks/${userId}`);
             setMyTasks(res.data);
         } catch (err) { console.error(err); }
     };
@@ -36,7 +36,7 @@ const EmployeeDashboard = () => {
         fetchMyTasks(userObj.id);
     }, []);
 
-    const fetchMyTasks = async (userId) => {
+    const fetchMyTasks1 = async (userId) => {
         try {
             const res = await api.get(`/tasks/my-tasks/${userId}`);
             setMyTasks(res.data);
@@ -70,7 +70,7 @@ const EmployeeDashboard = () => {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
-            await axios.put(`/api/tasks/${editingTask.id}/status`, {
+            await api.put(`/tasks/${editingTask.id}/status`, {
                 status: updatePayload.status,
                 percent: parseInt(updatePayload.percent)
             });

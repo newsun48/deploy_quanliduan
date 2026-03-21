@@ -9,22 +9,34 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
+        console.log('🔍 [Request Interceptor] URL:', config.url);
+        console.log('🔍 [Request Interceptor] Token in localStorage:', token ? 'EXISTS' : 'NULL');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log('🔍 [Request Interceptor] Authorization header set:', config.headers.Authorization);
+        } else {
+            console.log('🔍 [Request Interceptor] No token found, skipping Authorization header');
         }
         return config;
     },
     (error) => {
+        console.error('🔍 [Request Interceptor] Error:', error);
         return Promise.reject(error);
     }
 );
 
 // Interceptor để xử lý lỗi 401 (Unauthorized)
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log('✅ [Response Interceptor] Success:', response.config.url);
+        return response;
+    },
     (error) => {
+        console.error('❌ [Response Interceptor] Error:', error.config?.url);
+        console.error('❌ [Response Interceptor] Status:', error.response?.status);
+        console.error('❌ [Response Interceptor] Headers:', error.response?.headers);
         if (error.response?.status === 401) {
-            console.error("⛔ Unauthorized access detected at:", error.config.url);
+            console.error("⛔ Unauthorized access - clearing localStorage and redirecting");
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/';

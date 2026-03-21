@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
@@ -30,10 +29,10 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         try {
             const [usersRes, deptsRes, projectsRes, deletedRes] = await Promise.all([
-                axios.get('/api/users'),
-                axios.get('/api/departments'),
-                axios.get('/api/projects'),
-                axios.get(`/api/projects/deleted?adminEmail=${currentUser.email}`)
+                api.get('/users'),
+                api.get('/departments'),
+                api.get('/projects'),
+                api.get(`/projects/deleted?adminEmail=${currentUser.email}`)
             ]);
             console.log("Users:", usersRes.data);
             console.log("Departments:", deptsRes.data);
@@ -57,7 +56,7 @@ const AdminDashboard = () => {
     const handleSearchUser = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.get(`/api/users/search?keyword=${searchTerm}`);
+            const res = await api.get(`/users/search?keyword=${searchTerm}`);
             setUsers(res.data);
         } catch (err) { console.error("Lỗi tìm kiếm:", err); }
     };
@@ -152,18 +151,13 @@ const AdminDashboard = () => {
             setAvatarPreview(null);
             setAvatarUrl('');
             document.getElementById('avatarInput').value = '';
-            let url = '/api/users';
-            if (newUser.deptId) url += `?deptId=${newUser.deptId}`;
-            await axios.post(url, newUser);
-            alert("Thêm nhân sự thành công!"); 
-            setNewUser({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
             await fetchData();
         } catch (err) { alert("Lỗi: " + err.message); }
     };
 
     const handleDeleteUser = async (id) => {
         if (!window.confirm("Xóa nhân viên này?")) return;
-        try { await axios.delete(`/api/users/${id}`); fetchData(); } catch (err) { console.error(err); alert("Lỗi xóa!"); }
+        try { await api.delete(`/users/${id}`); fetchData(); } catch (err) { console.error(err); alert("Lỗi xóa!"); }
     };
 
     const [editingUserId, setEditingUserId] = useState(null);
@@ -205,7 +199,7 @@ const AdminDashboard = () => {
     const handleAddDept = async (e) => {
         e.preventDefault();
         try { 
-            await axios.post('/api/departments', newDept); 
+            await api.post('/departments', newDept); 
             alert("Thêm phòng thành công!"); 
             setNewDept({ name: '', description: '' });
             await fetchData(); 
@@ -216,8 +210,8 @@ const AdminDashboard = () => {
         e.preventDefault();
         if (!selectedDept) return;
         try {
-            const url = `/api/projects/create?deptId=${selectedDept.id}&email=${currentUser.email}`;
-            await axios.post(url, newProject);
+            const url = `/projects/create?deptId=${selectedDept.id}&email=${currentUser.email}`;
+            await api.post(url, newProject);
             alert(`Đã tạo dự án cho phòng ${selectedDept.name}!`);
             fetchData();
             setNewProject({ name: '', description: '', deadline: '', priority: 'MEDIUM' });
@@ -234,6 +228,10 @@ const AdminDashboard = () => {
                 <div className="container-fluid">
                     <div className="d-flex align-items-center"><span className="fs-4 me-2">🚀</span><span className="navbar-brand fw-bold text-primary tracking-wide">ADMIN PORTAL</span></div>
                     <div className="ms-auto d-flex align-items-center gap-3">
+                        <button onClick={() => navigate('/admin/statistics')} className="btn btn-success btn-sm rounded-pill px-3 fw-bold">
+                            <i className="bi bi-bar-chart-fill me-1"></i>
+                            Thống kê
+                        </button>
                         <NotificationBell />
                         <button onClick={() => navigate('/profile')} className="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold">
                             <i className="bi bi-person-fill me-1"></i>

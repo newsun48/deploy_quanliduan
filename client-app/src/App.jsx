@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import ProfilePage from './pages/ProfilePage';
+import StatisticsPage from './pages/StatisticsPage';
 
 // --- HÀM BẢO VỆ (Private Route) ---
 // Hàm này kiểm tra: Nếu chưa đăng nhập (không có user trong localStorage) -> Đá về trang Login
@@ -49,6 +50,12 @@ function App() {
                 <Route path="/profile" element={
                     <PrivateRoute>
                         <ProfilePage />
+                    </PrivateRoute>
+                } />
+
+                <Route path="/admin/statistics" element={
+                    <PrivateRoute>
+                        <StatisticsPage />
                     </PrivateRoute>
                 } />
             </Routes>

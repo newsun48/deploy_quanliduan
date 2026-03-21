@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "http://localhost:5173") // Cho phép React gọi API
+@CrossOrigin(origins = "http://localhost:5173")
 public class TaskController {
 
     @Autowired
@@ -59,5 +59,11 @@ public class TaskController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi cập nhật: " + e.getMessage());
         }
+    }
+
+    // 5. Thống kê Task (Dashboard Charts)
+    @GetMapping("/statistics")
+    public Map<String, Object> getTaskStatistics() {
+        return taskService.getTaskStatistics();
     }
 }
