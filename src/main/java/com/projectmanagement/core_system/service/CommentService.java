@@ -1,5 +1,6 @@
 package com.projectmanagement.core_system.service;
 
+import com.projectmanagement.core_system.model.AttachmentInfo;
 import com.projectmanagement.core_system.model.Comment;
 import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.Task;
@@ -11,7 +12,10 @@ import com.projectmanagement.core_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class CommentService {
@@ -30,6 +34,12 @@ public class CommentService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private TaskActivityService taskActivityService;
+
+    @Autowired
+    private UserActivityService userActivityService;
 
     // 1. Get all comments by Task ID
     public List<Comment> getCommentsByTaskId(String taskId) {
@@ -52,23 +62,24 @@ public class CommentService {
     }
 
     // 2. Add new comment
-    public Comment addComment(String taskId, String userId, String content) {
+    public Comment addComment(String taskId, String userId, String content, List<AttachmentInfo> attachments) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
 
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        if (content == null || content.trim().isEmpty()) {
-            throw new RuntimeException("Nội dung bình luận không được trống!");
+        if ((content == null || content.trim().isEmpty()) && (attachments == null || attachments.isEmpty())) {
+            throw new RuntimeException("Bình luận phải có nội dung hoặc file đính kèm!");
         }
 
         Comment comment = new Comment();
-        comment.setContent(content);
+        comment.setContent(content != null ? content.trim() : "");
         comment.setAuthor(author);
         comment.setTask(task);
         comment.setCreatedAt(LocalDateTime.now());
         comment.setUpdatedAt(LocalDateTime.now());
+        comment.setAttachments(buildCommentAttachments(author, attachments));
 
         Comment savedComment = commentRepository.save(comment);
 
@@ -96,6 +107,16 @@ public class CommentService {
             }
         }
 
+        taskActivityService.record(task, author, "COMMENT_ADDED",
+                author.getFullName() + " đã thêm bình luận",
+                Map.of(
+                        "commentId", savedComment.getId(),
+                        "attachmentCount", savedComment.getAttachments().size()
+                ));
+        userActivityService.record(author, author, "COMMENT_ADDED",
+                author.getFullName() + " đã bình luận trong task '" + task.getTitle() + "'",
+                Map.of("commentId", savedComment.getId(), "taskId", task.getId()));
+
         return savedComment;
     }
 
@@ -110,14 +131,51 @@ public class CommentService {
 
         comment.setContent(newContent);
         comment.setUpdatedAt(LocalDateTime.now());
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+        taskActivityService.record(comment.getTask(), comment.getAuthor(), "COMMENT_UPDATED",
+                comment.getAuthor().getFullName() + " đã chỉnh sửa bình luận",
+                Map.of("commentId", savedComment.getId()));
+        userActivityService.record(comment.getAuthor(), comment.getAuthor(), "COMMENT_UPDATED",
+                comment.getAuthor().getFullName() + " đã chỉnh sửa bình luận trong task '" + comment.getTask().getTitle() + "'",
+                Map.of("commentId", savedComment.getId(), "taskId", comment.getTask().getId()));
+        return savedComment;
     }
 
     // 4. Delete comment
     public void deleteComment(String commentId) {
-        if (!commentRepository.existsById(commentId)) {
-            throw new RuntimeException("Bình luận không tồn tại!");
-        }
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Bình luận không tồn tại!"));
         commentRepository.deleteById(commentId);
+        taskActivityService.record(comment.getTask(), comment.getAuthor(), "COMMENT_DELETED",
+                comment.getAuthor().getFullName() + " đã xóa bình luận",
+                Map.of("commentId", commentId));
+        userActivityService.record(comment.getAuthor(), comment.getAuthor(), "COMMENT_DELETED",
+                comment.getAuthor().getFullName() + " đã xóa bình luận trong task '" + comment.getTask().getTitle() + "'",
+                Map.of("commentId", commentId, "taskId", comment.getTask().getId()));
+    }
+
+    private List<AttachmentInfo> buildCommentAttachments(User author, List<AttachmentInfo> attachments) {
+        List<AttachmentInfo> normalizedAttachments = new ArrayList<>();
+        if (attachments == null) {
+            return normalizedAttachments;
+        }
+
+        for (AttachmentInfo item : attachments) {
+            if (item == null || item.getUrl() == null || item.getUrl().isBlank()) {
+                continue;
+            }
+
+            AttachmentInfo attachment = new AttachmentInfo();
+            attachment.setId(UUID.randomUUID().toString());
+            attachment.setUrl(item.getUrl());
+            attachment.setOriginalName(item.getOriginalName());
+            attachment.setSize(item.getSize());
+            attachment.setUploadedById(author.getId());
+            attachment.setUploadedByName(author.getFullName());
+            attachment.setUploadedAt(System.currentTimeMillis());
+            normalizedAttachments.add(attachment);
+        }
+
+        return normalizedAttachments;
     }
 }

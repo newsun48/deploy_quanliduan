@@ -1,7 +1,10 @@
 package com.projectmanagement.core_system.controller;
 
+import com.projectmanagement.core_system.model.AttachmentInfo;
+import com.projectmanagement.core_system.model.ChecklistItem;
 import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.Task;
+import com.projectmanagement.core_system.model.TaskActivity;
 import com.projectmanagement.core_system.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +46,15 @@ public class TaskController {
         return taskService.getMyTasks(userId);
     }
 
+    @GetMapping("/{taskId}")
+    public ResponseEntity<?> getTaskDetail(@PathVariable String taskId) {
+        try {
+            return ResponseEntity.ok(taskService.getTaskDetail(taskId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // 4. 🔥 QUAN TRỌNG: Cập nhật Tiến độ & Trạng thái (Nhân viên dùng)
     @PutMapping("/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(
@@ -68,5 +80,98 @@ public class TaskController {
     @GetMapping("/statistics")
     public Map<String, Object> getTaskStatistics() {
         return taskService.getTaskStatistics();
+    }
+
+    @PostMapping("/{taskId}/checklist-items")
+    public ResponseEntity<?> addChecklistItem(@PathVariable String taskId, @RequestBody Map<String, Object> payload) {
+        try {
+            ChecklistItem item = taskService.addChecklistItem(
+                    taskId,
+                    payload.get("title") != null ? payload.get("title").toString() : "",
+                    payload.get("actorId") != null ? payload.get("actorId").toString() : null
+            );
+            return ResponseEntity.ok(item);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{taskId}/checklist-items/{itemId}")
+    public ResponseEntity<?> updateChecklistItem(
+            @PathVariable String taskId,
+            @PathVariable String itemId,
+            @RequestBody Map<String, Object> payload) {
+        try {
+            ChecklistItem item = taskService.updateChecklistItem(
+                    taskId,
+                    itemId,
+                    payload,
+                    payload.get("actorId") != null ? payload.get("actorId").toString() : null
+            );
+            return ResponseEntity.ok(item);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{taskId}/checklist-items/{itemId}")
+    public ResponseEntity<?> deleteChecklistItem(
+            @PathVariable String taskId,
+            @PathVariable String itemId,
+            @RequestParam(required = false) String actorId) {
+        try {
+            return ResponseEntity.ok(taskService.deleteChecklistItem(taskId, itemId, actorId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{taskId}/attachments")
+    public ResponseEntity<?> addTaskAttachment(@PathVariable String taskId, @RequestBody Map<String, Object> payload) {
+        try {
+            AttachmentInfo attachment = parseAttachment(payload);
+            AttachmentInfo savedAttachment = taskService.addTaskAttachment(
+                    taskId,
+                    attachment,
+                    payload.get("actorId") != null ? payload.get("actorId").toString() : null
+            );
+            return ResponseEntity.ok(savedAttachment);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{taskId}/attachments/{attachmentId}")
+    public ResponseEntity<?> deleteTaskAttachment(
+            @PathVariable String taskId,
+            @PathVariable String attachmentId,
+            @RequestParam(required = false) String actorId) {
+        try {
+            return ResponseEntity.ok(taskService.deleteTaskAttachment(taskId, attachmentId, actorId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{taskId}/activity")
+    public ResponseEntity<?> getTaskActivity(@PathVariable String taskId) {
+        try {
+            List<TaskActivity> activity = taskService.getTaskActivity(taskId);
+            return ResponseEntity.ok(activity);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    private AttachmentInfo parseAttachment(Map<String, Object> payload) {
+        AttachmentInfo attachment = new AttachmentInfo();
+        attachment.setId(payload.get("id") != null ? payload.get("id").toString() : null);
+        attachment.setUrl(payload.get("url") != null ? payload.get("url").toString() : null);
+        attachment.setOriginalName(payload.get("originalName") != null ? payload.get("originalName").toString() : null);
+        attachment.setSize(payload.get("size") != null ? Long.parseLong(payload.get("size").toString()) : 0L);
+        attachment.setUploadedById(payload.get("uploadedById") != null ? payload.get("uploadedById").toString() : null);
+        attachment.setUploadedByName(payload.get("uploadedByName") != null ? payload.get("uploadedByName").toString() : null);
+        attachment.setUploadedAt(payload.get("uploadedAt") != null ? Long.parseLong(payload.get("uploadedAt").toString()) : 0L);
+        return attachment;
     }
 }

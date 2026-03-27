@@ -1,10 +1,13 @@
 package com.projectmanagement.core_system.controller;
 
+import com.projectmanagement.core_system.model.AttachmentInfo;
 import com.projectmanagement.core_system.model.Comment;
 import com.projectmanagement.core_system.service.CommentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,10 +46,10 @@ public class CommentController {
     public ResponseEntity<?> addComment(
             @RequestParam String taskId,
             @RequestParam String userId,
-            @RequestBody Map<String, String> payload) {
+            @RequestBody Map<String, Object> payload) {
         try {
-            String content = payload.get("content");
-            Comment comment = commentService.addComment(taskId, userId, content);
+            String content = payload.get("content") != null ? payload.get("content").toString() : "";
+            Comment comment = commentService.addComment(taskId, userId, content, parseAttachments(payload.get("attachments")));
             return ResponseEntity.ok(comment);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -76,5 +79,36 @@ public class CommentController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    private List<AttachmentInfo> parseAttachments(Object rawAttachments) {
+        List<AttachmentInfo> attachments = new ArrayList<>();
+        if (!(rawAttachments instanceof List<?> rawList)) {
+            return attachments;
+        }
+
+        for (Object item : rawList) {
+            if (item instanceof Map<?, ?> map) {
+                AttachmentInfo attachment = new AttachmentInfo();
+                attachment.setId(map.get("id") != null ? map.get("id").toString() : null);
+                attachment.setUrl(map.get("url") != null ? map.get("url").toString() : null);
+                attachment.setOriginalName(map.get("originalName") != null ? map.get("originalName").toString() : null);
+                attachment.setSize(parseLong(map.get("size")));
+                attachment.setUploadedById(map.get("uploadedById") != null ? map.get("uploadedById").toString() : null);
+                attachment.setUploadedByName(map.get("uploadedByName") != null ? map.get("uploadedByName").toString() : null);
+                attachment.setUploadedAt(parseLong(map.get("uploadedAt")));
+                attachments.add(attachment);
+            }
+        }
+
+        return attachments;
+    }
+
+    private long parseLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+
+        return Long.parseLong(value.toString());
     }
 }

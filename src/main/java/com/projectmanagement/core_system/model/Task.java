@@ -11,6 +11,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -32,6 +34,8 @@ public class Task {
     private TaskStatus status = TaskStatus.TO_DO;
     private int completionPercentage = 0;
     private String submissionLink;
+    private List<ChecklistItem> checklistItems = new ArrayList<>();
+    private List<AttachmentInfo> attachments = new ArrayList<>();
 
     @DBRef
     @JsonIgnoreProperties({"department", "members"})

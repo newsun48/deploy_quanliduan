@@ -3,8 +3,11 @@ package com.projectmanagement.core_system.service;
 import com.projectmanagement.core_system.enums.ProjectStatus;
 import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.enums.Priority;
+import com.projectmanagement.core_system.model.AttachmentInfo;
+import com.projectmanagement.core_system.model.ChecklistItem;
 import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.Task;
+import com.projectmanagement.core_system.model.TaskActivity;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.model.Department;
 import com.projectmanagement.core_system.repository.ProjectRepository;
@@ -17,6 +20,9 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,6 +42,12 @@ public class TaskService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private TaskActivityService taskActivityService;
+
+    @Autowired
+    private UserActivityService userActivityService;
 
     // 1. Tạo Task mới
     public Task createTask(Task task, String projectId, String assigneeId) {
@@ -66,6 +78,8 @@ public class TaskService {
         task.setAssignee(assignee);
         task.setStatus(TaskStatus.TO_DO);
         task.setCompletionPercentage(0);
+        task.setChecklistItems(new ArrayList<>());
+        task.setAttachments(new ArrayList<>());
 
         Task savedTask = taskRepository.save(task);
 
@@ -73,6 +87,12 @@ public class TaskService {
         User manager = project.getDepartment() != null ? project.getDepartment().getManager() : null;
         String message = "Bạn được giao công việc mới: " + savedTask.getTitle() + " từ dự án: " + project.getName();
         notificationService.createNotification(assignee, manager != null ? manager : assignee, savedTask, message, "TASK_ASSIGNED");
+        taskActivityService.record(savedTask, manager != null ? manager : assignee, "TASK_CREATED",
+                "Đã tạo công việc '" + savedTask.getTitle() + "' và giao cho " + assignee.getFullName(),
+                Map.of("projectId", project.getId(), "assigneeId", assignee.getId()));
+        userActivityService.record(manager != null ? manager : assignee, assignee, "TASK_CREATED",
+                (manager != null ? manager.getFullName() : assignee.getFullName()) + " đã tạo task '" + savedTask.getTitle() + "'",
+                Map.of("taskId", savedTask.getId(), "projectId", project.getId()));
 
         return savedTask;
     }
@@ -91,6 +111,16 @@ public class TaskService {
         task.setSubmissionLink(submissionLink);
         
         Task savedTask = taskRepository.save(task);
+        taskActivityService.record(savedTask, task.getAssignee(), "TASK_STATUS_UPDATED",
+                task.getAssignee().getFullName() + " đã cập nhật trạng thái thành " + newStatus + " (" + percent + "%)",
+                Map.of(
+                        "status", newStatus.name(),
+                        "completionPercentage", percent,
+                        "submissionLink", submissionLink == null ? "" : submissionLink
+                ));
+        userActivityService.record(task.getAssignee(), task.getAssignee(), "TASK_STATUS_UPDATED",
+                task.getAssignee().getFullName() + " đã cập nhật task '" + task.getTitle() + "' thành " + newStatus,
+                Map.of("taskId", savedTask.getId(), "status", newStatus.name(), "completionPercentage", percent));
 
         // Thông báo cho quản lý nếu cần
         User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
@@ -100,6 +130,162 @@ public class TaskService {
         }
 
         return savedTask;
+    }
+
+    public Task getTaskDetail(String taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
+    }
+
+    public ChecklistItem addChecklistItem(String taskId, String title, String actorId) {
+        Task task = getTaskDetail(taskId);
+        User actor = getActor(actorId, task.getAssignee());
+
+        if (title == null || title.trim().isEmpty()) {
+            throw new RuntimeException("Tên checklist không được để trống!");
+        }
+
+        ChecklistItem item = new ChecklistItem();
+        item.setId(UUID.randomUUID().toString());
+        item.setTitle(title.trim());
+        item.setCompleted(false);
+        item.setPosition(task.getChecklistItems().size());
+        item.setCreatedById(actor != null ? actor.getId() : null);
+        item.setCreatedByName(actor != null ? actor.getFullName() : "Hệ thống");
+        item.setCreatedAt(System.currentTimeMillis());
+        item.setUpdatedAt(System.currentTimeMillis());
+
+        task.getChecklistItems().add(item);
+        taskRepository.save(task);
+
+        taskActivityService.record(task, actor, "CHECKLIST_ITEM_ADDED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã thêm checklist: " + item.getTitle(),
+                Map.of("itemId", item.getId(), "title", item.getTitle()));
+
+        return item;
+    }
+
+    public ChecklistItem updateChecklistItem(String taskId, String itemId, Map<String, Object> payload, String actorId) {
+        Task task = getTaskDetail(taskId);
+        User actor = getActor(actorId, task.getAssignee());
+        ChecklistItem item = task.getChecklistItems().stream()
+                .filter(checklistItem -> checklistItem.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Checklist item không tồn tại!"));
+
+        String oldTitle = item.getTitle();
+        boolean oldCompleted = item.isCompleted();
+
+        Object titleValue = payload.get("title");
+        if (titleValue instanceof String title && !title.trim().isEmpty()) {
+            item.setTitle(title.trim());
+        }
+
+        Object completedValue = payload.get("completed");
+        if (completedValue != null) {
+            item.setCompleted(Boolean.parseBoolean(completedValue.toString()));
+        }
+
+        Object positionValue = payload.get("position");
+        if (positionValue != null) {
+            item.setPosition(Integer.parseInt(positionValue.toString()));
+            task.getChecklistItems().sort(Comparator.comparingInt(ChecklistItem::getPosition));
+        }
+
+        item.setUpdatedAt(System.currentTimeMillis());
+        taskRepository.save(task);
+
+        if (!oldTitle.equals(item.getTitle())) {
+            taskActivityService.record(task, actor, "CHECKLIST_ITEM_RENAMED",
+                    (actor != null ? actor.getFullName() : "Hệ thống") + " đã đổi tên checklist thành: " + item.getTitle(),
+                    Map.of("itemId", item.getId(), "title", item.getTitle()));
+        }
+
+        if (oldCompleted != item.isCompleted()) {
+            taskActivityService.record(task, actor, item.isCompleted() ? "CHECKLIST_ITEM_COMPLETED" : "CHECKLIST_ITEM_REOPENED",
+                    (actor != null ? actor.getFullName() : "Hệ thống") + (item.isCompleted() ? " đã hoàn thành checklist: " : " đã mở lại checklist: ") + item.getTitle(),
+                    Map.of("itemId", item.getId(), "title", item.getTitle(), "completed", item.isCompleted()));
+        }
+
+        return item;
+    }
+
+    public Task deleteChecklistItem(String taskId, String itemId, String actorId) {
+        Task task = getTaskDetail(taskId);
+        User actor = getActor(actorId, task.getAssignee());
+
+        ChecklistItem item = task.getChecklistItems().stream()
+                .filter(checklistItem -> checklistItem.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Checklist item không tồn tại!"));
+
+        task.setChecklistItems(task.getChecklistItems().stream()
+                .filter(checklistItem -> !checklistItem.getId().equals(itemId))
+                .collect(Collectors.toCollection(ArrayList::new)));
+
+        for (int i = 0; i < task.getChecklistItems().size(); i++) {
+            task.getChecklistItems().get(i).setPosition(i);
+        }
+
+        Task savedTask = taskRepository.save(task);
+        taskActivityService.record(savedTask, actor, "CHECKLIST_ITEM_DELETED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa checklist: " + item.getTitle(),
+                Map.of("itemId", item.getId(), "title", item.getTitle()));
+
+        return savedTask;
+    }
+
+    public AttachmentInfo addTaskAttachment(String taskId, AttachmentInfo attachmentInfo, String actorId) {
+        Task task = getTaskDetail(taskId);
+        User actor = getActor(actorId, task.getAssignee());
+
+        if (attachmentInfo == null || attachmentInfo.getUrl() == null || attachmentInfo.getUrl().isBlank()) {
+            throw new RuntimeException("File đính kèm không hợp lệ!");
+        }
+
+        AttachmentInfo attachment = new AttachmentInfo();
+        attachment.setId(UUID.randomUUID().toString());
+        attachment.setUrl(attachmentInfo.getUrl());
+        attachment.setOriginalName(attachmentInfo.getOriginalName());
+        attachment.setSize(attachmentInfo.getSize());
+        attachment.setUploadedById(actor != null ? actor.getId() : null);
+        attachment.setUploadedByName(actor != null ? actor.getFullName() : "Hệ thống");
+        attachment.setUploadedAt(System.currentTimeMillis());
+
+        task.getAttachments().add(attachment);
+        taskRepository.save(task);
+
+        taskActivityService.record(task, actor, "TASK_ATTACHMENT_ADDED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã thêm file: " + attachment.getOriginalName(),
+                Map.of("attachmentId", attachment.getId(), "fileName", attachment.getOriginalName()));
+
+        return attachment;
+    }
+
+    public Task deleteTaskAttachment(String taskId, String attachmentId, String actorId) {
+        Task task = getTaskDetail(taskId);
+        User actor = getActor(actorId, task.getAssignee());
+
+        AttachmentInfo attachment = task.getAttachments().stream()
+                .filter(item -> item.getId().equals(attachmentId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("File đính kèm không tồn tại!"));
+
+        task.setAttachments(task.getAttachments().stream()
+                .filter(item -> !item.getId().equals(attachmentId))
+                .collect(Collectors.toCollection(ArrayList::new)));
+
+        Task savedTask = taskRepository.save(task);
+        taskActivityService.record(savedTask, actor, "TASK_ATTACHMENT_REMOVED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa file: " + attachment.getOriginalName(),
+                Map.of("attachmentId", attachment.getId(), "fileName", attachment.getOriginalName()));
+
+        return savedTask;
+    }
+
+    public List<TaskActivity> getTaskActivity(String taskId) {
+        getTaskDetail(taskId);
+        return taskActivityService.getTaskActivities(taskId);
     }
 
     // 3. Lấy task theo dự án
@@ -178,5 +364,13 @@ public class TaskService {
         results.put("userDept", userDept);
 
         return results;
+    }
+
+    private User getActor(String actorId, User fallbackUser) {
+        if (actorId == null || actorId.isBlank()) {
+            return fallbackUser;
+        }
+
+        return userRepository.findById(actorId).orElse(fallbackUser);
     }
 }
