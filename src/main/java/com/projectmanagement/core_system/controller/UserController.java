@@ -2,6 +2,7 @@ package com.projectmanagement.core_system.controller;
 
 import com.projectmanagement.core_system.config.JwtUtil;
 import com.projectmanagement.core_system.model.ChangePasswordRequest;
+import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.UserRepository;
 import com.projectmanagement.core_system.service.UserService;
@@ -62,11 +63,11 @@ public class UserController {
     @PostMapping
     public ResponseEntity<?> create(
             @RequestBody User user,
-            @RequestParam(required = false) String deptId 
+            @RequestParam(required = false) String deptId,
+            @RequestHeader("Authorization") String token
     ) {
         try {
-            // Auto active new user (default false in model)
-            return ResponseEntity.ok(userService.createUser(user, deptId));
+            return ResponseEntity.ok(userService.createUser(user, deptId, extractEmailSafely(token)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -74,9 +75,9 @@ public class UserController {
 
     // 4. Xóa nhân viên
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id) {
+    public ResponseEntity<?> deleteUser(@PathVariable String id, @RequestHeader("Authorization") String token) {
         try {
-            userService.deleteUser(id);
+            userService.deleteUser(id, extractEmailSafely(token));
             return ResponseEntity.ok("Đã xóa nhân viên thành công!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -145,6 +146,7 @@ public class UserController {
     @PostMapping("/create-with-avatar")
     public ResponseEntity<?> createWithAvatar(
             @RequestParam(required = false) String deptId,
+            @RequestHeader("Authorization") String token,
             @RequestParam("fullName") String fullName,
             @RequestParam("email") String email,
             @RequestParam("password") String password,
@@ -165,7 +167,7 @@ public class UserController {
                 user.setAvatarUrl(userService.downloadImageFromUrl(avatarUrl));
             }
             
-            return ResponseEntity.ok(userService.createUser(user, deptId));
+            return ResponseEntity.ok(userService.createUser(user, deptId, extractEmailSafely(token)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -178,10 +180,27 @@ public class UserController {
     public ResponseEntity<?> updateUser(
             @PathVariable String id,
             @RequestBody UpdateUserRequest request,
-            @RequestParam String adminEmail
+            @RequestHeader("Authorization") String token
     ) {
         try {
-            return ResponseEntity.ok(userService.updateEmployee(id, request, adminEmail));
+            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+            return ResponseEntity.ok(userService.updateEmployee(id, request, email));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<?> updateUserStatus(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String token,
+            @RequestBody UpdateUserStatusRequest request
+    ) {
+        try {
+            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+            return ResponseEntity.ok(userService.updateUserStatus(id, request, email));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -213,17 +232,28 @@ public class UserController {
 
     // 🔥 5. API CẬP NHẬT AVATAR
     @PutMapping("/{id}/avatar")
-    public ResponseEntity<?> updateAvatar(@PathVariable String id, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> updateAvatar(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, String> request) {
         try {
             String avatarUrl = request.get("avatarUrl");
             if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("avatarUrl không được để trống!");
             }
-            return ResponseEntity.ok(userService.updateAvatar(id, avatarUrl));
+            return ResponseEntity.ok(userService.updateAvatar(id, avatarUrl, extractEmailSafely(token)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
         }
+    }
+
+    private String extractEmailSafely(String token) {
+        if (token == null || token.isBlank() || !token.startsWith("Bearer ")) {
+            return null;
+        }
+
+        return jwtUtil.extractEmail(token.replace("Bearer ", ""));
     }
 }

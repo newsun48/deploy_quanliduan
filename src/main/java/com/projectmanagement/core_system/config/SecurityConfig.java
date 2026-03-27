@@ -66,7 +66,11 @@ public class SecurityConfig {
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // Cho phép tất cả OPTIONS
-                .requestMatchers("/api/auth/login", "/api/auth/forgot-password").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/validate").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users", "/api/users/create-with-avatar").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/users/*").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/bulk-update-dept").hasRole("ADMIN")
                 .requestMatchers("/error").permitAll() // Quan trọng: Cho phép xem nội dung lỗi
                 .requestMatchers("/api/files/**").permitAll() // Cho phép upload file (tạm thời để debug)
                 .requestMatchers("/ws/**").permitAll()       // WebSocket handshake

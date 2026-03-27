@@ -1,6 +1,7 @@
 package com.projectmanagement.core_system.service;
 
 import com.projectmanagement.core_system.model.Department;
+import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import com.projectmanagement.core_system.model.UpdateUserRequest;
+import com.projectmanagement.core_system.enums.ERole;
 
 @Service
 public class UserService {
@@ -30,8 +32,15 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private UserActivityService userActivityService;
+
     // 1. Tạo User (Thêm Validate kỹ càng hơn)
     public User createUser(User user, String deptId) {
+        return createUser(user, deptId, null);
+    }
+
+    public User createUser(User user, String deptId, String actorEmail) {
         // 🔥 Validate dữ liệu đầu vào
         if (!StringUtils.hasText(user.getFullName())) {
             throw new RuntimeException("Họ tên không được để trống!");
@@ -57,6 +66,9 @@ public class UserService {
 
         // Mã hóa pass - ID để MongoDB tự tạo
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        if (user.getRole() == ERole.ADMIN) {
+            user.setActive(true);
+        }
         
         user = userRepository.save(user);
 
@@ -66,6 +78,14 @@ public class UserService {
             dept.setManager(user);
             departmentRepository.save(dept);
         }
+
+        User actor = getActorByEmail(actorEmail);
+        userActivityService.record(actor, user, "USER_CREATED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã tạo tài khoản cho " + user.getFullName(),
+                Map.of(
+                        "role", user.getRole().name(),
+                        "departmentId", user.getDepartment() != null ? user.getDepartment().getId() : ""
+                ));
 
         return user;
     }
@@ -77,10 +97,18 @@ public class UserService {
 
     // 3. Xóa User
     public void deleteUser(String userId) {
+        deleteUser(userId, null);
+    }
+
+    public void deleteUser(String userId, String actorEmail) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User không tồn tại!"));
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
             throw new RuntimeException("Không được phép xóa tài khoản Quản trị viên (ADMIN)!");
         }
+        User actor = getActorByEmail(actorEmail);
+        userActivityService.record(actor, user, "USER_DELETED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa tài khoản của " + user.getFullName(),
+                Map.of("role", user.getRole().name()));
         userRepository.deleteById(userId);
     }
 
@@ -113,7 +141,10 @@ public class UserService {
 
         // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userActivityService.record(savedUser, savedUser, "PASSWORD_CHANGED",
+                savedUser.getFullName() + " đã thay đổi mật khẩu");
+        return savedUser;
     }
 
     // 7. 🔥 MỚI: Upload Avatar
@@ -134,8 +165,10 @@ public class UserService {
         User user = getUserById(userId);
         String base64Avatar = convertFileToBase64(avatarFile);
         user.setAvatarUrl(base64Avatar);
-
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userActivityService.record(savedUser, savedUser, "AVATAR_UPDATED",
+                savedUser.getFullName() + " đã cập nhật avatar");
+        return savedUser;
     }
 
     // 8. 🔥 MỚI: Convert File to Base64
@@ -161,8 +194,10 @@ public class UserService {
         User user = getUserById(userId);
         String base64Avatar = downloadImageFromUrl(imageUrl);
         user.setAvatarUrl(base64Avatar);
-
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userActivityService.record(savedUser, savedUser, "AVATAR_UPDATED",
+                savedUser.getFullName() + " đã cập nhật avatar từ URL");
+        return savedUser;
     }
 
     // 10. 🔥 MỚI: Download Image from URL and convert to Base64
@@ -202,6 +237,7 @@ public class UserService {
 
     // 11. Admin update employee info (email, department, role)
     public User updateEmployee(String userId, UpdateUserRequest request, String adminEmail) {
+        User admin = requireAdminActor(adminEmail);
         User user = getUserById(userId);
 
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
@@ -218,6 +254,7 @@ public class UserService {
 
         Department oldDepartment = user.getDepartment();
         com.projectmanagement.core_system.enums.ERole oldRole = user.getRole();
+        String oldEmail = user.getEmail();
 
         if (request.getDeptId() != null && !request.getDeptId().isEmpty()) {
             Department dept = departmentRepository.findById(request.getDeptId())
@@ -227,6 +264,9 @@ public class UserService {
 
         if (request.getRole() != null) {
             user.setRole(request.getRole());
+            if (request.getRole() == ERole.ADMIN) {
+                user.setActive(true);
+            }
         }
 
         user = userRepository.save(user);
@@ -256,15 +296,92 @@ public class UserService {
             }
         }
 
+        userActivityService.record(admin, user, "USER_UPDATED",
+                admin.getFullName() + " đã cập nhật thông tin của " + user.getFullName(),
+                Map.of(
+                        "oldEmail", oldEmail,
+                        "newEmail", user.getEmail(),
+                        "oldRole", oldRole.name(),
+                        "newRole", user.getRole().name(),
+                        "oldDepartmentId", oldDepartment != null ? oldDepartment.getId() : "",
+                        "newDepartmentId", user.getDepartment() != null ? user.getDepartment().getId() : ""
+                ));
+
         return user;
     }
+
+    public User updateUserStatus(String userId, UpdateUserStatusRequest request, String adminEmail) {
+        User admin = requireAdminActor(adminEmail);
+        User user = getUserById(userId);
+
+        if (request.getActive() == null) {
+            throw new RuntimeException("Trạng thái active không được để trống!");
+        }
+
+        if (user.getRole() == ERole.ADMIN) {
+            if (!request.getActive()) {
+                throw new RuntimeException("Tài khoản ADMIN luôn hoạt động và không thể bị khóa!");
+            }
+            user.setActive(true);
+            User savedUser = userRepository.save(user);
+            userActivityService.record(admin, savedUser, "ADMIN_STATUS_RECONFIRMED",
+                    admin.getFullName() + " đã xác nhận trạng thái hoạt động của ADMIN " + savedUser.getFullName());
+            return savedUser;
+        }
+
+        user.setActive(request.getActive());
+        User savedUser = userRepository.save(user);
+        userActivityService.record(admin, savedUser, request.getActive() ? "USER_UNLOCKED" : "USER_LOCKED",
+                admin.getFullName() + (request.getActive() ? " đã mở khóa tài khoản " : " đã khóa tài khoản ") + savedUser.getFullName());
+        return savedUser;
+    }
+
     // 🔥 6. MỚI: Cập nhật Avatar URL
-    public User updateAvatar(String userId, String avatarUrl) {
+    public User updateAvatar(String userId, String avatarUrl, String actorEmail) {
         User user = getUserById(userId); // Validate tồn tại
         if (!user.isActive()) {
             throw new RuntimeException("Không thể cập nhật avatar cho tài khoản đã bị khóa!");
         }
+        User actor = getActorByEmail(actorEmail);
+        if (actor == null) {
+            throw new RuntimeException("Thiếu thông tin người dùng thực hiện thao tác!");
+        }
+        boolean isAdmin = actor.getRole() == ERole.ADMIN;
+        boolean isSelf = actor.getId().equals(user.getId());
+        if (!isAdmin && !isSelf) {
+            throw new RuntimeException("Bạn không có quyền cập nhật avatar của tài khoản này!");
+        }
         user.setAvatarUrl(avatarUrl.trim());
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userActivityService.record(actor, savedUser, "AVATAR_UPDATED",
+                actor.getFullName() + " đã cập nhật avatar cho " + savedUser.getFullName());
+        return savedUser;
+    }
+
+    private User requireAdminActor(String adminEmail) {
+        if (!StringUtils.hasText(adminEmail)) {
+            throw new RuntimeException("Thiếu thông tin quản trị viên!");
+        }
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new RuntimeException("Quản trị viên không tồn tại!"));
+
+        if (admin.getRole() != ERole.ADMIN) {
+            throw new RuntimeException("Bạn không có quyền thực hiện thao tác này!");
+        }
+
+        if (!admin.isActive()) {
+            throw new RuntimeException("Tài khoản quản trị viên đã bị khóa!");
+        }
+
+        return admin;
+    }
+
+    private User getActorByEmail(String actorEmail) {
+        if (!StringUtils.hasText(actorEmail)) {
+            return null;
+        }
+
+        return userRepository.findByEmail(actorEmail).orElse(null);
     }
 }

@@ -65,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
                 logDebug("UserDetails loaded for: " + userEmail);
 
-                if (jwtUtil.validateToken(jwt, userEmail)) {
+                if (jwtUtil.validateToken(jwt, userEmail) && userDetails.isEnabled()) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -73,8 +73,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     logDebug("Authentication SET in SecurityContext for: " + userEmail + " with roles: " + userDetails.getAuthorities());
                     response.setHeader("X-Debug-Auth", "Authenticated");
                 } else {
-                    logDebug("Token validation FAILED");
-                    response.setHeader("X-Debug-Auth", "Invalid-Token");
+                    logDebug("Token validation FAILED or user disabled");
+                    response.setHeader("X-Debug-Auth", "Invalid-Token-Or-Disabled");
                 }
             }
         } catch (Exception e) {
