@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { authAPI } from '../api';
 
 const ForgotPasswordPage = () => {
     const [email, setEmail] = useState('');
@@ -15,7 +15,7 @@ const ForgotPasswordPage = () => {
         setMessage('');
 
         try {
-            const res = await axios.post('/api/auth/forgot-password', { email });
+            const res = await authAPI.forgotPassword(email);
             setMessage(res.data);
         } catch (err) {
             setError(err.response?.data || "Có lỗi xảy ra!");
@@ -32,7 +32,7 @@ const ForgotPasswordPage = () => {
                         <i className="bi bi-key-fill fs-1"></i>
                     </div>
                     <h2 className="fw-bold text-primary mb-1">QUÊN MẬT KHẨU</h2>
-                    <p className="text-muted">Nhập email để reset mật khẩu</p>
+                    <p className="text-muted">Nhập email để nhận liên kết đặt lại mật khẩu</p>
                 </div>
 
                 {error && <div className="alert alert-danger text-center p-2 mb-4">{error}</div>}
@@ -53,7 +53,7 @@ const ForgotPasswordPage = () => {
                     </div>
                     
                     <button type="submit" className="btn btn-primary w-100 py-3 fw-bold fs-5 shadow-sm rounded-pill" disabled={isLoading}>
-                        {isLoading ? 'Đang xử lý...' : 'RESET MẬT KHẨU'}
+                        {isLoading ? 'Đang xử lý...' : 'GỬI LIÊN KẾT ĐẶT LẠI'}
                     </button>
                 </form>
 
