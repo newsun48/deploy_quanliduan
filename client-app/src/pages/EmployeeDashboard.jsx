@@ -8,7 +8,15 @@ import PrivateChatPanel from '../components/PrivateChatPanel';
 
 const EmployeeDashboard = () => {
     const navigate = useNavigate();
-    const [currentUser, setCurrentUser] = useState(null);
+    const [currentUser] = useState(() => {
+        const userJson = localStorage.getItem('user');
+        if (!userJson) return null;
+        try {
+            return JSON.parse(userJson);
+        } catch {
+            return null;
+        }
+    });
     const [myTasks, setMyTasks] = useState([]);
     const [filterStatus, setFilterStatus] = useState('ALL'); 
     const [editingTask, setEditingTask] = useState(null);
@@ -38,28 +46,29 @@ const EmployeeDashboard = () => {
     };
 
     useEffect(() => {
-        const userJson = localStorage.getItem('user');
-        if (!userJson) { navigate('/'); return; }
-        const userObj = JSON.parse(userJson);
-        setCurrentUser(userObj);
-        fetchMyTasks(userObj.id);
-    }, [navigate]);
+        if (!currentUser) { navigate('/'); return; }
+        const timeoutId = window.setTimeout(() => {
+            fetchMyTasks(currentUser.id);
+        }, 0);
 
-    const fetchDepartmentUsers = async () => {
+        return () => window.clearTimeout(timeoutId);
+    }, [currentUser, navigate]);
+
+    const fetchDepartmentUsers = async (user) => {
         try {
             const res = await api.get('/users');
-            if (currentUser) {
-                const others = res.data.filter(u => u.id !== currentUser.id && u.department?.id === currentUser.department?.id);
-                setChatUsers(others);
-            }
+            if (!user) return;
+            const others = res.data.filter(u => u.id !== user.id && u.department?.id === user.department?.id);
+            setChatUsers(others);
         } catch (err) { console.error(err); }
     };
 
-    useEffect(() => {
-        if (activeTab === 'CHAT' && chatUsers.length === 0 && currentUser) {
-            fetchDepartmentUsers();
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        if (tab === 'CHAT' && chatUsers.length === 0 && currentUser) {
+            fetchDepartmentUsers(currentUser);
         }
-    }, [activeTab, currentUser]);
+    };
 
     const handleUpdate = async (e) => {
         e.preventDefault();
@@ -202,13 +211,13 @@ const EmployeeDashboard = () => {
                 <div className="top-menu d-none d-xl-flex justify-content-center">
                     <button 
                         className={`top-menu-item ${activeTab === 'TASKS' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('TASKS')}
+                        onClick={() => handleTabChange('TASKS')}
                     >
                         <i className={`bi bi-list-task top-menu-icon ${activeTab === 'TASKS' ? 'text-primary' : ''}`}></i> Công việc
                     </button>
                     <button 
                         className={`top-menu-item ${activeTab === 'CHAT' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('CHAT')}
+                        onClick={() => handleTabChange('CHAT')}
                     >
                         <i className={`bi bi-chat-dots-fill top-menu-icon ${activeTab === 'CHAT' ? 'text-primary' : ''}`}></i> Tin nhắn
                     </button>

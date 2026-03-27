@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import api from '../api';
+import api, { adminActivityAPI, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { askConfirm } from '../utils/confirm';
 import NotificationBell from '../components/NotificationBell';
@@ -49,6 +48,10 @@ const AdminDashboard = () => {
     const [selectedDept, setSelectedDept] = useState(null); 
     const [showProjectForm, setShowProjectForm] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [activityEntries, setActivityEntries] = useState([]);
+    const [selectedActivityUserId, setSelectedActivityUserId] = useState('');
+    const [activityLoading, setActivityLoading] = useState(false);
+    const [activityError, setActivityError] = useState('');
 
     const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
     const [avatarFile, setAvatarFile] = useState(null);
@@ -90,10 +93,29 @@ const AdminDashboard = () => {
         } catch (error) { console.error("Lỗi tải dữ liệu:", error); }
     };
 
-    useEffect(() => { 
-        // eslint-disable-next-line
-        fetchData(); 
+    useEffect(() => {
+        fetchData();
     }, []);
+
+    useEffect(() => {
+        if (activeTab !== 'activity') return;
+
+        const loadActivities = async () => {
+            try {
+                setActivityLoading(true);
+                setActivityError('');
+                const res = await adminActivityAPI.getRecentActivities(selectedActivityUserId || undefined, 80);
+                setActivityEntries(res.data || []);
+            } catch (err) {
+                const errorData = err.response?.data;
+                setActivityError(typeof errorData === 'string' ? errorData : (errorData?.message || err.message));
+            } finally {
+                setActivityLoading(false);
+            }
+        };
+
+        loadActivities();
+    }, [activeTab, selectedActivityUserId]);
     const handleLogout = () => { localStorage.removeItem('user'); navigate('/'); };
 
     const handleSearchUser = async (e) => {
@@ -105,6 +127,11 @@ const AdminDashboard = () => {
     };
 
     const handleResetSearch = () => { setSearchTerm(''); fetchData(); };
+
+    const formatActivityTime = (value) => {
+        if (!value) return '--';
+        return new Date(value).toLocaleString('vi-VN');
+    };
 
     const handleAvatarSelect = (e) => {
         const file = e.target.files[0];
@@ -129,31 +156,6 @@ const AdminDashboard = () => {
 
     const handleEditAvatar = () => {
         document.getElementById('avatarInput').click();
-    };
-
-    const handleAvatarUrlChange = (e) => {
-        const url = e.target.value;
-        setAvatarUrl(url);
-        setAvatarFile(null);
-        document.getElementById('avatarInput').value = '';
-    };
-
-    const handleLoadAvatarFromUrl = () => {
-        if (!avatarUrl.trim()) {
-            alert("Vui lòng nhập URL ảnh!");
-            return;
-        }
-        const img = new Image();
-        img.onload = () => {
-            setAvatarPreview(avatarUrl);
-            setAvatarFile(null);
-        };
-        img.onerror = () => {
-            alert("Không thể tải ảnh từ URL này. Vui lòng kiểm tra lại!");
-            setAvatarUrl('');
-            setAvatarPreview(null);
-        };
-        img.src = avatarUrl;
     };
 
     const handleRemoveAvatar = () => {
@@ -218,14 +220,10 @@ const AdminDashboard = () => {
 
     const handleSaveEdit = async () => {
         try {
-            await api.patch(`/users/${editingUserId}`, {
+            await userAPI.updateUser(editingUserId, {
                 email: editEmail,
                 deptId: editDeptId,
                 role: editRole
-            }, {
-                params: {
-                    adminEmail: currentUser.email
-                }
             });
             alert('Cập nhật thành công!');
             fetchData();
@@ -239,6 +237,30 @@ const AdminDashboard = () => {
 
     const handleCancelEdit = () => {
         setEditingUserId(null);
+    };
+
+    const isUserActive = (user) => user?.isActive !== false && user?.active !== false;
+
+    const handleToggleUserStatus = async (user) => {
+        const willLock = isUserActive(user);
+        const confirmText = willLock
+            ? `Khóa tài khoản ${user.fullName}? Người này sẽ không thể đăng nhập.`
+            : `Mở khóa tài khoản ${user.fullName}?`;
+
+        if (!(await askConfirm(confirmText))) return;
+
+        try {
+            await userAPI.updateUserStatus(user.id, !willLock);
+            alert(willLock ? 'Đã khóa tài khoản!' : 'Đã mở khóa tài khoản!');
+            if (editingUserId === user.id) {
+                setEditingUserId(null);
+            }
+            await fetchData();
+        } catch (err) {
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            alert('Lỗi: ' + message);
+        }
     };
 
     const handleAddDept = async (e) => {
@@ -510,6 +532,9 @@ const AdminDashboard = () => {
                     <button className={`top-menu-item ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
                         <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: activeTab === 'completed' ? '#4318ff' : '#a3aed1' }}></i> Đã Hoàn Thành
                     </button>
+                    <button className={`top-menu-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>
+                        <i className="bi bi-clock-history top-menu-icon" style={{ color: activeTab === 'activity' ? '#4318ff' : '#a3aed1' }}></i> Hoạt động
+                    </button>
                     <button className={`top-menu-item`} onClick={() => navigate('/admin/statistics')}>
                         <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> Thống kê
                     </button>
@@ -565,11 +590,12 @@ const AdminDashboard = () => {
             <div className="admin-main-wrapper">
                 <div className="p-4 p-md-5 animate-fade-in content-inner">
                     <div className="d-flex justify-content-between align-items-center mb-4 d-xl-none bg-white p-3 rounded-4 shadow-sm">
-                        <h4 className="page-title mb-0 fs-5">{activeTab === 'users' ? 'Quản lý Nhân sự' : activeTab === 'departments' ? 'Phòng Ban & Dự Án' : activeTab === 'completed' ? 'Dự án Hoàn thành' : 'Thùng rác'}</h4>
+                        <h4 className="page-title mb-0 fs-5">{activeTab === 'users' ? 'Quản lý Nhân sự' : activeTab === 'departments' ? 'Phòng Ban & Dự Án' : activeTab === 'completed' ? 'Dự án Hoàn thành' : activeTab === 'activity' ? 'Lịch sử hoạt động' : 'Thùng rác'}</h4>
                         <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value={activeTab} onChange={(e) => { if(e.target.value === 'stats') navigate('/admin/statistics'); else setActiveTab(e.target.value); }}>
                             <option value="users">Nhân sự</option>
                             <option value="departments">Phòng ban</option>
                             <option value="completed">Đã hoàn thành</option>
+                            <option value="activity">Hoạt động</option>
                             <option value="deleted">Thùng rác</option>
                             <option value="stats">Thống kê</option>
                         </select>
@@ -710,7 +736,7 @@ const AdminDashboard = () => {
                                                             )}
                                                         </td>
                                                         <td>
-                                                            {u.active !== false ? (
+                                                            {isUserActive(u) ? (
                                                                 <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2">Hoạt động</span>
                                                             ) : (
                                                                 <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2">Tạm khóa</span>
@@ -726,6 +752,9 @@ const AdminDashboard = () => {
                                                                 ) : (
                                                                     <>
                                                                         <button className="btn btn-sm btn-primary me-1 shadow-sm" onClick={() => handleEditUser(u.id)}>✏️</button>
+                                                                        <button className={`btn btn-sm me-1 shadow-sm ${isUserActive(u) ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={() => handleToggleUserStatus(u)}>
+                                                                            {isUserActive(u) ? '🔒' : '🔓'}
+                                                                        </button>
                                                                         <button className="btn btn-sm btn-outline-danger shadow-sm" onClick={() => handleDeleteUser(u.id)}>🗑️</button>
                                                                     </>
                                                                 )
@@ -737,6 +766,62 @@ const AdminDashboard = () => {
                                             {users.length === 0 && <tr><td colSpan="7" className="text-center py-5 text-muted"><i className="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy nhân viên nào.</td></tr>}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'activity' && (
+                    <div className="row g-4">
+                        <div className="col-12 col-xl-4">
+                            <div className="modern-card">
+                                <div className="modern-card-header">Bộ lọc hoạt động</div>
+                                <div className="card-body p-4 bg-white">
+                                    <label className="form-label fw-bold small text-muted">Xem theo người dùng</label>
+                                    <select className="form-select modern-input mb-3" value={selectedActivityUserId} onChange={(e) => setSelectedActivityUserId(e.target.value)}>
+                                        <option value="">Tất cả người dùng</option>
+                                        {users.map((u) => (
+                                            <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
+                                        ))}
+                                    </select>
+                                    <div className="small text-muted">
+                                        Admin có thể xem các hoạt động quan trọng của user như đăng nhập, đổi mật khẩu, reset mật khẩu, khóa/mở khóa, cập nhật tài khoản, task và bình luận.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-12 col-xl-8">
+                            <div className="modern-card h-100">
+                                <div className="modern-card-header d-flex justify-content-between align-items-center">
+                                    <span>Lịch sử hoạt động người dùng</span>
+                                    <span className="badge bg-light text-dark border">{activityEntries.length} sự kiện</span>
+                                </div>
+                                <div className="card-body p-4 bg-light">
+                                    {activityLoading ? (
+                                        <div className="text-center text-muted py-5">Đang tải hoạt động...</div>
+                                    ) : activityError ? (
+                                        <div className="alert alert-danger mb-0">{activityError}</div>
+                                    ) : activityEntries.length === 0 ? (
+                                        <div className="text-center text-muted py-5"><i className="bi bi-clock-history fs-1 d-block mb-2"></i>Chưa có hoạt động nào để hiển thị.</div>
+                                    ) : (
+                                        <div className="d-flex flex-column gap-3">
+                                            {activityEntries.map((entry) => (
+                                                <div key={entry.id} className="bg-white rounded-4 shadow-sm border p-3">
+                                                    <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
+                                                        <div>
+                                                            <div className="fw-bold text-dark">{entry.message}</div>
+                                                            <div className="small text-muted mt-1">
+                                                                Actor: {entry.actorName || entry.actorEmail || 'Hệ thống'}{entry.targetUserName ? ` • Target: ${entry.targetUserName}` : ''}
+                                                            </div>
+                                                        </div>
+                                                        <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">{entry.type}</span>
+                                                    </div>
+                                                    <div className="small text-muted">{formatActivityTime(entry.createdAt)}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

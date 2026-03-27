@@ -67,31 +67,6 @@ const ProfilePage = () => {
         document.getElementById('profileAvatarInput').click();
     };
 
-    const handleAvatarUrlChange = (e) => {
-        const url = e.target.value;
-        setAvatarUrl(url);
-        setAvatarFile(null);
-        document.getElementById('profileAvatarInput').value = '';
-    };
-
-    const handleLoadAvatarFromUrl = () => {
-        if (!avatarUrl.trim()) {
-            alert("Vui lòng nhập URL ảnh!");
-            return;
-        }
-        const img = new Image();
-        img.onload = () => {
-            setAvatarPreview(avatarUrl);
-            setAvatarFile(null);
-        };
-        img.onerror = () => {
-            alert("Không thể tải ảnh từ URL này. Vui lòng kiểm tra lại!");
-            setAvatarUrl('');
-            setAvatarPreview(null);
-        };
-        img.src = avatarUrl;
-    };
-
     const handleUploadAvatar = async () => {
         if (!avatarFile && !avatarUrl) return;
         try {
