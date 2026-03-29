@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
-import api from '../api';
+import api, { resolveAppUrl } from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -75,7 +75,7 @@ const ManagerDashboard = () => {
     }, [myDepartment]);
 
     const connectWebSocket = (deptId) => {
-        const socket = new SockJS('http://localhost:8080/ws');
+        const socket = new SockJS('/ws');
         const client = Stomp.over(() => socket);
         client.debug = () => { };
 
@@ -179,7 +179,7 @@ const ManagerDashboard = () => {
                 const uploadRes = await api.post("/files/upload", formData, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
-                finalDocumentLink = "http://localhost:8080" + uploadRes.data.url;
+                finalDocumentLink = uploadRes.data.url;
             } catch (err) {
                 alert("Lỗi tải lên tài liệu: " + err.message);
                 return;
@@ -432,7 +432,7 @@ const ManagerDashboard = () => {
                                                 <p className={`${isProjectClosed ? 'text-white-50' : 'text-muted'} mb-0`}>{selectedProject.description}</p>
                                                 {selectedProject.documentLink && (
                                                     <a 
-                                                        href={selectedProject.documentLink.startsWith('http') ? selectedProject.documentLink : `https://${selectedProject.documentLink}`} 
+                                                        href={resolveAppUrl(selectedProject.documentLink)} 
                                                         target="_blank" 
                                                         rel="noopener noreferrer" 
                                                         className={`btn btn-sm mt-3 fw-bold ${isProjectClosed ? 'btn-outline-light' : 'btn-outline-primary'}`}

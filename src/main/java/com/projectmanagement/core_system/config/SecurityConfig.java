@@ -75,7 +75,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/files/**").permitAll() // Cho phép upload file (tạm thời để debug)
                 .requestMatchers("/ws/**").permitAll()       // WebSocket handshake
                 .requestMatchers("/uploads/**").permitAll()   // Truy cập file uploads (ảnh/file)
-                .anyRequest().authenticated()
+                .requestMatchers("/api/**").authenticated()
+                .anyRequest().permitAll()
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {

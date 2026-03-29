@@ -1,8 +1,18 @@
 import axios from 'axios';
 
+export const resolveAppUrl = (value) => {
+    if (!value) return '#';
+
+    try {
+        return new URL(value, window.location.origin).toString();
+    } catch {
+        return value;
+    }
+};
+
 // Tạo axios instance với base URL
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
+    baseURL: '/api',
 });
 
 // Interceptor để tự động thêm token vào header

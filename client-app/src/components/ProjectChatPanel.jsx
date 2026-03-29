@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import api from '../api';
+import api, { resolveAppUrl } from '../api';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import './ProjectChatPanel.css';
@@ -38,7 +38,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
     };
 
     const connectWebSocket = () => {
-        const socket = new SockJS('http://localhost:8080/ws');
+        const socket = new SockJS('/ws');
         const client = Stomp.over(() => socket);
         client.debug = () => {};
 
@@ -251,12 +251,12 @@ const ProjectChatPanel = ({ project, currentUser }) => {
 
                                                 {/* Image */}
                                                 {msg.messageType === 'IMAGE' && msg.fileUrl && (
-                                                    <img src={`http://localhost:8080${msg.fileUrl}`} alt="Ảnh" style={{ maxWidth: '100%', borderRadius: '6px', marginBottom: '6px' }} />
+                                                    <img src={resolveAppUrl(msg.fileUrl)} alt="Ảnh" style={{ maxWidth: '100%', borderRadius: '6px', marginBottom: '6px' }} />
                                                 )}
 
                                                 {/* File download */}
                                                 {msg.messageType === 'FILE' && msg.fileUrl && (
-                                                    <a href={`http://localhost:8080${msg.fileUrl}`} target="_blank" rel="noreferrer" style={{ display: 'block', color: 'inherit', textDecoration: 'underline', marginBottom: '6px', fontSize: '13px' }}>
+                                                    <a href={resolveAppUrl(msg.fileUrl)} target="_blank" rel="noreferrer" style={{ display: 'block', color: 'inherit', textDecoration: 'underline', marginBottom: '6px', fontSize: '13px' }}>
                                                         📎 Tải xuống tài liệu
                                                     </a>
                                                 )}

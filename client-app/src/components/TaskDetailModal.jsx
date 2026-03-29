@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { commentAPI, fileAPI, taskAPI } from '../api';
+import { commentAPI, fileAPI, resolveAppUrl, taskAPI } from '../api';
 import './TaskDetailModal.css';
 import { askConfirm } from '../utils/confirm';
 
-const API_HOST = 'http://localhost:8080';
-
 const getFileUrl = (url) => {
     if (!url) return '#';
-    return url.startsWith('http') ? url : `${API_HOST}${url}`;
+    return resolveAppUrl(url);
 };
 
 const formatDateTime = (value) => {

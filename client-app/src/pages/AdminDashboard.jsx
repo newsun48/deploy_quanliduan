@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api, { adminActivityAPI, userAPI } from '../api';
+import api, { adminActivityAPI, resolveAppUrl, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { askConfirm } from '../utils/confirm';
 import NotificationBell from '../components/NotificationBell';
@@ -434,7 +434,7 @@ const AdminDashboard = () => {
                             headers: { 'Content-Type': 'multipart/form-data' }
                         });
                         // Đính URL upload trả về thành documentLink
-                        documentLink = "http://localhost:8080" + uploadRes.data.url;
+                        documentLink = uploadRes.data.url;
                     } catch (err) {
                         Swal.showValidationMessage('Lỗi upload file: ' + err.message);
                         return false;
@@ -1046,7 +1046,7 @@ const AdminDashboard = () => {
                                                                     <div className="d-flex justify-content-between mb-1">
                                                                         <span className="text-muted small fw-bold"><i className="bi bi-info-circle me-1"></i>Mô tả:</span>
                                                                         {p.documentLink && (
-                                                                            <a href={p.documentLink.startsWith('http') ? p.documentLink : `https://${p.documentLink}`} target="_blank" rel="noopener noreferrer" className="badge bg-primary text-decoration-none" title="Tài liệu đính kèm" onClick={e => e.stopPropagation()}>
+                                                                            <a href={resolveAppUrl(p.documentLink)} target="_blank" rel="noopener noreferrer" className="badge bg-primary text-decoration-none" title="Tài liệu đính kèm" onClick={e => e.stopPropagation()}>
                                                                                 <i className="bi bi-link-45deg"></i> Link
                                                                             </a>
                                                                         )}
@@ -1112,7 +1112,7 @@ const AdminDashboard = () => {
                                                                     </td>
                                                                     <td className="text-end pe-4">
                                                                         {p.documentLink && (
-                                                                            <a href={p.documentLink.startsWith('http') ? p.documentLink : `https://${p.documentLink}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm text-primary hover-text-primary border-0 p-1 me-1" title="Mở link tài liệu" onClick={e => e.stopPropagation()}>
+                                                                            <a href={resolveAppUrl(p.documentLink)} target="_blank" rel="noopener noreferrer" className="btn btn-sm text-primary hover-text-primary border-0 p-1 me-1" title="Mở link tài liệu" onClick={e => e.stopPropagation()}>
                                                                                 <i className="bi bi-link-45deg fs-5"></i>
                                                                             </a>
                                                                         )}
