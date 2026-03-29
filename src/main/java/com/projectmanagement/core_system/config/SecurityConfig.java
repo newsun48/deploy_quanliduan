@@ -45,7 +45,8 @@ public class SecurityConfig {
             "http://localhost:5173", 
             "http://127.0.0.1:5173", 
             "http://localhost:5174", 
-            "http://127.0.0.1:5174"
+            "http://127.0.0.1:5174",
+            "https://deployquanliduan-production.up.railway.app"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
