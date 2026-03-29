@@ -66,6 +66,26 @@ public class SecurityConfig {
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // Cho phép tất cả OPTIONS
+                .requestMatchers(
+                    "/",
+                    "/index.html",
+                    "/assets/**",
+                    "/favicon.ico",
+                    "/vite.svg",
+                    "/manifest.json",
+                    "/robots.txt",
+                    "/**/*.js",
+                    "/**/*.css",
+                    "/**/*.map",
+                    "/**/*.json",
+                    "/**/*.png",
+                    "/**/*.jpg",
+                    "/**/*.jpeg",
+                    "/**/*.svg",
+                    "/**/*.webp",
+                    "/**/*.gif",
+                    "/**/*.ico"
+                ).permitAll()
                 .requestMatchers("/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/validate").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users", "/api/users/create-with-avatar").hasRole("ADMIN")
