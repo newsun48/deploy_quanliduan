@@ -44,7 +44,7 @@ public class PasswordResetService {
     @Autowired
     private UserActivityService userActivityService;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String senderEmail;
 
     @Value("${app.password-reset.frontend-url:http://localhost:5173/reset-password}")
