@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
-import api, { resolveAppUrl } from '../api';
+import api, { getWebSocketUrl, resolveAppUrl, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -22,9 +22,39 @@ const formatDeptName = (name) => {
     return `Phòng ${cleanName}`;
 };
 
+const getTodayDateInputValue = () => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+const getRoleBadgeConfig = (role) => {
+    if (role === 'MANAGER') {
+        return { className: 'bg-warning text-dark', text: 'MANAGER' };
+    }
+    if (role === 'QA') {
+        return { className: 'bg-secondary text-white', text: 'QA' };
+    }
+    if (role === 'EMPLOYEE') {
+        return { className: 'bg-info text-white', text: 'EMPLOYEE' };
+    }
+    return { className: 'bg-light text-muted border', text: role || 'MEMBER' };
+};
+
+const dedupeMembersById = (members = []) => {
+    const seen = new Set();
+
+    return members.filter((member) => {
+        const key = member?.id ?? member?.email ?? member?.fullName;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
+
 const ManagerDashboard = () => {
     const navigate = useNavigate();
     const stompClientRef = useRef(null);
+    const selectedProjectIdRef = useRef(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [myDepartment, setMyDepartment] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -58,8 +88,8 @@ const ManagerDashboard = () => {
         const userJson = localStorage.getItem('user');
         if (!userJson) { navigate('/'); return; }
         try {
-            const userObj = JSON.parse(userJson);
-            fetchManagerInfo(userObj.id);
+            JSON.parse(userJson);
+            fetchManagerInfo();
         } catch (e) { console.error(e); navigate('/'); }
     }, []);
 
@@ -74,16 +104,24 @@ const ManagerDashboard = () => {
         };
     }, [myDepartment]);
 
+    useEffect(() => {
+        selectedProjectIdRef.current = selectedProject?.id || null;
+    }, [selectedProject?.id]);
+
     const connectWebSocket = (deptId) => {
-        const socket = new SockJS('/ws');
+        const token = localStorage.getItem('token');
+        const socket = new SockJS(getWebSocketUrl());
         const client = Stomp.over(() => socket);
         client.debug = () => { };
 
-        client.connect({}, () => {
+        client.connect({ Authorization: token ? `Bearer ${token}` : '' }, async () => {
             console.log('✅ WebSocket connected for Dashboard updates');
-            client.subscribe(`/topic/department/${deptId}/update`, (message) => {
+            client.subscribe(`/topic/department/${deptId}/update`, async (message) => {
                 if (message.body === "REFRESH_PROJECTS") {
-                    fetchDeptData(deptId);
+                    await fetchDeptData(deptId);
+                    if (selectedProjectIdRef.current) {
+                        await refreshSelectedProjectData(selectedProjectIdRef.current);
+                    }
                 }
             });
         }, (error) => {
@@ -94,11 +132,11 @@ const ManagerDashboard = () => {
         stompClientRef.current = client;
     };
 
-    const fetchManagerInfo = async (userId) => {
+    const fetchManagerInfo = async () => {
         setIsLoading(true);
         try {
-            const res = await api.get('/users');
-            const foundUser = res.data.find(u => u.id == userId);
+            const res = await userAPI.getCurrentUser();
+            const foundUser = res.data;
             
             if (foundUser) {
                 setCurrentUser(foundUser);
@@ -117,7 +155,7 @@ const ManagerDashboard = () => {
     const fetchDeptData = async (deptId) => {
         try {
             const [usersRes, projectsRes] = await Promise.all([
-                api.get('/users'),
+                userAPI.getMyDepartmentUsers(),
                 api.get('/projects')
             ]);
             
@@ -144,17 +182,37 @@ const ManagerDashboard = () => {
         } catch (err) { console.error("Lỗi tải dữ liệu phòng:", err); }
     };
 
+    const fetchProjectTasks = async (projectId) => {
+        try {
+            const res = await api.get(`/tasks/project/${projectId}`);
+            setTasks(Array.isArray(res.data) ? res.data : []);
+        } catch (e) {
+            setTasks([]);
+            console.error(e);
+        }
+    };
+
+    const refreshSelectedProjectData = async (projectId) => {
+        try {
+            const [projectsRes, tasksRes] = await Promise.all([
+                api.get('/projects'),
+                api.get(`/tasks/project/${projectId}`),
+            ]);
+            const updatedProject = (projectsRes.data || []).find((project) => String(project.id) === String(projectId));
+
+            if (updatedProject) {
+                setSelectedProject(updatedProject);
+            }
+            setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
+        } catch (err) {
+            console.error('Lỗi làm mới chi tiết dự án:', err);
+        }
+    };
+
     const handleSelectProject = async (project) => {
         setSelectedProject(project);
         setActiveTab('PROJECT_DETAIL');
-        try {
-            const res = await api.get(`/tasks/project/${project.id}`);
-            // 🔥 SỬA: Đảm bảo tasks luôn là mảng để tránh crash
-            setTasks(Array.isArray(res.data) ? res.data : []);
-        } catch (e) { 
-            setTasks([]); // Nếu lỗi thì set rỗng
-            console.error(e); 
-        }
+        await fetchProjectTasks(project.id);
     };
 
     const handleCompleteProject = async () => {
@@ -240,8 +298,7 @@ const ManagerDashboard = () => {
             alert("✅ Giao việc thành công!");
             setShowTaskModal(false);
             setNewTask({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
-            const res = await api.get(`/tasks/project/${selectedProject.id}`);
-            setTasks(Array.isArray(res.data) ? res.data : []);
+            await refreshSelectedProjectData(selectedProject.id);
         } catch (err) { alert("Lỗi: " + (err.response?.data || err.message)); }
     };
 
@@ -250,6 +307,32 @@ const ManagerDashboard = () => {
         localStorage.removeItem('token');
         navigate('/');
     };
+
+    const isProjectClosed = selectedProject?.status === 'CLOSED';
+    const todayDate = useMemo(() => getTodayDateInputValue(), []);
+    const selectedProjectMembers = useMemo(
+        () => dedupeMembersById(selectedProject?.members || []),
+        [selectedProject?.members]
+    );
+    const projectChatCandidates = useMemo(
+        () => selectedProjectMembers.filter((member) => String(member?.id) !== String(currentUser?.id)),
+        [currentUser?.id, selectedProjectMembers]
+    );
+    const departmentChatCandidates = useMemo(
+        () => dedupeMembersById(allEmployees).filter((member) => String(member?.id) !== String(currentUser?.id)),
+        [allEmployees, currentUser?.id]
+    );
+    const sameDepartmentOnlyChatCandidates = useMemo(
+        () => departmentChatCandidates.filter(
+            (member) => !projectChatCandidates.some((projectMember) => String(projectMember.id) === String(member.id))
+        ),
+        [departmentChatCandidates, projectChatCandidates]
+    );
+    const availableMembers = useMemo(() => allEmployees.filter((user) => {
+        if (!user?.id) return false;
+        if (String(user.id) === String(currentUser?.id)) return false;
+        return !selectedProjectMembers.some((member) => String(member.id) === String(user.id));
+    }), [allEmployees, currentUser?.id, selectedProjectMembers]);
 
     if (isLoading) {
         return (
@@ -268,12 +351,6 @@ const ManagerDashboard = () => {
             </div>
         );
     }
-
-    const isProjectClosed = selectedProject?.status === 'CLOSED';
-    const availableMembers = allEmployees.filter(u => {
-        const currentMembers = selectedProject?.members || [];
-        return !currentMembers.some(m => m.id === u.id);
-    });
 
     return (
         <div className="admin-dashboard-container" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -302,7 +379,7 @@ const ManagerDashboard = () => {
 
                 {/* Right Profile Actions */}
                 <div className="d-flex align-items-center justify-content-end gap-3" style={{ width: '280px' }}>
-                    <NotificationBell />
+                    <NotificationBell currentUser={currentUser} />
 
                     <div className="dropdown position-relative ms-1">
                         <div
@@ -476,7 +553,7 @@ const ManagerDashboard = () => {
                                                 className={`btn rounded-pill px-4 fw-bold transition ${projectTab === 'MEMBERS' ? 'bg-white shadow-sm text-primary' : 'btn-link text-muted'}`}
                                                 onClick={() => setProjectTab('MEMBERS')}
                                             >
-                                                <i className="bi bi-people-fill me-2"></i>Thành viên ({(selectedProject.members || []).length})
+                                                <i className="bi bi-people-fill me-2"></i>Thành viên ({selectedProjectMembers.length})
                                             </button>
                                             <button 
                                                 className={`btn rounded-pill px-4 fw-bold transition ${projectTab === 'CHAT' ? 'bg-white shadow-sm text-primary' : 'btn-link text-muted'}`}
@@ -552,7 +629,10 @@ const ManagerDashboard = () => {
                                                     </div>
                                                 )}
                                                 <div className="row g-4">
-                                                    {(selectedProject.members || []).map(m => (
+                                                    {projectChatCandidates.map(m => {
+                                                        const roleBadge = getRoleBadgeConfig(m.role);
+
+                                                        return (
                                                         <div key={m.id} className="col-12 col-md-6 col-lg-4">
                                                             <div className="card border-0 shadow-sm p-3 h-100 transition hover-shadow" style={{ cursor: 'pointer' }} onClick={() => setPrivateChatUser(m)}>
                                                                 <div className="d-flex align-items-center">
@@ -567,15 +647,58 @@ const ManagerDashboard = () => {
                                                                         <h6 className="fw-bold mb-0 text-truncate">{m.fullName}</h6>
                                                                         <small className="text-muted d-block text-truncate">{m.email}</small>
                                                                         <div className="mt-1 d-flex align-items-center gap-2">
-                                                                            <span className="badge bg-secondary bg-opacity-10 text-secondary" style={{ fontSize: '0.65rem' }}>EMPLOYEE</span>
+                                                                            <span className={`badge ${roleBadge.className}`} style={{ fontSize: '0.65rem' }}>{roleBadge.text}</span>
                                                                             <i className="bi bi-chat-fill text-primary small ms-auto"></i>
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
+
+                                                    {projectChatCandidates.length === 0 && (
+                                                        <div className="col-12 text-center py-4 text-muted">Chưa có thành viên dự án nào để mở chat riêng.</div>
+                                                    )}
                                                 </div>
+
+                                                {sameDepartmentOnlyChatCandidates.length > 0 && (
+                                                    <>
+                                                        <div className="d-flex align-items-center justify-content-between mt-4 mb-3">
+                                                            <h6 className="fw-bold mb-0 text-dark">Cùng phòng ban</h6>
+                                                            <small className="text-muted">Có thể nhắn riêng ngay cả khi chưa ở cùng dự án</small>
+                                                        </div>
+                                                        <div className="row g-4">
+                                                            {sameDepartmentOnlyChatCandidates.map(m => {
+                                                                const roleBadge = getRoleBadgeConfig(m.role);
+
+                                                                return (
+                                                                    <div key={m.id} className="col-12 col-md-6 col-lg-4">
+                                                                        <div className="card border-0 shadow-sm p-3 h-100 transition hover-shadow" style={{ cursor: 'pointer' }} onClick={() => setPrivateChatUser(m)}>
+                                                                            <div className="d-flex align-items-center">
+                                                                                {m.avatarUrl ? (
+                                                                                    <img src={m.avatarUrl} className="rounded-circle me-3 border border-2 border-white shadow-sm" style={{ width: 50, height: 50, objectFit: 'cover' }} alt={m.fullName} />
+                                                                                ) : (
+                                                                                    <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold me-3" style={{ width: 50, height: 50, fontSize: '1.2rem' }}>
+                                                                                        {m.fullName.charAt(0)}
+                                                                                    </div>
+                                                                                )}
+                                                                                <div className="min-w-0 flex-grow-1">
+                                                                                    <h6 className="fw-bold mb-0 text-truncate">{m.fullName}</h6>
+                                                                                    <small className="text-muted d-block text-truncate">{m.email}</small>
+                                                                                    <div className="mt-1 d-flex align-items-center gap-2">
+                                                                                        <span className={`badge ${roleBadge.className}`} style={{ fontSize: '0.65rem' }}>{roleBadge.text}</span>
+                                                                                        <i className="bi bi-chat-fill text-primary small ms-auto"></i>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
 
@@ -605,20 +728,20 @@ const ManagerDashboard = () => {
                             {availableMembers.length > 0 ? (
                                 <div className="d-flex flex-column h-100">
                                     <div className="list-group list-group-flush custom-scrollbar" style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                                        {availableMembers.map(u => (
-                                            <button 
-                                                key={u.id}
-                                                type="button" 
-                                                className={`list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center ${selectedMembersToAdd.includes(u.id) ? 'bg-primary bg-opacity-10' : ''}`}
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    if (selectedMembersToAdd.includes(u.id)) {
-                                                        setSelectedMembersToAdd(selectedMembersToAdd.filter(id => id !== u.id));
-                                                    } else {
-                                                        setSelectedMembersToAdd([...selectedMembersToAdd, u.id]);
-                                                    }
-                                                }}
-                                            >
+                                         {availableMembers.map(u => (
+                                             <button 
+                                                 key={u.id}
+                                                 type="button" 
+                                                 className={`list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center ${selectedMembersToAdd.includes(u.id) ? 'bg-primary bg-opacity-10' : ''}`}
+                                                 onClick={(e) => {
+                                                     e.preventDefault();
+                                                     setSelectedMembersToAdd((prev) => (
+                                                         prev.includes(u.id)
+                                                             ? prev.filter((id) => id !== u.id)
+                                                             : [...prev, u.id]
+                                                     ));
+                                                 }}
+                                             >
                                                 <div className="flex-shrink-0 me-3">
                                                     {u.avatarUrl ? (
                                                         <img src={u.avatarUrl} alt={u.fullName} className="rounded-circle shadow-sm border border-2 border-white" style={{ width: 48, height: 48, objectFit: 'cover' }} />
@@ -716,10 +839,10 @@ const ManagerDashboard = () => {
                                     <textarea className="form-control" rows="2" value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} />
                                 </div>
                                 <div className="row g-3 mb-3">
-                                    <div className="col-6">
-                                        <label className="form-label fw-bold text-dark small">Hạn hoàn thành</label>
-                                        <input type="date" className="form-control" required value={newTask.deadline} onChange={e => setNewTask({...newTask, deadline: e.target.value})} />
-                                    </div>
+                                     <div className="col-6">
+                                         <label className="form-label fw-bold text-dark small">Hạn hoàn thành</label>
+                                         <input type="date" min={todayDate} className="form-control" required value={newTask.deadline} onChange={e => setNewTask({...newTask, deadline: e.target.value})} />
+                                     </div>
                                     <div className="col-6">
                                         <label className="form-label fw-bold text-dark small">Độ ưu tiên</label>
                                         <select className="form-select" value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})}>
@@ -733,7 +856,7 @@ const ManagerDashboard = () => {
                                     <label className="form-label fw-bold text-dark small">Người thực hiện</label>
                                     <select className="form-select" required value={newTask.assigneeId} onChange={e => setNewTask({...newTask, assigneeId: e.target.value})}>
                                         <option value="">-- Chọn nhân viên --</option>
-                                        {(selectedProject.members || []).map(m => (
+                                        {selectedProjectMembers.map(m => (
                                             <option key={m.id} value={m.id}>{m.fullName}</option>
                                         ))}
                                     </select>
@@ -748,7 +871,8 @@ const ManagerDashboard = () => {
             {selectedTaskForDetail && (
                 <TaskDetailModal 
                     task={selectedTaskForDetail} 
-                    currentUser={currentUser} 
+                    currentUser={currentUser}
+                    assigneeCandidates={selectedProjectMembers}
                     onClose={() => setSelectedTaskForDetail(null)}
                     onTaskUpdate={() => {
                         if (selectedProject) handleSelectProject(selectedProject);

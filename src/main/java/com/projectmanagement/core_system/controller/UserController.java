@@ -1,7 +1,10 @@
 package com.projectmanagement.core_system.controller;
 
 import com.projectmanagement.core_system.config.JwtUtil;
+import com.projectmanagement.core_system.enums.ApprovalStatus;
 import com.projectmanagement.core_system.model.ChangePasswordRequest;
+import com.projectmanagement.core_system.model.ApproveUserRequest;
+import com.projectmanagement.core_system.model.RejectUserRequest;
 import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.UserRepository;
@@ -31,6 +34,40 @@ public class UserController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String token) {
+        try {
+            return ResponseEntity.ok(getAuthenticatedUser(token));
+        } catch (RuntimeException e) {
+            if ("USER_NOT_FOUND".equals(e.getMessage())) {
+                return ResponseEntity.status(404).body("User không tồn tại!");
+            }
+            return ResponseEntity.status(401).body("Không đủ quyền hoặc token không hợp lệ!");
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Không đủ quyền hoặc token không hợp lệ!");
+        }
+    }
+
+    @GetMapping("/my-department")
+    public ResponseEntity<?> getMyDepartmentUsers(@RequestHeader("Authorization") String token) {
+        try {
+            User currentUser = getAuthenticatedUser(token);
+
+            if (currentUser.getDepartment() == null) {
+                return ResponseEntity.ok(List.of());
+            }
+
+            return ResponseEntity.ok(userRepository.findByDepartment_Id(currentUser.getDepartment().getId()));
+        } catch (RuntimeException e) {
+            if ("USER_NOT_FOUND".equals(e.getMessage())) {
+                return ResponseEntity.status(404).body("User không tồn tại!");
+            }
+            return ResponseEntity.status(401).body("Không đủ quyền hoặc token không hợp lệ!");
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Không đủ quyền hoặc token không hợp lệ!");
+        }
+    }
+
     // 2. Lấy danh sách tất cả (Mặc định)
     @GetMapping
     public ResponseEntity<?> getAll() { 
@@ -45,10 +82,12 @@ public class UserController {
     @GetMapping("/fix-active")
     public String fixActive() {
         List<User> users = userRepository.findAll();
-        for (User u : users) {
-             u.setActive(true);
-             userRepository.save(u);
-        }
+         for (User u : users) {
+             if (u.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                 u.setActive(true);
+              }
+               userRepository.save(u);
+          }
         return "Fixed " + users.size() + " users";
     }
 
@@ -93,7 +132,7 @@ public class UserController {
         try {
             // Extract email từ JWT token
             String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            Optional<User> userOpt = userRepository.findByEmail(email);
+            Optional<User> userOpt = userRepository.findByEmailIgnoreCase(email);
 
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(401).body("User không tồn tại!");
@@ -119,7 +158,7 @@ public class UserController {
     ) {
         try {
             String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            Optional<User> userOpt = userRepository.findByEmail(email);
+            Optional<User> userOpt = userRepository.findByEmailIgnoreCase(email);
 
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(401).body("User không tồn tại!");
@@ -208,6 +247,38 @@ public class UserController {
         }
     }
 
+    @PatchMapping("/{id}/approve")
+    public ResponseEntity<?> approveUser(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String token,
+            @RequestBody ApproveUserRequest request
+    ) {
+        try {
+            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+            return ResponseEntity.ok(userService.approvePendingUser(id, request, email));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<?> rejectUser(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String token,
+            @RequestBody RejectUserRequest request
+    ) {
+        try {
+            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+            return ResponseEntity.ok(userService.rejectPendingUser(id, request, email));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi server: " + e.getMessage());
+        }
+    }
+
     // 8b. Cập nhật phòng ban cho NHIỀU nhân viên (🔥 MỚI)
     @PatchMapping("/bulk-update-dept")
     public ResponseEntity<?> bulkUpdateDept(
@@ -255,5 +326,11 @@ public class UserController {
         }
 
         return jwtUtil.extractEmail(token.replace("Bearer ", ""));
+    }
+
+    private User getAuthenticatedUser(String token) {
+        String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+        return userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
     }
 }

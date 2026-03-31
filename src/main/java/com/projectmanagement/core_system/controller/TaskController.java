@@ -5,6 +5,8 @@ import com.projectmanagement.core_system.model.ChecklistItem;
 import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.TaskActivity;
+import com.projectmanagement.core_system.model.TaskUpdateRequest;
+import com.projectmanagement.core_system.config.JwtUtil;
 import com.projectmanagement.core_system.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,9 @@ public class TaskController {
 
     @Autowired
     private TaskService taskService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     // 1. Tạo Task mới
     @PostMapping("/create")
@@ -73,6 +78,32 @@ public class TaskController {
             return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent, submissionLink));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi cập nhật: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/{taskId}")
+    public ResponseEntity<?> updateTaskByManager(
+            @PathVariable String taskId,
+            @RequestHeader("Authorization") String token,
+            @RequestBody TaskUpdateRequest request) {
+        try {
+            String managerEmail = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+            return ResponseEntity.ok(taskService.updateTask(taskId, request, managerEmail));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{taskId}")
+    public ResponseEntity<?> deleteTaskByManager(
+            @PathVariable String taskId,
+            @RequestHeader("Authorization") String token) {
+        try {
+            String managerEmail = jwtUtil.extractEmail(token.replace("Bearer ", ""));
+            taskService.deleteTask(taskId, managerEmail);
+            return ResponseEntity.ok("Xóa task thành công!");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

@@ -87,10 +87,16 @@ public class SecurityConfig {
                     "/**/*.gif",
                     "/**/*.ico"
                 ).permitAll()
-                .requestMatchers("/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/validate").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/google", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/validate").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/me").authenticated()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/my-department").authenticated()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users", "/api/users/search", "/api/users/fix-active").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users", "/api/users/create-with-avatar").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/users/*").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/*", "/api/users/*/status").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/*/approve").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/*/reject").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/bulk-update-dept").hasRole("ADMIN")
                 .requestMatchers("/error").permitAll() // Quan trọng: Cho phép xem nội dung lỗi
                 .requestMatchers("/api/files/**").permitAll() // Cho phép upload file (tạm thời để debug)

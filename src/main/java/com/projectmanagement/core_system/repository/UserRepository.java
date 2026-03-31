@@ -11,9 +11,15 @@ public interface UserRepository extends MongoRepository<User, String> {
     
     // Tìm user bằng email để đăng nhập
     Optional<User> findByEmail(String email);
+
+    Optional<User> findByEmailIgnoreCase(String email);
+
+    Optional<User> findByGoogleSubject(String googleSubject);
     
     // Kiểm tra email trùng khi tạo mới
     boolean existsByEmail(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
 
     // Tìm tất cả nhân viên thuộc 1 phòng ban (sử dụng department.id)
     List<User> findByDepartment_Id(String departmentId);

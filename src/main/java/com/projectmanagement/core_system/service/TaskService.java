@@ -8,9 +8,13 @@ import com.projectmanagement.core_system.model.ChecklistItem;
 import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.TaskActivity;
+import com.projectmanagement.core_system.model.TaskUpdateRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.model.Department;
+import com.projectmanagement.core_system.repository.CommentRepository;
+import com.projectmanagement.core_system.repository.NotificationRepository;
 import com.projectmanagement.core_system.repository.ProjectRepository;
+import com.projectmanagement.core_system.repository.TaskActivityRepository;
 import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
@@ -22,6 +26,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.time.LocalDate;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -49,6 +54,15 @@ public class TaskService {
     @Autowired
     private UserActivityService userActivityService;
 
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Autowired
+    private TaskActivityRepository taskActivityRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
     // 1. Tạo Task mới
     public Task createTask(Task task, String projectId, String assigneeId) {
         Project project = projectRepository.findById(projectId)
@@ -67,6 +81,8 @@ public class TaskService {
         if (!isMember) {
             throw new RuntimeException("LỖI: Người này chưa tham gia dự án!");
         }
+
+        validateTaskDeadline(task.getDeadline());
 
         if (task.getDeadline() != null && project.getDeadline() != null) {
             if (task.getDeadline().isAfter(project.getDeadline())) {
@@ -97,6 +113,93 @@ public class TaskService {
         return savedTask;
     }
 
+    public Task updateTask(String taskId, TaskUpdateRequest request, String managerEmail) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
+
+        if (request == null) {
+            throw new RuntimeException("Dữ liệu cập nhật không hợp lệ!");
+        }
+
+        if (task.getProject().getStatus() == ProjectStatus.CLOSED) {
+            throw new RuntimeException("KHÔNG THỂ CẬP NHẬT: Dự án này đã bị đóng!");
+        }
+
+        User manager = ensureManagerCanManageTask(task, managerEmail);
+
+        if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
+            task.setTitle(request.getTitle().trim());
+        }
+
+        if (request.getDescription() != null) {
+            task.setDescription(request.getDescription().trim());
+        }
+
+        if (request.getPriority() != null) {
+            task.setPriority(request.getPriority());
+        }
+
+        if (request.getDeadline() != null) {
+            validateTaskDeadline(request.getDeadline());
+            if (task.getProject().getDeadline() != null && request.getDeadline().isAfter(task.getProject().getDeadline())) {
+                throw new RuntimeException("LỖI: Deadline Task vượt quá Deadline dự án!");
+            }
+            task.setDeadline(request.getDeadline());
+        }
+
+        if (request.getAssigneeId() != null && !request.getAssigneeId().isBlank()) {
+            User assignee = userRepository.findById(request.getAssigneeId())
+                    .orElseThrow(() -> new RuntimeException("Người được gán không tồn tại!"));
+
+            boolean isMember = task.getProject().getMembers().stream()
+                    .anyMatch(member -> member.getId().equals(assignee.getId()));
+            if (!isMember) {
+                throw new RuntimeException("LỖI: Người này chưa tham gia dự án!");
+            }
+
+            User oldAssignee = task.getAssignee();
+            boolean assigneeChanged = oldAssignee == null || !oldAssignee.getId().equals(assignee.getId());
+
+            if (assigneeChanged) {
+                task.setAssignee(assignee);
+
+                if (oldAssignee != null) {
+                    notificationRepository.deleteByReceiverAndTaskAndType(oldAssignee, task, "TASK_ASSIGNED");
+                }
+
+                String message = "Bạn được giao công việc mới: " + task.getTitle() + " từ dự án: " + task.getProject().getName();
+                notificationService.createNotification(assignee, manager, task, message, "TASK_ASSIGNED");
+            }
+        }
+
+        Task savedTask = taskRepository.save(task);
+        taskActivityService.record(savedTask, manager, "TASK_UPDATED_BY_MANAGER",
+                manager.getFullName() + " đã cập nhật task '" + savedTask.getTitle() + "'",
+                Map.of("taskId", savedTask.getId(), "projectId", savedTask.getProject().getId()));
+
+        return savedTask;
+    }
+
+    public void deleteTask(String taskId, String managerEmail) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
+
+        if (task.getProject().getStatus() == ProjectStatus.CLOSED) {
+            throw new RuntimeException("KHÔNG THỂ XÓA: Dự án này đã bị đóng!");
+        }
+
+        User manager = ensureManagerCanManageTask(task, managerEmail);
+
+        commentRepository.deleteByTask(task);
+        taskActivityRepository.deleteByTaskId(task.getId());
+        notificationRepository.deleteByTask(task);
+        taskRepository.delete(task);
+
+        userActivityService.record(manager, manager, "TASK_DELETED",
+                manager.getFullName() + " đã xóa task '" + task.getTitle() + "'",
+                Map.of("taskId", task.getId(), "projectId", task.getProject().getId()));
+    }
+
     // 2. Cập nhật trạng thái và tiến độ
     public Task updateStatus(String taskId, TaskStatus newStatus, int percent, String submissionLink) {
         Task task = taskRepository.findById(taskId)
@@ -106,21 +209,25 @@ public class TaskService {
             throw new RuntimeException("KHÔNG THỂ CẬP NHẬT: Dự án này đã bị đóng!");
         }
 
-        task.setStatus(newStatus);
+        TaskStatus effectiveStatus = percent == 100 ? TaskStatus.DONE : newStatus;
+
+        validateTaskStatusUpdate(effectiveStatus, percent);
+
+        task.setStatus(effectiveStatus);
         task.setCompletionPercentage(percent);
         task.setSubmissionLink(submissionLink);
         
         Task savedTask = taskRepository.save(task);
         taskActivityService.record(savedTask, task.getAssignee(), "TASK_STATUS_UPDATED",
-                task.getAssignee().getFullName() + " đã cập nhật trạng thái thành " + newStatus + " (" + percent + "%)",
+                task.getAssignee().getFullName() + " đã cập nhật trạng thái thành " + effectiveStatus + " (" + percent + "%)",
                 Map.of(
-                        "status", newStatus.name(),
+                        "status", effectiveStatus.name(),
                         "completionPercentage", percent,
                         "submissionLink", submissionLink == null ? "" : submissionLink
                 ));
         userActivityService.record(task.getAssignee(), task.getAssignee(), "TASK_STATUS_UPDATED",
-                task.getAssignee().getFullName() + " đã cập nhật task '" + task.getTitle() + "' thành " + newStatus,
-                Map.of("taskId", savedTask.getId(), "status", newStatus.name(), "completionPercentage", percent));
+                task.getAssignee().getFullName() + " đã cập nhật task '" + task.getTitle() + "' thành " + effectiveStatus,
+                Map.of("taskId", savedTask.getId(), "status", effectiveStatus.name(), "completionPercentage", percent));
 
         // Thông báo cho quản lý nếu cần
         User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
@@ -372,5 +479,49 @@ public class TaskService {
         }
 
         return userRepository.findById(actorId).orElse(fallbackUser);
+    }
+
+    private void validateTaskDeadline(LocalDate deadline) {
+        if (deadline != null && deadline.isBefore(LocalDate.now())) {
+            throw new RuntimeException("LỖI: Deadline Task không được ở quá khứ!");
+        }
+    }
+
+    private void validateTaskStatusUpdate(TaskStatus newStatus, int percent) {
+        if (newStatus == null) {
+            throw new RuntimeException("Trạng thái công việc không hợp lệ!");
+        }
+
+        if (percent < 0 || percent > 100) {
+            throw new RuntimeException("Phần trăm hoàn thành phải nằm trong khoảng từ 0 đến 100!");
+        }
+
+        if (newStatus == TaskStatus.DONE && percent < 100) {
+            throw new RuntimeException("Không thể chuyển task sang DONE khi tiến độ chưa đạt 100%!");
+        }
+    }
+
+    private User ensureManagerCanManageTask(Task task, String managerEmail) {
+        if (managerEmail == null || managerEmail.isBlank()) {
+            throw new RuntimeException("Thiếu thông tin trưởng phòng thực hiện!");
+        }
+
+        User actingUser = userRepository.findByEmailIgnoreCase(managerEmail.trim().toLowerCase())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người dùng thực hiện!"));
+
+        User projectManager = getProjectManager(task.getProject());
+        if (!projectManager.getId().equals(actingUser.getId())) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa hoặc xóa công việc này!");
+        }
+
+        return actingUser;
+    }
+
+    private User getProjectManager(Project project) {
+        if (project == null || project.getDepartment() == null || project.getDepartment().getManager() == null) {
+            throw new RuntimeException("Dự án chưa có trưởng phòng quản lý!");
+        }
+
+        return project.getDepartment().getManager();
     }
 }

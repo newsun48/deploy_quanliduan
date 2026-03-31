@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import api from '../api';
+import { useEffect, useRef, useState } from 'react';
+import SockJS from 'sockjs-client';
+import { Stomp } from '@stomp/stompjs';
+import api, { getWebSocketUrl, projectAPI, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -8,6 +10,8 @@ import PrivateChatPanel from '../components/PrivateChatPanel';
 
 const EmployeeDashboard = () => {
     const navigate = useNavigate();
+    const stompClientRef = useRef(null);
+    const reconnectTimeoutRef = useRef(null);
     const [currentUser] = useState(() => {
         const userJson = localStorage.getItem('user');
         if (!userJson) return null;
@@ -34,29 +38,76 @@ const EmployeeDashboard = () => {
         try {
             const res = await api.get(`/tasks/my-tasks/${userId}`);
             setMyTasks(res.data || []);
-            
-            // Extract unique projects from tasks for chat
-            const projectsMap = {};
-            (res.data || []).forEach(t => {
-                if (t.project) projectsMap[t.project.id] = t.project;
-            });
-            setChatProjects(Object.values(projectsMap));
-            
         } catch (err) { console.error(err); }
+    };
+
+    const fetchAccessibleProjects = async (userId) => {
+        try {
+            const res = await projectAPI.getAccessibleProjects(userId);
+            setChatProjects(res.data || []);
+        } catch (err) {
+            console.error('Lỗi tải dự án có thể truy cập:', err);
+        }
     };
 
     useEffect(() => {
         if (!currentUser) { navigate('/'); return; }
         const timeoutId = window.setTimeout(() => {
-            fetchMyTasks(currentUser.id);
+            Promise.all([
+                fetchMyTasks(currentUser.id),
+                fetchAccessibleProjects(currentUser.id),
+            ]);
         }, 0);
 
         return () => window.clearTimeout(timeoutId);
     }, [currentUser, navigate]);
 
+    useEffect(() => {
+        if (!currentUser?.department?.id) return;
+
+        const connectWebSocket = () => {
+            const token = localStorage.getItem('token');
+            if (reconnectTimeoutRef.current) {
+                window.clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+
+            const socket = new SockJS(getWebSocketUrl());
+            const client = Stomp.over(() => socket);
+            client.debug = () => {};
+
+            client.connect({ Authorization: token ? `Bearer ${token}` : '' }, () => {
+                console.log('✅ Employee dashboard WebSocket connected');
+                client.subscribe(`/topic/department/${currentUser.department.id}/update`, async (message) => {
+                    if (message.body === 'REFRESH_PROJECTS') {
+                        await fetchAccessibleProjects(currentUser.id);
+                    }
+                });
+            }, (error) => {
+                console.error('❌ Employee dashboard WebSocket error:', error);
+                reconnectTimeoutRef.current = window.setTimeout(connectWebSocket, 5000);
+            });
+
+            stompClientRef.current = client;
+        };
+
+        connectWebSocket();
+
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                window.clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+        };
+    }, [currentUser]);
+
     const fetchDepartmentUsers = async (user) => {
         try {
-            const res = await api.get('/users');
+            const res = await userAPI.getMyDepartmentUsers();
             if (!user) return;
             const others = res.data.filter(u => u.id !== user.id && u.department?.id === user.department?.id);
             setChatUsers(others);
@@ -73,14 +124,38 @@ const EmployeeDashboard = () => {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
+            const normalizedPercent = parseInt(updatePayload.percent, 10);
+            const normalizedStatus = normalizedPercent === 100
+                ? 'DONE'
+                : updatePayload.status === 'DONE'
+                    ? 'IN_PROGRESS'
+                    : updatePayload.status;
+
             await api.put(`/tasks/${editingTask.id}/status`, {
-                status: updatePayload.status,
-                percent: parseInt(updatePayload.percent),
+                status: normalizedStatus,
+                percent: normalizedPercent,
                 submissionLink: updatePayload.submissionLink
             });
             setEditingTask(null);
             fetchMyTasks(currentUser.id);
         } catch (err) { alert("Lỗi: " + (err.response?.data || err.message)); }
+    };
+
+    const handleStatusChange = (status) => {
+        setUpdatePayload((prev) => ({
+            ...prev,
+            status,
+            percent: status === 'DONE' ? 100 : (prev.percent === 100 ? 99 : prev.percent)
+        }));
+    };
+
+    const handlePercentChange = (percentValue) => {
+        const percent = parseInt(percentValue, 10);
+        setUpdatePayload((prev) => ({
+            ...prev,
+            percent,
+            status: percent === 100 ? 'DONE' : (prev.status === 'DONE' ? 'IN_PROGRESS' : prev.status)
+        }));
     };
 
     const handleLogout = () => { localStorage.removeItem('user'); navigate('/'); };
@@ -99,6 +174,12 @@ const EmployeeDashboard = () => {
         progress: myTasks.filter(t => t.status === 'IN_PROGRESS').length,
         done: myTasks.filter(t => t.status === 'DONE').length
     };
+    const activeProjectChat = chatSelection.type === 'PROJECT'
+        ? chatProjects.find((project) => String(project.id) === String(chatSelection.data?.id)) || null
+        : null;
+    const activeChatSelection = chatSelection.type === 'PROJECT'
+        ? (activeProjectChat ? { type: 'PROJECT', data: activeProjectChat } : { type: null, data: null })
+        : chatSelection;
 
     return (
         <div className="min-vh-100 bg-light d-flex flex-column" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -225,7 +306,7 @@ const EmployeeDashboard = () => {
 
                 {/* Right Profile Actions */}
                 <div className="d-flex align-items-center justify-content-end gap-3" style={{ width: '280px' }}>
-                    <div className="d-none d-md-block"><NotificationBell /></div>
+                    <div className="d-none d-md-block"><NotificationBell currentUser={currentUser} /></div>
 
                     <div className="dropdown position-relative ms-1">
                         <div
@@ -423,12 +504,12 @@ const EmployeeDashboard = () => {
                                 
                                 {/* Main Chat Area */}
                                 <div className="col-md-8 col-lg-9 bg-white p-0 d-flex flex-column h-100 position-relative">
-                                    {chatSelection.type ? (
+                                    {activeChatSelection.type ? (
                                         <div className="h-100 d-flex flex-column animate-fade-in">
-                                            {chatSelection.type === 'PROJECT' ? (
-                                                <ProjectChatPanel project={chatSelection.data} currentUser={currentUser} />
+                                            {activeChatSelection.type === 'PROJECT' ? (
+                                                <ProjectChatPanel project={activeChatSelection.data} currentUser={currentUser} />
                                             ) : (
-                                                <PrivateChatPanel currentUser={currentUser} targetUser={chatSelection.data} />
+                                                <PrivateChatPanel currentUser={currentUser} targetUser={activeChatSelection.data} />
                                             )}
                                         </div>
                                     ) : (
@@ -467,7 +548,7 @@ const EmployeeDashboard = () => {
                                     <select 
                                         className="form-select rounded-3 py-2 border-light shadow-sm" 
                                         value={updatePayload.status} 
-                                        onChange={e => setUpdatePayload({...updatePayload, status: e.target.value})}
+                                        onChange={e => handleStatusChange(e.target.value)}
                                     >
                                         <option value="TO_DO">🆕 To Do (Mới nhận)</option>
                                         <option value="IN_PROGRESS">⚡ In Progress (Đang làm)</option>
@@ -482,7 +563,7 @@ const EmployeeDashboard = () => {
                                     <input 
                                         type="range" className="form-range custom-range" min="0" max="100" 
                                         value={updatePayload.percent} 
-                                        onChange={e => setUpdatePayload({...updatePayload, percent: e.target.value})} 
+                                        onChange={e => handlePercentChange(e.target.value)} 
                                     />
                                 </div>
                                 <div className="mb-4">

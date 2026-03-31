@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import api, { resolveAppUrl } from '../api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import api, { getWebSocketUrl, resolveAppUrl } from '../api';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 
@@ -13,19 +13,8 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
     const [replyToMessage, setReplyToMessage] = useState(null);
     const messagesEndRef = useRef(null);
     const stompClientRef = useRef(null);
-
-    useEffect(() => {
-        if (!currentUser || !targetUser) return;
-
-        fetchMessages();
-        connectWebSocket();
-
-        return () => {
-            if (stompClientRef.current) {
-                stompClientRef.current.disconnect();
-            }
-        };
-    }, [currentUser, targetUser]);
+    const reconnectTimeoutRef = useRef(null);
+    const token = localStorage.getItem('token');
 
     useEffect(() => {
         scrollToBottom();
@@ -35,16 +24,24 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const connectWebSocket = () => {
-        const socket = new SockJS('/ws');
+    const connectWebSocket = useCallback(() => {
+        if (!currentUser || !targetUser || currentUser.id === targetUser.id) return;
+
+        if (reconnectTimeoutRef.current) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+        }
+        if (stompClientRef.current) {
+            stompClientRef.current.disconnect();
+        }
+
+        const socket = new SockJS(getWebSocketUrl());
         const client = Stomp.over(() => socket);
         client.debug = () => {};
 
-        client.connect({}, () => {
+        client.connect({ Authorization: token ? `Bearer ${token}` : '' }, () => {
             console.log('✅ WebSocket connected for Private Chat:', currentUser.id);
 
-            // Subscribe to user-specific queue
-            client.subscribe(`/topic/user/${currentUser.id}/messages`, (messageOutput) => {
+            client.subscribe('/user/queue/messages', (messageOutput) => {
                 const newMsg = JSON.parse(messageOutput.body);
 
                 // Chỉ hiển thị tin nhắn giữa currentUser và targetUser
@@ -64,13 +61,13 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
             });
         }, (error) => {
             console.error('❌ WebSocket Error:', error);
-            setTimeout(connectWebSocket, 5000);
+            reconnectTimeoutRef.current = window.setTimeout(connectWebSocket, 5000);
         });
 
         stompClientRef.current = client;
-    };
+    }, [currentUser, targetUser, token]);
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get(
@@ -82,7 +79,23 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentUser?.id, targetUser?.id]);
+
+    useEffect(() => {
+        if (!currentUser || !targetUser || currentUser.id === targetUser.id) return;
+
+        fetchMessages();
+        connectWebSocket();
+
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                window.clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+        };
+    }, [connectWebSocket, currentUser, fetchMessages, targetUser]);
 
     const canEditOrDelete = (msg) => {
         if (!msg.createdAt) return false;
@@ -111,7 +124,6 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
             }
 
             const payload = {
-                senderId: currentUser.id,
                 receiverId: targetUser.id,
                 content: newMessage || (file ? file.name : ''),
                 messageType,
@@ -119,14 +131,23 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
                 replyToId: replyToMessage?.id || ''
             };
 
-            await api.post('/project-messages/send', payload);
+            const response = await api.post('/project-messages/send', payload);
+            const savedMessage = response.data;
+
+            setMessages((prev) => {
+                const exists = prev.find((message) => message.id === savedMessage?.id);
+                if (exists || !savedMessage?.id) return prev;
+                return [...prev, savedMessage];
+            });
 
             setNewMessage('');
             setFile(null);
             setReplyToMessage(null);
         } catch (err) {
             console.error('Lỗi gửi tin nhắn:', err);
-            alert('❌ Lỗi gửi tin nhắn: ' + (err.response?.data || err.message));
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            alert('❌ Lỗi gửi tin nhắn: ' + message);
         }
     };
 
@@ -151,7 +172,7 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
         }
     };
 
-    if (!currentUser || !targetUser) return null;
+    if (!currentUser || !targetUser || currentUser.id === targetUser.id) return null;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: '#f8f9fa', borderRadius: '8px', overflow: 'hidden' }}>

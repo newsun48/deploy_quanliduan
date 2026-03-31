@@ -27,7 +27,30 @@ const formatBytes = (value) => {
     return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 };
 
-const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
+const getTodayDateInputValue = () => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+const toDateInputValue = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value.slice(0, 10);
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+const createTaskEditState = (taskData) => ({
+    title: taskData?.title || '',
+    description: taskData?.description || '',
+    deadline: toDateInputValue(taskData?.deadline),
+    priority: taskData?.priority || 'MEDIUM',
+    assigneeId: taskData?.assignee?.id || '',
+});
+
+const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, onTaskUpdate }) => {
     const [taskDetail, setTaskDetail] = useState(task);
     const [comments, setComments] = useState([]);
     const [activity, setActivity] = useState([]);
@@ -41,13 +64,43 @@ const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
     const [submittingComment, setSubmittingComment] = useState(false);
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
+    const [isEditingTask, setIsEditingTask] = useState(false);
+    const [taskEditForm, setTaskEditForm] = useState(() => createTaskEditState(task));
+    const [savingTask, setSavingTask] = useState(false);
+    const [deletingTask, setDeletingTask] = useState(false);
 
     const currentTask = taskDetail || task;
+    const isManager = currentUser?.role === 'MANAGER';
+    const canManageTask = isManager && currentTask?.project?.status !== 'CLOSED';
+    const todayDate = useMemo(() => getTodayDateInputValue(), []);
+    const assigneeOptions = useMemo(() => {
+        const seen = new Set();
+        const options = [];
+
+        [...assigneeCandidates, currentTask?.assignee].forEach((member) => {
+            if (!member?.id || seen.has(member.id)) return;
+            seen.add(member.id);
+            options.push(member);
+        });
+
+        return options;
+    }, [assigneeCandidates, currentTask?.assignee]);
     const completionText = useMemo(() => {
         if (!currentTask?.checklistItems?.length) return '0/0 hoàn thành';
         const done = currentTask.checklistItems.filter((item) => item.completed).length;
         return `${done}/${currentTask.checklistItems.length} hoàn thành`;
     }, [currentTask]);
+
+    useEffect(() => {
+        setTaskDetail(task);
+        setIsEditingTask(false);
+        setTaskEditForm(createTaskEditState(task));
+    }, [task]);
+
+    useEffect(() => {
+        if (!currentTask || isEditingTask) return;
+        setTaskEditForm(createTaskEditState(currentTask));
+    }, [currentTask, isEditingTask]);
 
     useEffect(() => {
         if (!task?.id) return;
@@ -231,6 +284,44 @@ const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
         }
     };
 
+    const handleTaskEditSubmit = async (e) => {
+        e.preventDefault();
+
+        try {
+            setSavingTask(true);
+            await taskAPI.update(task.id, {
+                title: taskEditForm.title.trim(),
+                description: taskEditForm.description,
+                deadline: taskEditForm.deadline,
+                priority: taskEditForm.priority,
+                assigneeId: taskEditForm.assigneeId,
+            });
+            setIsEditingTask(false);
+            await refreshTaskDetail(true);
+        } catch (err) {
+            alert('Lỗi cập nhật công việc: ' + (err.response?.data || err.message));
+        } finally {
+            setSavingTask(false);
+        }
+    };
+
+    const handleDeleteTask = async () => {
+        if (!(await askConfirm('Bạn chắc chắn muốn xóa công việc này?'))) return;
+
+        try {
+            setDeletingTask(true);
+            await taskAPI.delete(task.id);
+            if (onTaskUpdate) {
+                await Promise.resolve(onTaskUpdate());
+            }
+            onClose();
+        } catch (err) {
+            alert('Lỗi xóa công việc: ' + (err.response?.data || err.message));
+        } finally {
+            setDeletingTask(false);
+        }
+    };
+
     if (!currentTask) return null;
 
     return (
@@ -242,9 +333,23 @@ const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
                             <h2 className="task-modal-title">{currentTask.title}</h2>
                             <div className="task-modal-subtitle">Task collaboration hub</div>
                         </div>
-                        <span className={`badge ${currentTask.priority === 'HIGH' ? 'bg-danger' : currentTask.priority === 'MEDIUM' ? 'bg-warning text-dark' : 'bg-info'}`}>
-                            {currentTask.priority}
-                        </span>
+                        <div className="task-modal-header-meta">
+                            {canManageTask && !isEditingTask && (
+                                <div className="task-modal-manager-actions">
+                                    <button className="task-modal-action-btn task-modal-action-btn-secondary" onClick={() => setIsEditingTask(true)}>
+                                        <i className="bi bi-pencil-square"></i>
+                                        Chinh sua
+                                    </button>
+                                    <button className="task-modal-action-btn task-modal-action-btn-danger" onClick={handleDeleteTask} disabled={deletingTask}>
+                                        <i className="bi bi-trash3"></i>
+                                        {deletingTask ? 'Dang xoa...' : 'Xoa'}
+                                    </button>
+                                </div>
+                            )}
+                            <span className={`badge ${currentTask.priority === 'HIGH' ? 'bg-danger' : currentTask.priority === 'MEDIUM' ? 'bg-warning text-dark' : 'bg-info'}`}>
+                                {currentTask.priority}
+                            </span>
+                        </div>
                     </div>
                     <button className="task-modal-close-btn" onClick={onClose}>&times;</button>
                 </div>
@@ -252,7 +357,103 @@ const TaskDetailModal = ({ task, currentUser, onClose, onTaskUpdate }) => {
                 <div className="task-modal-body">
                     <div className="task-details-panel">
                         <div className="task-info-section">
-                            <h5 className="task-section-title">Chi tiết công việc</h5>
+                            <div className="section-heading-row">
+                                <h5 className="task-section-title">Chi tiết công việc</h5>
+                                {isEditingTask && <span className="section-chip">Dang chinh sua</span>}
+                            </div>
+
+                            {canManageTask && isEditingTask && (
+                                <form className="task-edit-form" onSubmit={handleTaskEditSubmit}>
+                                    <div className="task-edit-grid">
+                                        <div className="task-edit-field task-edit-field-full">
+                                            <label htmlFor="task-edit-title">Tieu de cong viec</label>
+                                            <input
+                                                id="task-edit-title"
+                                                className="form-control"
+                                                required
+                                                value={taskEditForm.title}
+                                                onChange={(e) => setTaskEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        <div className="task-edit-field task-edit-field-full">
+                                            <label htmlFor="task-edit-description">Mo ta</label>
+                                            <textarea
+                                                id="task-edit-description"
+                                                className="form-control"
+                                                rows="3"
+                                                value={taskEditForm.description}
+                                                onChange={(e) => setTaskEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        <div className="task-edit-field">
+                                            <label htmlFor="task-edit-deadline">Han hoan thanh</label>
+                                            <input
+                                                id="task-edit-deadline"
+                                                type="date"
+                                                min={todayDate}
+                                                className="form-control"
+                                                required
+                                                value={taskEditForm.deadline}
+                                                onChange={(e) => setTaskEditForm((prev) => ({ ...prev, deadline: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        <div className="task-edit-field">
+                                            <label htmlFor="task-edit-priority">Do uu tien</label>
+                                            <select
+                                                id="task-edit-priority"
+                                                className="form-select"
+                                                value={taskEditForm.priority}
+                                                onChange={(e) => setTaskEditForm((prev) => ({ ...prev, priority: e.target.value }))}
+                                            >
+                                                <option value="MEDIUM">Trung binh</option>
+                                                <option value="HIGH">Cao</option>
+                                                <option value="LOW">Thap</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="task-edit-field">
+                                            <label htmlFor="task-edit-assignee">Nguoi thuc hien</label>
+                                            <select
+                                                id="task-edit-assignee"
+                                                className="form-select"
+                                                required
+                                                value={taskEditForm.assigneeId}
+                                                onChange={(e) => setTaskEditForm((prev) => ({ ...prev, assigneeId: e.target.value }))}
+                                            >
+                                                <option value="">-- Chon thanh vien du an --</option>
+                                                {assigneeOptions.map((member) => (
+                                                    <option key={member.id} value={member.id}>
+                                                        {member.fullName}{member.email ? ` (${member.email})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="task-edit-actions">
+                                        <button
+                                            type="button"
+                                            className="btn btn-light"
+                                            onClick={() => {
+                                                setIsEditingTask(false);
+                                                setTaskEditForm(createTaskEditState(currentTask));
+                                            }}
+                                        >
+                                            Huy
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary"
+                                            disabled={savingTask || !taskEditForm.title.trim() || !taskEditForm.deadline || !taskEditForm.assigneeId}
+                                        >
+                                            {savingTask ? 'Dang luu...' : 'Luu thay doi'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
 
                             <div className="task-info-item">
                                 <label>Dự án</label>

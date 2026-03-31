@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import './AdminDashboard.css';
 
-const COLORS_STATUS = ['#6c757d', '#4318ff', '#05cd99']; // Modern colors
-const COLORS_PRIORITY = ['#ee5d50', '#ffb547', '#01b574'];
+const COLORS_STATUS = ['#94a3b8', '#1d6fa3', '#2b8a5d'];
+const COLORS_PRIORITY = ['#d05f45', '#d79a31', '#2b8a5d'];
 
 const StatisticsPage = () => {
     const navigate = useNavigate();
@@ -63,9 +63,9 @@ const StatisticsPage = () => {
     ];
 
     const projectStatusData = [
-        { name: 'Đang mở', value: stats.projectStatus?.OPEN || 0, color: '#4318ff' },
-        { name: 'Đã đóng', value: stats.projectStatus?.CLOSED || 0, color: '#05cd99' },
-        { name: 'Bản nháp', value: stats.projectStatus?.DRAFT || 0, color: '#f6ad55' }
+        { name: 'Đang mở', value: stats.projectStatus?.OPEN || 0, color: '#1d6fa3' },
+        { name: 'Đã đóng', value: stats.projectStatus?.CLOSED || 0, color: '#2b8a5d' },
+        { name: 'Bản nháp', value: stats.projectStatus?.DRAFT || 0, color: '#d79a31' }
     ];
 
     const priorityData = [
@@ -93,45 +93,43 @@ const StatisticsPage = () => {
     })).sort((a, b) => b.value - a.value);
 
     return (
-        <div className="min-vh-100 bg-light d-flex flex-column" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* Unified Glass Header */}
+        <div className="admin-page statistics-page min-vh-100 d-flex flex-column">
             <div className="glass-header d-flex justify-content-between align-items-center w-100 sticky-top">
-                {/* Logo */}
-                <div className="d-flex align-items-center" style={{ width: '280px' }}>
+                <div className="admin-header-slot admin-header-brand d-flex align-items-center">
                     <span className="fs-3 me-2">🚀</span>
                     <span className="brand-text d-none d-md-block">ADMIN PRO</span>
                 </div>
 
-                {/* Centered Menu */}
-                <div className="top-menu d-none d-xl-flex justify-content-center">
+                <div className="top-menu admin-top-menu d-none d-xl-flex justify-content-center">
                     <button className="top-menu-item" onClick={() => navigate('/admin')}>
-                        <i className="bi bi-people-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> Nhân sự
+                        <i className="bi bi-people-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Nhân sự
                     </button>
                     <button className="top-menu-item" onClick={() => navigate('/admin')}>
-                        <i className="bi bi-building top-menu-icon" style={{ color: '#a3aed1' }}></i> Phòng Ban
+                        <i className="bi bi-building top-menu-icon" style={{ color: '#8aa2bc' }}></i> Phòng Ban
                     </button>
                     <button className="top-menu-item" onClick={() => navigate('/admin')}>
-                        <i className="bi bi-folder-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> Dự Án
+                        <i className="bi bi-folder-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Dự Án
                     </button>
                     <button className="top-menu-item" onClick={() => navigate('/admin')}>
-                        <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> Đã Hoàn Thành
+                        <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Đã Hoàn Thành
+                    </button>
+                    <button className="top-menu-item" onClick={() => navigate('/admin')}>
+                        <i className="bi bi-clock-history top-menu-icon" style={{ color: '#8aa2bc' }}></i> Hoạt động
                     </button>
                     <button className="top-menu-item active">
-                        <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#4318ff' }}></i> Thống kê
+                        <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#1d6fa3' }}></i> Thống kê
                     </button>
                 </div>
 
-                {/* Right Profile Actions */}
-                <div className="d-flex align-items-center justify-content-end gap-3" style={{ width: '280px' }}>
+                <div className="admin-header-slot admin-header-actions d-flex align-items-center justify-content-end gap-3">
                     <div className="d-none d-md-block"><NotificationBell /></div>
 
                     <div className="dropdown position-relative ms-1">
                         <div
-                            className="d-flex align-items-center py-1 px-2 rounded-pill shadow-sm"
-                            style={{ cursor: 'pointer', background: showProfileMenu ? '#f4f7fe' : 'transparent', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
+                            className="admin-profile-toggle d-flex align-items-center py-1 px-2 rounded-pill shadow-sm"
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
                         >
-                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden" style={{ width: 36, height: 36 }}>
+                            <div className="admin-profile-avatar rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden">
                                 {currentUser?.avatarUrl ? (
                                     <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
@@ -168,59 +166,30 @@ const StatisticsPage = () => {
             </div>
 
             <div className="admin-dashboard-container flex-grow-1">
-                <style>{`
-                    .section-header {
-                        font-size: 0.9rem;
-                        font-weight: 800;
-                        color: #4A5568;
-                        text-transform: uppercase;
-                        letter-spacing: 0.05em;
-                        margin-bottom: 1.5rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        margin-top: 1rem;
-                    }
-                    .section-header::after {
-                        content: "";
-                        flex: 1;
-                        height: 1px;
-                        background: linear-gradient(to right, #e2e8f0, transparent);
-                    }
-                    .stat-icon {
-                        width: 48px;
-                        height: 48px;
-                        border-radius: 12px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 1.5rem;
-                        margin-bottom: 1rem;
-                    }
-                    .modern-card {
-                        transition: all 0.3s ease;
-                    }
-                    .modern-card:hover {
-                        transform: translateY(-5px);
-                        box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
-                    }
-                `}</style>
                 <div className="admin-main-wrapper">
                     <div className="p-4 p-md-5 animate-fade-in content-inner">
-                        <div className="d-flex justify-content-between align-items-center mb-5">
+                        <div className="d-flex justify-content-between align-items-center mb-4 d-xl-none bg-white p-3 rounded-4 shadow-sm">
+                            <h4 className="page-title mb-0 fs-5">Báo cáo thống kê</h4>
+                            <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value="statistics" onChange={(e) => { if (e.target.value === 'dashboard') navigate('/admin'); }}>
+                                <option value="dashboard">Dashboard</option>
+                                <option value="statistics">Thống kê</option>
+                            </select>
+                        </div>
+
+                        <div className="statistics-hero d-flex justify-content-between align-items-center gap-3 mb-5">
                             <div>
-                                <h1 className="fw-bold text-dark mb-1" style={{ fontSize: '1.75rem' }}>Báo cáo Thống kê Hiện tại</h1>
-                                <p className="text-muted small mb-0">Hệ thống phân tích dữ liệu dự án thời gian thực</p>
+                                <span className="admin-section-kicker">Tổng quan dữ liệu</span>
+                                <h1 className="statistics-page-title fw-bold text-dark mb-1">Báo cáo thống kê hiện tại</h1>
+                                <p className="text-muted small mb-0">Theo dõi tiến độ công việc, phân bổ dự án và lực lượng nhân sự trong cùng một bảng điều phối.</p>
                             </div>
-                            <button onClick={() => navigate('/admin')} className="btn btn-white shadow-sm rounded-pill px-4 fw-bold">
+                            <button onClick={() => navigate('/admin')} className="btn btn-white shadow-sm rounded-pill px-4 fw-bold statistics-back-btn">
                                 <i className="bi bi-arrow-left me-2"></i> Dashboard
                             </button>
                         </div>
 
-                        {/* Summary Cards - Specific to Task Status per user snippet */}
                         <div className="row g-4 mb-5">
                             <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-primary h-100">
+                                <div className="modern-card p-4 border-bottom-primary h-100 statistics-summary-card">
                                     <div className="stat-icon bg-primary-light text-primary">
                                         <i className="bi bi-list-task"></i>
                                     </div>
@@ -229,7 +198,7 @@ const StatisticsPage = () => {
                                 </div>
                             </div>
                             <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-secondary h-100">
+                                <div className="modern-card p-4 border-bottom-secondary h-100 statistics-summary-card">
                                     <div className="stat-icon bg-secondary-light text-secondary">
                                         <i className="bi bi-clock-history"></i>
                                     </div>
@@ -238,8 +207,8 @@ const StatisticsPage = () => {
                                 </div>
                             </div>
                             <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-primary h-100">
-                                    <div className="stat-icon bg-primary-light text-primary" style={{ backgroundColor: 'rgba(67, 24, 255, 0.1)' }}>
+                                <div className="modern-card p-4 border-bottom-primary h-100 statistics-summary-card">
+                                    <div className="stat-icon bg-primary-light text-primary statistics-summary-icon statistics-summary-icon-accent">
                                         <i className="bi bi-play-fill"></i>
                                     </div>
                                     <div className="text-muted mb-1 small fw-bold text-uppercase">Đang làm (In Progress)</div>
@@ -247,7 +216,7 @@ const StatisticsPage = () => {
                                 </div>
                             </div>
                             <div className="col-md-3">
-                                <div className="modern-card p-4 border-bottom-success h-100">
+                                <div className="modern-card p-4 border-bottom-success h-100 statistics-summary-card">
                                     <div className="stat-icon bg-success-light text-success">
                                         <i className="bi bi-check-all"></i>
                                     </div>
@@ -257,13 +226,12 @@ const StatisticsPage = () => {
                             </div>
                         </div>
 
-                        {/* Analysis Sections */}
-                        <div className="section-header">
+                        <div className="statistics-section-header">
                             <i className="bi bi-graph-up-arrow"></i> Phân phối Công việc
                         </div>
                         <div className="row g-4 mb-5">
                             <div className="col-lg-6">
-                                <div className="modern-card h-100">
+                                <div className="modern-card h-100 statistics-chart-card">
                                     <div className="modern-card-header">
                                         Trạng thái Công việc
                                     </div>
@@ -293,7 +261,7 @@ const StatisticsPage = () => {
                                 </div>
                             </div>
                             <div className="col-lg-6">
-                                <div className="modern-card h-100">
+                                <div className="modern-card h-100 statistics-chart-card">
                                     <div className="modern-card-header">
                                         Độ ưu tiên hàng đầu
                                     </div>
@@ -324,12 +292,12 @@ const StatisticsPage = () => {
                             </div>
                         </div>
 
-                        <div className="section-header">
+                        <div className="statistics-section-header">
                             <i className="bi bi-briefcase"></i> Dự án & Phòng ban
                         </div>
                         <div className="row g-4 mb-5">
                             <div className="col-lg-5">
-                                <div className="modern-card h-100">
+                                <div className="modern-card h-100 statistics-chart-card">
                                     <div className="modern-card-header">
                                         Trạng thái Dự án Tổng quát
                                     </div>
@@ -359,31 +327,31 @@ const StatisticsPage = () => {
                                 </div>
                             </div>
                             <div className="col-lg-7">
-                                <div className="modern-card h-100">
+                                <div className="modern-card h-100 statistics-chart-card">
                                     <div className="modern-card-header">
                                         Phân bổ khối lượng theo Dự án
                                     </div>
                                     <div className="card-body p-4">
                                         <ResponsiveContainer width="100%" height={320}>
-                                            <BarChart data={projectData} layout="vertical">
-                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f1f1" />
-                                                <XAxis type="number" hide />
-                                                <YAxis type="category" dataKey="name" width={100} tick={{ fill: '#a3aed1', fontSize: 11 }} axisLine={false} tickLine={false} />
-                                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                                                <Bar dataKey="value" fill="#4318ff" radius={[0, 10, 10, 0]} barSize={20} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                                                <BarChart data={projectData} layout="vertical">
+                                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f1f1" />
+                                                    <XAxis type="number" hide />
+                                                    <YAxis type="category" dataKey="name" width={100} tick={{ fill: '#a3aed1', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                                                    <Bar dataKey="value" fill="#1d6fa3" radius={[0, 10, 10, 0]} barSize={20} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="section-header">
+                        <div className="statistics-section-header">
                             <i className="bi bi-person-badge"></i> Nhân sự & Hiệu suất
                         </div>
                         <div className="row g-4 mb-4">
                             <div className="col-lg-6">
-                                <div className="modern-card h-100">
+                                <div className="modern-card h-100 statistics-chart-card">
                                     <div className="modern-card-header">
                                         Phòng ban & Lực lượng nhân sự
                                     </div>
@@ -401,7 +369,7 @@ const StatisticsPage = () => {
                                 </div>
                             </div>
                             <div className="col-lg-6">
-                                <div className="modern-card h-100">
+                                <div className="modern-card h-100 statistics-chart-card">
                                     <div className="modern-card-header">
                                         Xếp hạng Hiệu suất Làm việc
                                     </div>

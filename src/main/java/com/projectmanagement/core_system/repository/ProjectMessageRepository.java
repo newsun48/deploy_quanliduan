@@ -12,11 +12,6 @@ public interface ProjectMessageRepository extends MongoRepository<ProjectMessage
     // Group chat: lấy tin nhắn theo project (receiver = null = group)
     List<ProjectMessage> findByProjectIdOrderByCreatedAtAsc(String projectId);
 
-    // Private chat: lấy tin nhắn giữa 2 user (A→B hoặc B→A)
-    @Query("{ '$or': [ " +
-           "  { 'sender.$id': ObjectId(?0), 'receiver.$id': ObjectId(?1) }, " +
-           "  { 'sender.$id': ObjectId(?1), 'receiver.$id': ObjectId(?0) } " +
-           "], 'project': null }")
-    List<ProjectMessage> findPrivateMessages(String userId1, String userId2);
+    List<ProjectMessage> findByReceiverIsNotNullOrderByCreatedAtAsc();
 }
 

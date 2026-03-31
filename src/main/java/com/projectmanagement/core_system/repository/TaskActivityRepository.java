@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface TaskActivityRepository extends MongoRepository<TaskActivity, String> {
     List<TaskActivity> findByTaskIdOrderByCreatedAtDesc(String taskId);
+
+    void deleteByTaskId(String taskId);
 }

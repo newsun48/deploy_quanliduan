@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api, { adminActivityAPI, resolveAppUrl, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { askConfirm } from '../utils/confirm';
@@ -32,6 +32,41 @@ const formatDeptName = (name) => {
     return `Phòng ${cleanName}`;
 };
 
+const getApprovalStatus = (user) => (user?.approvalStatus || (user?.role ? 'APPROVED' : 'PENDING')).toUpperCase();
+
+const isApprovedUser = (user) => getApprovalStatus(user) === 'APPROVED';
+
+const getRoleBadgeConfig = (role) => {
+    if (role === 'ADMIN') return { className: 'bg-danger', text: '👑 ADMIN' };
+    if (role === 'MANAGER') return { className: 'bg-warning text-dark', text: '💼 MANAGER' };
+    if (role === 'EMPLOYEE') return { className: 'bg-info text-white', text: '👤 EMPLOYEE' };
+    if (role === 'QA') return { className: 'bg-secondary text-white', text: '🧪 QA' };
+    return { className: 'bg-light text-muted border', text: 'Chờ gán vai trò' };
+};
+
+const getApprovalBadgeConfig = (user) => {
+    const approvalStatus = getApprovalStatus(user);
+
+    if (approvalStatus === 'APPROVED') {
+        return {
+            className: 'bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2',
+            text: 'APPROVED - Đã duyệt'
+        };
+    }
+
+    if (approvalStatus === 'REJECTED') {
+        return {
+            className: 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2',
+            text: 'REJECTED - Đã từ chối'
+        };
+    }
+
+    return {
+        className: 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-2',
+        text: 'PENDING - Chờ duyệt'
+    };
+};
+
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const currentUser = JSON.parse(localStorage.getItem('user')); 
@@ -43,6 +78,7 @@ const AdminDashboard = () => {
     const [deletedProjects, setDeletedProjects] = useState([]);
     const [viewingCompletedProject, setViewingCompletedProject] = useState(null); 
     const [searchTerm, setSearchTerm] = useState('');
+    const [userFilters, setUserFilters] = useState({ role: 'ALL', approval: 'ALL', access: 'ALL', departmentId: 'ALL' });
 
     const [activeTab, setActiveTab] = useState('users'); 
     const [selectedDept, setSelectedDept] = useState(null); 
@@ -52,6 +88,7 @@ const AdminDashboard = () => {
     const [selectedActivityUserId, setSelectedActivityUserId] = useState('');
     const [activityLoading, setActivityLoading] = useState(false);
     const [activityError, setActivityError] = useState('');
+    const [activityFilters, setActivityFilters] = useState({ keyword: '', type: 'ALL', period: 'ALL' });
 
     const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
     const [avatarFile, setAvatarFile] = useState(null);
@@ -72,7 +109,7 @@ const AdminDashboard = () => {
     const [showDeptPersonnelModal, setShowDeptPersonnelModal] = useState(false);
     const [selectedDeptForPersonnel, setSelectedDeptForPersonnel] = useState(null);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [usersRes, deptsRes, projectsRes, deletedRes] = await Promise.all([
                 api.get('/users'),
@@ -91,11 +128,11 @@ const AdminDashboard = () => {
             setCompletedProjects(projectsRes.data.filter(p => p.status === 'CLOSED'));
             setDeletedProjects(deletedRes.data);
         } catch (error) { console.error("Lỗi tải dữ liệu:", error); }
-    };
+    }, [currentUser.email]);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     useEffect(() => {
         if (activeTab !== 'activity') return;
@@ -118,15 +155,19 @@ const AdminDashboard = () => {
     }, [activeTab, selectedActivityUserId]);
     const handleLogout = () => { localStorage.removeItem('user'); navigate('/'); };
 
-    const handleSearchUser = async (e) => {
+    const handleSearchUser = (e) => {
         e.preventDefault();
-        try {
-            const res = await api.get(`/users/search?keyword=${searchTerm}`);
-            setUsers(res.data);
-        } catch (err) { console.error("Lỗi tìm kiếm:", err); }
     };
 
-    const handleResetSearch = () => { setSearchTerm(''); fetchData(); };
+    const handleResetSearch = () => {
+        setSearchTerm('');
+        setUserFilters({ role: 'ALL', approval: 'ALL', access: 'ALL', departmentId: 'ALL' });
+    };
+
+    const handleResetActivityFilters = () => {
+        setSelectedActivityUserId('');
+        setActivityFilters({ keyword: '', type: 'ALL', period: 'ALL' });
+    };
 
     const formatActivityTime = (value) => {
         if (!value) return '--';
@@ -167,27 +208,36 @@ const AdminDashboard = () => {
 
     const handleAddUser = async (e) => {
         e.preventDefault();
+
+        const form = e.currentTarget;
+        const formDataFromDom = new FormData(form);
+        const submittedUser = {
+            fullName: String(formDataFromDom.get('fullName') || '').trim(),
+            email: String(formDataFromDom.get('email') || '').trim(),
+            password: String(formDataFromDom.get('password') || ''),
+            role: String(formDataFromDom.get('role') || newUser.role || 'EMPLOYEE'),
+            deptId: String(formDataFromDom.get('deptId') || ''),
+        };
+
         try {
             if (avatarFile || avatarUrl) {
                 const formData = new FormData();
-                formData.append('fullName', newUser.fullName);
-                formData.append('email', newUser.email);
-                formData.append('password', newUser.password);
-                formData.append('role', newUser.role);
-                if (newUser.deptId) formData.append('deptId', newUser.deptId);
+                formData.append('fullName', submittedUser.fullName);
+                formData.append('email', submittedUser.email);
+                formData.append('password', submittedUser.password);
+                formData.append('role', submittedUser.role);
+                if (submittedUser.deptId) formData.append('deptId', submittedUser.deptId);
                 if (avatarFile) {
                     formData.append('avatar', avatarFile);
                 } else if (avatarUrl) {
                     formData.append('avatarUrl', avatarUrl);
                 }
                 
-                await api.post('/users/create-with-avatar', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                await api.post('/users/create-with-avatar', formData);
             } else {
                 let url = '/users';
-                if (newUser.deptId) url += `?deptId=${newUser.deptId}`;
-                await api.post(url, newUser);
+                if (submittedUser.deptId) url += `?deptId=${submittedUser.deptId}`;
+                await api.post(url, submittedUser);
             }
             
             alert("Thêm nhân sự thành công!"); 
@@ -197,12 +247,24 @@ const AdminDashboard = () => {
             setAvatarUrl('');
             document.getElementById('avatarInput').value = '';
             await fetchData();
-        } catch (err) { alert("Lỗi: " + err.message); }
+        } catch (err) {
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            alert("Lỗi: " + message);
+        }
     };
 
     const handleDeleteUser = async (id) => {
         if (!(await askConfirm("Xóa nhân viên này?"))) return;
-        try { await api.delete(`/users/${id}`); fetchData(); } catch (err) { console.error(err); alert("Lỗi xóa!"); }
+        try {
+            await api.delete(`/users/${id}`);
+            fetchData();
+        } catch (err) {
+            console.error(err);
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message || 'Lỗi xóa!');
+            alert(message);
+        }
     };
 
     const [editingUserId, setEditingUserId] = useState(null);
@@ -212,6 +274,7 @@ const AdminDashboard = () => {
 
     const handleEditUser = (id) => {
         const user = users.find(u => u.id === id);
+        if (!isApprovedUser(user)) return;
         setEditingUserId(id);
         setEditEmail(user.email);
         setEditDeptId(user.department?.id || '');
@@ -241,7 +304,105 @@ const AdminDashboard = () => {
 
     const isUserActive = (user) => user?.isActive !== false && user?.active !== false;
 
+    const filteredUsers = useMemo(() => {
+        const normalizedKeyword = searchTerm.trim().toLowerCase();
+
+        return users.filter((user) => {
+            const matchesKeyword = !normalizedKeyword
+                || user.fullName?.toLowerCase().includes(normalizedKeyword)
+                || user.email?.toLowerCase().includes(normalizedKeyword);
+            const matchesRole = userFilters.role === 'ALL' || user.role === userFilters.role;
+            const matchesApproval = userFilters.approval === 'ALL' || getApprovalStatus(user) === userFilters.approval;
+            const matchesAccess = userFilters.access === 'ALL'
+                || (userFilters.access === 'ACTIVE' && isApprovedUser(user) && isUserActive(user))
+                || (userFilters.access === 'LOCKED' && isApprovedUser(user) && !isUserActive(user))
+                || (userFilters.access === 'PENDING' && getApprovalStatus(user) === 'PENDING')
+                || (userFilters.access === 'REJECTED' && getApprovalStatus(user) === 'REJECTED');
+            const matchesDepartment = userFilters.departmentId === 'ALL'
+                || user.department?.id === userFilters.departmentId;
+
+            return matchesKeyword && matchesRole && matchesApproval && matchesAccess && matchesDepartment;
+        });
+    }, [users, searchTerm, userFilters]);
+
+    useEffect(() => {
+        if (!editingUserId) return;
+
+        const editedUserStillVisible = filteredUsers.some((user) => user.id === editingUserId);
+        if (!editedUserStillVisible) {
+            setEditingUserId(null);
+        }
+    }, [editingUserId, filteredUsers]);
+
+    const filteredActivityEntries = useMemo(() => {
+        const normalizedKeyword = activityFilters.keyword.trim().toLowerCase();
+        const now = Date.now();
+
+        return activityEntries.filter((entry) => {
+            const entryText = [
+                entry.message,
+                entry.actorName,
+                entry.actorEmail,
+                entry.targetUserName,
+                entry.targetUserEmail,
+                entry.type,
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            const matchesKeyword = !normalizedKeyword || entryText.includes(normalizedKeyword);
+            const matchesType = activityFilters.type === 'ALL' || entry.type === activityFilters.type;
+
+            let matchesPeriod = true;
+            if (activityFilters.period === 'TODAY') {
+                const startOfDay = new Date();
+                startOfDay.setHours(0, 0, 0, 0);
+                matchesPeriod = new Date(entry.createdAt).getTime() >= startOfDay.getTime();
+            } else if (activityFilters.period === 'LAST_7_DAYS') {
+                matchesPeriod = new Date(entry.createdAt).getTime() >= now - (7 * 24 * 60 * 60 * 1000);
+            } else if (activityFilters.period === 'LAST_30_DAYS') {
+                matchesPeriod = new Date(entry.createdAt).getTime() >= now - (30 * 24 * 60 * 60 * 1000);
+            }
+
+            return matchesKeyword && matchesType && matchesPeriod;
+        });
+    }, [activityEntries, activityFilters]);
+
+    const activityTypes = useMemo(() => {
+        return Array.from(new Set(activityEntries.map((entry) => entry.type).filter(Boolean))).sort();
+    }, [activityEntries]);
+
+const getAccessStatusConfig = (user) => {
+    const approvalStatus = getApprovalStatus(user);
+
+    if (approvalStatus === 'REJECTED') {
+        return {
+            className: 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2',
+            text: 'Từ chối truy cập'
+        };
+    }
+
+    if (approvalStatus === 'PENDING') {
+        return {
+            className: 'bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2',
+            text: 'Chưa có quyền truy cập'
+        };
+    }
+
+    if (isUserActive(user)) {
+        return {
+                className: 'bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2',
+                text: 'Hoạt động'
+            };
+        }
+
+    return {
+        className: 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-2',
+        text: 'Đang bị khóa'
+    };
+};
+
     const handleToggleUserStatus = async (user) => {
+        if (!isApprovedUser(user)) return;
+
         const willLock = isUserActive(user);
         const confirmText = willLock
             ? `Khóa tài khoản ${user.fullName}? Người này sẽ không thể đăng nhập.`
@@ -260,6 +421,110 @@ const AdminDashboard = () => {
             const errorData = err.response?.data;
             const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
             alert('Lỗi: ' + message);
+        }
+    };
+
+    const handleApproveUser = async (user) => {
+        const { value: formValues } = await Swal.fire({
+            title: 'Phê duyệt tài khoản',
+            html: `
+                <div class="text-start">
+                    <div class="alert alert-info small mb-3">
+                        Tài khoản này sẽ được cấp quyền truy cập sau khi chọn vai trò.
+                    </div>
+                    <label class="form-label fw-bold small text-muted">Vai trò <span class="text-danger">*</span></label>
+                    <select id="swal-approve-role" class="form-select mb-3">
+                        <option value="EMPLOYEE">Nhân viên</option>
+                        <option value="MANAGER">Trưởng phòng</option>
+                        <option value="ADMIN">Quản trị viên</option>
+                    </select>
+
+                    <label class="form-label fw-bold small text-muted">Phòng ban</label>
+                    <select id="swal-approve-dept" class="form-select">
+                        <option value="">-- Chưa gán phòng ban --</option>
+                        ${departments.map((dept) => `<option value="${dept.id}">${formatDeptName(dept.name)}</option>`).join('')}
+                    </select>
+                    <div class="form-text mt-2">Phòng ban là tùy chọn và có thể cập nhật lại sau.</div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Phê duyệt',
+            cancelButtonText: 'Hủy',
+            preConfirm: () => {
+                const role = document.getElementById('swal-approve-role').value;
+                const deptId = document.getElementById('swal-approve-dept').value;
+
+                if (!role) {
+                    Swal.showValidationMessage('Vui lòng chọn vai trò cho tài khoản này.');
+                    return false;
+                }
+
+                return { role, deptId };
+            }
+        });
+
+        if (!formValues) return;
+
+        try {
+            await userAPI.approveUser(user.id, {
+                role: formValues.role,
+                deptId: formValues.deptId || null
+            });
+            await Swal.fire('Thành công', `Đã phê duyệt tài khoản ${user.fullName}.`, 'success');
+            if (editingUserId === user.id) {
+                setEditingUserId(null);
+            }
+            await fetchData();
+        } catch (err) {
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            Swal.fire('Lỗi', message, 'error');
+        }
+    };
+
+    const handleRejectUser = async (user) => {
+        const { value: formValues } = await Swal.fire({
+            title: 'Từ chối đăng ký',
+            html: `
+                <div class="text-start">
+                    <div class="alert alert-danger small mb-3">
+                        Tài khoản này sẽ bị chuyển sang trạng thái từ chối và không thể đăng nhập.
+                    </div>
+                    <label class="form-label fw-bold small text-muted">Lý do từ chối <span class="text-danger">*</span></label>
+                    <textarea id="swal-reject-reason" class="form-control" rows="4" placeholder="Nhập lý do từ chối để gửi cho người dùng"></textarea>
+                    <div class="form-text mt-2">Lý do này sẽ được lưu lại và hiển thị cho người dùng khi họ đăng nhập.</div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Từ chối tài khoản',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#dc3545',
+            focusConfirm: false,
+            preConfirm: () => {
+                const reason = document.getElementById('swal-reject-reason').value.trim();
+
+                if (!reason) {
+                    Swal.showValidationMessage('Vui lòng nhập lý do từ chối cho tài khoản này.');
+                    return false;
+                }
+
+                return { reason };
+            }
+        });
+
+        if (!formValues) return;
+
+        try {
+            await userAPI.rejectUser(user.id, { reason: formValues.reason });
+            await Swal.fire('Đã từ chối', `Đã từ chối tài khoản ${user.fullName}.`, 'success');
+            if (editingUserId === user.id) {
+                setEditingUserId(null);
+            }
+            await fetchData();
+        } catch (err) {
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            Swal.fire('Lỗi', message, 'error');
         }
     };
 
@@ -507,50 +772,51 @@ const AdminDashboard = () => {
 
     const getProjectsByDept = (deptId) => { return projects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
     const getCompletedProjectsByDept = (deptId) => { return completedProjects.filter(p => (p.deptId == deptId || p.department?.id == deptId)); };
+    const pendingUsersCount = filteredUsers.filter((user) => getApprovalStatus(user) === 'PENDING').length;
+    const activeUsersCount = filteredUsers.filter((user) => getApprovalStatus(user) === 'APPROVED' && isUserActive(user)).length;
 
     return (
-        <div className="min-vh-100 bg-light d-flex flex-column" style={{fontFamily: "'Segoe UI', sans-serif"}}>
+        <div className="admin-page min-vh-100 bg-light d-flex flex-column">
             {/* Header Navbar */}
             <div className="glass-header d-flex justify-content-between align-items-center shadow-sm w-100 sticky-top">
                 {/* Logo - Fixed Width for Balance */}
-                <div className="d-flex align-items-center" style={{ width: '280px' }}>
+                <div className="admin-header-slot admin-header-brand d-flex align-items-center">
                     <span className="fs-3 me-2">🚀</span>
                     <span className="brand-text d-none d-md-block">ADMIN PRO</span>
                 </div>
 
                 {/* Centered Menu */}
-                <div className="top-menu d-none d-xl-flex justify-content-center">
+                <div className="top-menu admin-top-menu d-none d-xl-flex justify-content-center">
                     <button className={`top-menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-                        <i className="bi bi-people-fill top-menu-icon" style={{ color: activeTab === 'users' ? '#4318ff' : '#a3aed1' }}></i> Nhân sự
+                        <i className="bi bi-people-fill top-menu-icon" style={{ color: activeTab === 'users' ? '#1d6fa3' : '#8aa2bc' }}></i> Nhân sự
                     </button>
                     <button className={`top-menu-item ${activeTab === 'departments' ? 'active' : ''}`} onClick={() => setActiveTab('departments')}>
-                        <i className="bi bi-building top-menu-icon" style={{ color: activeTab === 'departments' ? '#4318ff' : '#a3aed1' }}></i> Phòng Ban
+                        <i className="bi bi-building top-menu-icon" style={{ color: activeTab === 'departments' ? '#1d6fa3' : '#8aa2bc' }}></i> Phòng Ban
                     </button>
                     <button className={`top-menu-item ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
-                        <i className="bi bi-folder-fill top-menu-icon" style={{ color: activeTab === 'projects' ? '#4318ff' : '#a3aed1' }}></i> Dự Án
+                        <i className="bi bi-folder-fill top-menu-icon" style={{ color: activeTab === 'projects' ? '#1d6fa3' : '#8aa2bc' }}></i> Dự Án
                     </button>
                     <button className={`top-menu-item ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
-                        <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: activeTab === 'completed' ? '#4318ff' : '#a3aed1' }}></i> Đã Hoàn Thành
+                        <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: activeTab === 'completed' ? '#1d6fa3' : '#8aa2bc' }}></i> Đã Hoàn Thành
                     </button>
                     <button className={`top-menu-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>
-                        <i className="bi bi-clock-history top-menu-icon" style={{ color: activeTab === 'activity' ? '#4318ff' : '#a3aed1' }}></i> Hoạt động
+                        <i className="bi bi-clock-history top-menu-icon" style={{ color: activeTab === 'activity' ? '#1d6fa3' : '#8aa2bc' }}></i> Hoạt động
                     </button>
                     <button className={`top-menu-item`} onClick={() => navigate('/admin/statistics')}>
-                        <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> Thống kê
+                        <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Thống kê
                     </button>
                 </div>
 
                 {/* Right Profile Actions */}
-                <div className="d-flex align-items-center justify-content-end gap-3" style={{ width: '280px' }}>
+                <div className="admin-header-slot admin-header-actions d-flex align-items-center justify-content-end gap-3">
                     <div className="d-none d-md-block"><NotificationBell /></div>
 
                     <div className="dropdown position-relative ms-1">
                         <div
-                            className="d-flex align-items-center py-1 px-2 rounded-pill shadow-sm"
-                            style={{ cursor: 'pointer', background: showProfileMenu ? '#f4f7fe' : 'transparent', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
+                            className="admin-profile-toggle d-flex align-items-center py-1 px-2 rounded-pill shadow-sm"
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
                         >
-                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden" style={{ width: 36, height: 36 }}>
+                            <div className="admin-profile-avatar rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm overflow-hidden">
                                 {currentUser?.avatarUrl ? (
                                     <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
@@ -601,176 +867,325 @@ const AdminDashboard = () => {
                         </select>
                     </div>
                     {activeTab === 'users' && (
-                        <div className="row g-4">
-                            <div className="col-12 col-xl-3"> 
-                                <div className="modern-card">
-                                    <div className="modern-card-header">Thêm Nhân Sự Mới</div>
-                                    <div className="card-body p-4 bg-white">
-                                        <form onSubmit={handleAddUser}>
-                                        <div className="mb-3 text-center">
-                                            <div className="position-relative d-inline-block">
-                                                {avatarPreview ? (
-                                                    <img src={avatarPreview} alt="Avatar preview" className="rounded-circle border-3 border-primary" style={{width: 100, height: 100, objectFit: 'cover'}} />
-                                                ) : (
-                                                    <div className="rounded-circle bg-light border-2 border-secondary d-flex align-items-center justify-content-center" style={{width: 100, height: 100}}>
-                                                        <i className="bi bi-image text-muted" style={{fontSize: '2rem'}}></i>
-                                                    </div>
-                                                )}
-                                                <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/jpg" onChange={handleAvatarSelect} style={{display: 'none'}} />
-                                            </div>
-                                            <div className="d-flex gap-2 mt-3 justify-content-center flex-wrap">
-                                                <button type="button" className="btn btn-sm btn-outline-primary fw-bold" onClick={handleEditAvatar} title="Chọn ảnh từ máy tính">
-                                                    <i className="bi bi-upload me-1"></i>Tải lên
-                                                </button>
-                                                {avatarPreview && (
-                                                    <button type="button" className="btn btn-sm btn-outline-danger fw-bold" onClick={handleRemoveAvatar}>
-                                                        <i className="bi bi-trash me-1"></i>Xóa
-                                                    </button>
-                                                )}
+                        <div className="admin-users-shell">
+                            <div className="admin-users-overview">
+                                <div>
+                                    <span className="admin-section-kicker">Quản lý nhân sự</span>
+                                    <h2 className="admin-users-title">Theo dõi tài khoản, phê duyệt và quyền truy cập trong một không gian rõ ràng hơn</h2>
+                                    <p className="admin-users-description mb-0">
+                                        Giữ danh sách nhân viên dễ quét, thao tác nhanh và cân bằng hơn giữa khu vực tạo mới với bảng quản trị.
+                                    </p>
+                                </div>
+                                <div className="admin-users-stats" aria-label="Tổng quan nhân sự">
+                                    <div className="admin-users-stat">
+                                        <span className="admin-users-stat-value">{filteredUsers.length}</span>
+                                        <span className="admin-users-stat-label">Tài khoản hiển thị</span>
+                                    </div>
+                                    <div className="admin-users-stat">
+                                        <span className="admin-users-stat-value">{pendingUsersCount}</span>
+                                        <span className="admin-users-stat-label">Chờ duyệt</span>
+                                    </div>
+                                    <div className="admin-users-stat">
+                                        <span className="admin-users-stat-value">{activeUsersCount}</span>
+                                        <span className="admin-users-stat-label">Đang hoạt động</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="row g-4 align-items-start">
+                                <div className="col-12 col-xl-4">
+                                    <div className="modern-card user-create-card">
+                                        <div className="modern-card-header user-create-card-header">
+                                            <div>
+                                                <span className="admin-section-kicker">Khởi tạo nhanh</span>
+                                                <div className="user-create-title-row">Thêm Nhân Sự Mới</div>
+                                                <p className="user-create-subtitle mb-0">Tạo tài khoản mới với ảnh đại diện, vai trò và phòng ban ngay trong một biểu mẫu gọn gàng.</p>
                                             </div>
                                         </div>
-                                        <hr />
-                                        <input className="form-control mb-3" placeholder="Họ tên" required value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} />
-                                        <input className="form-control mb-3" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
-                                        <input className="form-control mb-3" placeholder="Mật khẩu" required value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
-                                        <select className="form-select mb-3" value={newUser.deptId} onChange={e => setNewUser({ ...newUser, deptId: e.target.value })}>
-                                            <option value="">-- Chọn phòng ban --</option>
-                                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                        </select>
-                                        <select className="form-select mb-4 modern-input" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
-                                            <option value="EMPLOYEE">Nhân viên</option><option value="MANAGER">Trưởng phòng</option><option value="ADMIN">Quản trị viên</option>
-                                        </select>
-                                        <button className="modern-btn-primary w-100">TẠO MỚI 👤</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="col-12 col-xl-9">
-                            <div className="modern-card d-flex flex-column h-100">
-                                <div className="modern-card-header d-flex justify-content-between align-items-center">
-                                    <span>Danh sách Nhân viên</span>
-                                    <form onSubmit={handleSearchUser} className="d-flex gap-2">
-                                        <input className="form-control form-control-sm modern-input border-0 py-2 px-3" placeholder="Tìm tên hoặc email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{minWidth: '220px'}}/>
-                                        <button type="submit" className="btn btn-primary rounded-circle shadow-sm d-flex align-items-center justify-content-center" style={{width: '42px', height: '42px'}}><i className="bi bi-search"></i></button>
-                                        <button type="button" className="btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center" style={{width: '42px', height: '42px', color: '#a3aed1'}} onClick={handleResetSearch} title="Reset"><i className="bi bi-x-lg"></i></button>
-                                    </form>
-                                </div>
-                                <div className="table-responsive flex-grow-1 p-0">
-                                    <table className="table table-hover align-middle mb-0">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th className="text-center" style={{width: '60px'}}>Ảnh</th>
-                                                <th>Thông tin nhân viên</th>
-                                                <th>Liên hệ (Email)</th>
-                                                <th>Vị trí / Phòng ban</th>
-                                                <th>Phân quyền</th>
-                                                <th>Trạng thái</th>
-                                                <th className="text-end">Hành động</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {users.map(u => {
-                                                const isEditing = editingUserId === u.id;
-                                                return (
-                                                    <tr key={u.id}>
-                                                        <td className="text-center">
-                                                            {u.avatarUrl ? (
-                                                                <img src={u.avatarUrl} alt={u.fullName} className="rounded-circle shadow-sm" style={{width: 45, height: 45, objectFit: 'cover', border: '2px solid white'}} />
-                                                            ) : (
-                                                                <div className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mx-auto fw-bold shadow-sm" style={{width: 45, height: 45, fontSize: '1.2rem', border: '2px solid white'}}>
-                                                                    {u.fullName ? u.fullName.charAt(0).toUpperCase() : '?'}
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            <div className="fw-bold text-dark">{u.fullName}</div>
-                                                            <div className="text-muted small">
-                                                                <i className="bi bi-calendar-event me-1"></i>
-                                                                Tham gia: {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '--'}
+                                        <div className="card-body p-4 bg-white">
+                                            <form onSubmit={handleAddUser} className="user-create-form">
+                                                <div className="user-avatar-panel text-center">
+                                                    <div className="user-avatar-frame position-relative d-inline-flex align-items-center justify-content-center">
+                                                        {avatarPreview ? (
+                                                            <img src={avatarPreview} alt="Avatar preview" className="user-avatar-preview rounded-circle border-3 border-primary" style={{ width: 104, height: 104, objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <div className="user-avatar-placeholder rounded-circle d-flex align-items-center justify-content-center">
+                                                                <i className="bi bi-image text-muted" style={{ fontSize: '2rem' }}></i>
                                                             </div>
-                                                        </td>
-                                                        <td>
-                                                            {isEditing ? (
-                                                                <input 
-                                                                    className="form-control form-control-sm" 
-                                                                    value={editEmail}
-                                                                    onChange={(e) => setEditEmail(e.target.value)}
-                                                                />
-                                                            ) : (
-                                                                <span className="text-secondary"><i className="bi bi-envelope me-1"></i>{u.email}</span>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            {isEditing ? (
-                                                                <select 
-                                                                    className="form-select form-select-sm" 
-                                                                    value={editDeptId}
-                                                                    onChange={(e) => setEditDeptId(e.target.value)}
-                                                                >
-                                                                    <option value="">-- Không phòng ban --</option>
-                                                                    {departments.map(d => (
-                                                                        <option key={d.id} value={d.id}>{formatDeptName(d.name)}</option>
-                                                                    ))}
-                                                                </select>
-                                                            ) : (
-                                                                u.department?.name ? 
-                                                                <span className="badge bg-light text-dark border"><i className="bi bi-building me-1 text-muted"></i>{formatDeptName(u.department.name)}</span> : 
-                                                                <span className="text-muted small">--</span>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            {isEditing ? (
-                                                                <select 
-                                                                    className="form-select form-select-sm" 
-                                                                    value={editRole}
-                                                                    onChange={(e) => setEditRole(e.target.value)}
-                                                                >
-                                                                    <option value="EMPLOYEE">Nhân viên</option>
-                                                                    <option value="MANAGER">Trưởng phòng</option>
-                                                                    <option value="ADMIN">Quản trị viên</option>
-                                                                </select>
-                                                            ) : (
-                                                                <span className={`badge ${u.role === 'ADMIN' ? 'bg-danger' : u.role === 'MANAGER' ? 'bg-warning text-dark' : 'bg-info text-white'} rounded-pill`}>
-                                                                    {u.role === 'ADMIN' ? '👑 ' : u.role === 'MANAGER' ? '💼 ' : '👤 '}{u.role}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            {isUserActive(u) ? (
-                                                                <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2">Hoạt động</span>
-                                                            ) : (
-                                                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2">Tạm khóa</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="text-end">
-                                                            {u.role !== 'ADMIN' && (
-                                                                isEditing ? (
-                                                                    <>
-                                                                        <button className="btn btn-sm btn-success me-1 shadow-sm" onClick={handleSaveEdit}>✅</button>
-                                                                        <button className="btn btn-sm btn-secondary shadow-sm" onClick={handleCancelEdit}>❌</button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <button className="btn btn-sm btn-primary me-1 shadow-sm" onClick={() => handleEditUser(u.id)}>✏️</button>
-                                                                        <button className={`btn btn-sm me-1 shadow-sm ${isUserActive(u) ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={() => handleToggleUserStatus(u)}>
-                                                                            {isUserActive(u) ? '🔒' : '🔓'}
-                                                                        </button>
-                                                                        <button className="btn btn-sm btn-outline-danger shadow-sm" onClick={() => handleDeleteUser(u.id)}>🗑️</button>
-                                                                    </>
-                                                                )
-                                                            )}
-                                                        </td>
+                                                        )}
+                                                        <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/jpg" onChange={handleAvatarSelect} style={{ display: 'none' }} />
+                                                    </div>
+                                                    <p className="user-avatar-note mb-0">Ảnh đại diện giúp nhận diện nhanh hơn trong danh sách và thông báo nội bộ.</p>
+                                                    <div className="d-flex gap-2 mt-3 justify-content-center flex-wrap">
+                                                        <button type="button" className="btn btn-sm btn-outline-primary fw-bold user-avatar-btn" onClick={handleEditAvatar} title="Chọn ảnh từ máy tính">
+                                                            <i className="bi bi-upload me-1"></i>Tải lên
+                                                        </button>
+                                                        {avatarPreview && (
+                                                            <button type="button" className="btn btn-sm btn-outline-danger fw-bold user-avatar-btn" onClick={handleRemoveAvatar}>
+                                                                <i className="bi bi-trash me-1"></i>Xóa
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="user-form-stack">
+                                                    <div className="user-form-field">
+                                                        <label className="user-form-label">Họ tên</label>
+                                                        <input name="fullName" className="form-control modern-input user-form-control" placeholder="Nhập họ và tên" required value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} />
+                                                    </div>
+                                                    <div className="user-form-field">
+                                                        <label className="user-form-label">Email</label>
+                                                        <input name="email" type="email" className="form-control modern-input user-form-control" placeholder="Nhập email liên hệ" required value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
+                                                    </div>
+                                                    <div className="user-form-field">
+                                                        <label className="user-form-label">Mật khẩu</label>
+                                                        <input name="password" type="password" autoComplete="new-password" className="form-control modern-input user-form-control" placeholder="Nhập mật khẩu ban đầu" required value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
+                                                    </div>
+                                                    <div className="user-form-grid">
+                                                        <div className="user-form-field">
+                                                            <label className="user-form-label">Phòng ban</label>
+                                                            <select name="deptId" className="form-select modern-input user-form-control" value={newUser.deptId} onChange={e => setNewUser({ ...newUser, deptId: e.target.value })}>
+                                                                <option value="">-- Chọn phòng ban --</option>
+                                                                {departments.map(d => <option key={d.id} value={d.id}>{formatDeptName(d.name)}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="user-form-field">
+                                                            <label className="user-form-label">Vai trò</label>
+                                                            <select name="role" className="form-select modern-input user-form-control" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
+                                                                <option value="EMPLOYEE">Nhân viên</option>
+                                                                <option value="MANAGER">Trưởng phòng</option>
+                                                                <option value="ADMIN">Quản trị viên</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button className="modern-btn-primary w-100 user-submit-btn">Tạo mới tài khoản</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="col-12 col-xl-8">
+                                    <div className="modern-card user-list-card d-flex flex-column h-100">
+                                        <div className="modern-card-header admin-user-list-header">
+                                            <div className="admin-user-list-heading">
+                                                <span className="admin-section-kicker">Nhân sự hệ thống</span>
+                                                <div className="admin-user-list-title-row">
+                                                    <span>Danh sách Nhân viên</span>
+                                                    <span className="admin-list-counter">{filteredUsers.length} tài khoản</span>
+                                                </div>
+                                                <p className="admin-user-list-subtitle mb-0">Tìm kiếm, chỉnh sửa quyền, phê duyệt và xử lý trạng thái ngay trong cùng một bảng.</p>
+                                            </div>
+                                            <form onSubmit={handleSearchUser} className="admin-search-form">
+                                                <div className="admin-search-input-wrap">
+                                                    <i className="bi bi-search admin-search-icon"></i>
+                                                    <input className="form-control form-control-sm modern-input admin-search-input border-0" placeholder="Tìm tên hoặc email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                                </div>
+                                                <select className="form-select modern-input admin-filter-select" value={userFilters.role} onChange={(e) => setUserFilters((prev) => ({ ...prev, role: e.target.value }))}>
+                                                    <option value="ALL">Tất cả vai trò</option>
+                                                    <option value="ADMIN">Admin</option>
+                                                    <option value="MANAGER">Trưởng phòng</option>
+                                                    <option value="EMPLOYEE">Nhân viên</option>
+                                                    <option value="QA">QA</option>
+                                                </select>
+                                                <select className="form-select modern-input admin-filter-select" value={userFilters.approval} onChange={(e) => setUserFilters((prev) => ({ ...prev, approval: e.target.value }))}>
+                                                    <option value="ALL">Mọi phê duyệt</option>
+                                                    <option value="APPROVED">Đã duyệt</option>
+                                                    <option value="PENDING">Chờ duyệt</option>
+                                                    <option value="REJECTED">Đã từ chối</option>
+                                                </select>
+                                                <select className="form-select modern-input admin-filter-select" value={userFilters.access} onChange={(e) => setUserFilters((prev) => ({ ...prev, access: e.target.value }))}>
+                                                    <option value="ALL">Mọi truy cập</option>
+                                                    <option value="ACTIVE">Đang hoạt động</option>
+                                                    <option value="LOCKED">Đang bị khóa</option>
+                                                    <option value="PENDING">Chưa có quyền</option>
+                                                    <option value="REJECTED">Từ chối truy cập</option>
+                                                </select>
+                                                <select className="form-select modern-input admin-filter-select" value={userFilters.departmentId} onChange={(e) => setUserFilters((prev) => ({ ...prev, departmentId: e.target.value }))}>
+                                                    <option value="ALL">Mọi phòng ban</option>
+                                                    {departments.map((dept) => <option key={dept.id} value={dept.id}>{formatDeptName(dept.name)}</option>)}
+                                                </select>
+                                                <div className="admin-search-actions">
+                                                    <button type="submit" className="btn admin-search-btn admin-search-btn-primary rounded-circle shadow-sm d-flex align-items-center justify-content-center" title="Tìm kiếm">
+                                                        <i className="bi bi-arrow-right"></i>
+                                                    </button>
+                                                    <button type="button" className="btn admin-search-btn admin-search-btn-secondary rounded-circle shadow-sm d-flex align-items-center justify-content-center" onClick={handleResetSearch} title="Đặt lại bộ lọc">
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div className="table-responsive flex-grow-1 p-0 admin-user-table-shell">
+                                            <table className="table table-hover align-middle mb-0 admin-user-table">
+                                                <colgroup>
+                                                    <col className="admin-col-avatar" />
+                                                    <col className="admin-col-user" />
+                                                    <col className="admin-col-email" />
+                                                    <col className="admin-col-organization" />
+                                                    <col className="admin-col-role" />
+                                                    <col className="admin-col-approval" />
+                                                    <col className="admin-col-status" />
+                                                    <col className="admin-col-actions" />
+                                                </colgroup>
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th className="text-center admin-user-column-avatar">Ảnh</th>
+                                                        <th className="admin-user-column-primary">Thông tin nhân viên</th>
+                                                        <th className="admin-user-column-email">Liên hệ (Email)</th>
+                                                        <th className="admin-user-column-organization">Vị trí / Phòng ban</th>
+                                                        <th className="admin-user-column-role">Phân quyền</th>
+                                                        <th className="admin-user-column-approval">Phê duyệt</th>
+                                                        <th className="admin-user-column-status">Trạng thái</th>
+                                                        <th className="text-end admin-user-column-actions">Hành động</th>
                                                     </tr>
-                                                );
-                                            })}
-                                            {users.length === 0 && <tr><td colSpan="7" className="text-center py-5 text-muted"><i className="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy nhân viên nào.</td></tr>}
-                                        </tbody>
-                                    </table>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredUsers.map(u => {
+                                                        const isEditing = editingUserId === u.id;
+                                                        const isApproved = isApprovedUser(u);
+                                                        const approvalStatus = getApprovalStatus(u);
+                                                        const roleBadge = getRoleBadgeConfig(u.role);
+                                                        const approvalBadge = getApprovalBadgeConfig(u);
+                                                        const accessStatus = getAccessStatusConfig(u);
+                                                        return (
+                                                            <tr key={u.id} className="admin-user-row">
+                                                                <td className="text-center admin-user-avatar-cell admin-user-column-avatar" data-label="Ảnh">
+                                                                    {u.avatarUrl ? (
+                                                                        <img src={u.avatarUrl} alt={u.fullName} className="admin-user-avatar rounded-circle shadow-sm" style={{ width: 48, height: 48, objectFit: 'cover', border: '2px solid white' }} />
+                                                                    ) : (
+                                                                        <div className="admin-user-avatar admin-user-avatar-fallback rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mx-auto fw-bold shadow-sm" style={{ width: 48, height: 48, fontSize: '1.1rem', border: '2px solid white' }}>
+                                                                            {u.fullName ? u.fullName.charAt(0).toUpperCase() : '?'}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                                <td className="admin-user-column-primary" data-label="Thông tin nhân viên">
+                                                                    <div className="admin-user-primary">
+                                                                        <div className="admin-user-name">{u.fullName}</div>
+                                                                        <div className="admin-user-meta">
+                                                                            <span className="admin-user-meta-item">
+                                                                                <i className="bi bi-calendar-event me-1"></i>
+                                                                                Tham gia: {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '--'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="admin-user-column-email" data-label="Liên hệ (Email)">
+                                                                    {isEditing ? (
+                                                                        <input
+                                                                            className="form-control form-control-sm modern-input admin-inline-input"
+                                                                            value={editEmail}
+                                                                            onChange={(e) => setEditEmail(e.target.value)}
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="admin-user-email" title={u.email}><i className="bi bi-envelope me-2"></i>{u.email}</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="admin-user-column-organization" data-label="Vị trí / Phòng ban">
+                                                                    {isEditing ? (
+                                                                        <select
+                                                                            className="form-select form-select-sm modern-input admin-inline-input"
+                                                                            value={editDeptId}
+                                                                            onChange={(e) => setEditDeptId(e.target.value)}
+                                                                        >
+                                                                            <option value="">-- Không phòng ban --</option>
+                                                                            {departments.map(d => (
+                                                                                <option key={d.id} value={d.id}>{formatDeptName(d.name)}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    ) : (
+                                                                        u.department?.name ?
+                                                                        <span className="badge bg-light text-dark border admin-inline-badge"><i className="bi bi-building me-1 text-muted"></i>{formatDeptName(u.department.name)}</span> :
+                                                                        <span className="admin-cell-note">{isApproved ? '--' : approvalStatus === 'REJECTED' ? 'Từ chối trước khi gán phòng ban' : 'Chưa gán khi chờ duyệt'}</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="admin-user-column-role" data-label="Phân quyền">
+                                                                    {isEditing ? (
+                                                                        <select
+                                                                            className="form-select form-select-sm modern-input admin-inline-input"
+                                                                            value={editRole}
+                                                                            onChange={(e) => setEditRole(e.target.value)}
+                                                                        >
+                                                                            <option value="EMPLOYEE">Nhân viên</option>
+                                                                            <option value="MANAGER">Trưởng phòng</option>
+                                                                            <option value="ADMIN">Quản trị viên</option>
+                                                                        </select>
+                                                                    ) : (
+                                                                        <span className={`badge ${roleBadge.className} rounded-pill admin-role-badge`}>
+                                                                            {roleBadge.text}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="admin-user-column-approval" data-label="Phê duyệt">
+                                                                    <div className="admin-status-stack d-flex flex-column align-items-start gap-1">
+                                                                        <span className={`badge ${approvalBadge.className} admin-status-badge`}>{approvalBadge.text}</span>
+                                                                        {approvalStatus === 'REJECTED' && u.rejectionReason && (
+                                                                            <span className="small text-danger text-break admin-cell-note">{u.rejectionReason}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="admin-user-column-status" data-label="Trạng thái">
+                                                                    <span className={`badge ${accessStatus.className} admin-status-badge`}>{accessStatus.text}</span>
+                                                                </td>
+                                                                <td className="text-end admin-user-column-actions" data-label="Hành động">
+                                                                    {u.role !== 'ADMIN' && (
+                                                                        <div className="admin-user-actions">
+                                                                            {isEditing ? (
+                                                                                <>
+                                                                                    <button className="btn btn-sm btn-success shadow-sm admin-user-action-btn admin-user-action-btn-success" onClick={handleSaveEdit} title="Lưu thay đổi" aria-label="Lưu thay đổi">
+                                                                                        <i className="bi bi-check-lg"></i>
+                                                                                    </button>
+                                                                                    <button className="btn btn-sm btn-secondary shadow-sm admin-user-action-btn admin-user-action-btn-neutral" onClick={handleCancelEdit} title="Hủy chỉnh sửa" aria-label="Hủy chỉnh sửa">
+                                                                                        <i className="bi bi-x-lg"></i>
+                                                                                    </button>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {approvalStatus === 'PENDING' && (
+                                                                                        <button className="btn btn-sm btn-success shadow-sm admin-user-action-btn admin-user-action-btn-success" onClick={() => handleApproveUser(u)} title="Phê duyệt tài khoản" aria-label="Phê duyệt tài khoản">
+                                                                                            <i className="bi bi-check2-circle"></i>
+                                                                                            <span className="admin-user-action-text">Duyệt</span>
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {approvalStatus === 'PENDING' && (
+                                                                                        <button className="btn btn-sm btn-outline-danger shadow-sm admin-user-action-btn admin-user-action-btn-danger" onClick={() => handleRejectUser(u)} title="Từ chối tài khoản" aria-label="Từ chối tài khoản">
+                                                                                            <i className="bi bi-x-circle"></i>
+                                                                                            <span className="admin-user-action-text">Từ chối</span>
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {isApproved && (
+                                                                                        <button className="btn btn-sm btn-primary shadow-sm admin-user-action-btn admin-user-action-btn-primary" onClick={() => handleEditUser(u.id)} title="Chỉnh sửa" aria-label="Chỉnh sửa">
+                                                                                            <i className="bi bi-pencil-square"></i>
+                                                                                            <span className="admin-user-action-text">Sửa</span>
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {isApproved && (
+                                                                                        <button className={`btn btn-sm shadow-sm admin-user-action-btn ${isUserActive(u) ? 'btn-outline-warning admin-user-action-btn-warning' : 'btn-outline-success admin-user-action-btn-success-outline'}`} onClick={() => handleToggleUserStatus(u)} title={isUserActive(u) ? 'Khóa tài khoản' : 'Mở khóa tài khoản'} aria-label={isUserActive(u) ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}>
+                                                                                            <i className={`bi ${isUserActive(u) ? 'bi-lock' : 'bi-unlock'}`}></i>
+                                                                                            <span className="admin-user-action-text">{isUserActive(u) ? 'Khóa' : 'Mở khóa'}</span>
+                                                                                        </button>
+                                                                                    )}
+                                                                                    <button className="btn btn-sm btn-outline-danger shadow-sm admin-user-action-btn admin-user-action-btn-danger" onClick={() => handleDeleteUser(u.id)} title="Xóa tài khoản" aria-label="Xóa tài khoản">
+                                                                                        <i className="bi bi-trash"></i>
+                                                                                        <span className="admin-user-action-text">Xóa</span>
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                    {filteredUsers.length === 0 && <tr><td colSpan="8" className="text-center py-5 text-muted admin-empty-state"><i className="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy nhân viên nào.</td></tr>}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
                 {activeTab === 'activity' && (
                     <div className="row g-4">
@@ -785,6 +1200,28 @@ const AdminDashboard = () => {
                                             <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
                                         ))}
                                     </select>
+                                    <label className="form-label fw-bold small text-muted">Từ khóa hoạt động</label>
+                                    <input
+                                        className="form-control modern-input mb-3"
+                                        placeholder="Tìm theo nội dung, actor, target hoặc email..."
+                                        value={activityFilters.keyword}
+                                        onChange={(e) => setActivityFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+                                    />
+                                    <label className="form-label fw-bold small text-muted">Loại hoạt động</label>
+                                    <select className="form-select modern-input mb-3" value={activityFilters.type} onChange={(e) => setActivityFilters((prev) => ({ ...prev, type: e.target.value }))}>
+                                        <option value="ALL">Tất cả loại</option>
+                                        {activityTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                                    </select>
+                                    <label className="form-label fw-bold small text-muted">Thời gian</label>
+                                    <select className="form-select modern-input mb-3" value={activityFilters.period} onChange={(e) => setActivityFilters((prev) => ({ ...prev, period: e.target.value }))}>
+                                        <option value="ALL">Toàn bộ dữ liệu đã tải</option>
+                                        <option value="TODAY">Hôm nay</option>
+                                        <option value="LAST_7_DAYS">7 ngày gần đây</option>
+                                        <option value="LAST_30_DAYS">30 ngày gần đây</option>
+                                    </select>
+                                    <button type="button" className="btn btn-light border rounded-pill px-3 fw-bold w-100 mb-3" onClick={handleResetActivityFilters}>
+                                        Đặt lại bộ lọc hoạt động
+                                    </button>
                                     <div className="small text-muted">
                                         Admin có thể xem các hoạt động quan trọng của user như đăng nhập, đổi mật khẩu, reset mật khẩu, khóa/mở khóa, cập nhật tài khoản, task và bình luận.
                                     </div>
@@ -792,21 +1229,21 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                         <div className="col-12 col-xl-8">
-                            <div className="modern-card h-100">
-                                <div className="modern-card-header d-flex justify-content-between align-items-center">
-                                    <span>Lịch sử hoạt động người dùng</span>
-                                    <span className="badge bg-light text-dark border">{activityEntries.length} sự kiện</span>
-                                </div>
+                                <div className="modern-card h-100">
+                                    <div className="modern-card-header d-flex justify-content-between align-items-center">
+                                        <span>Lịch sử hoạt động người dùng</span>
+                                        <span className="badge bg-light text-dark border">{filteredActivityEntries.length} sự kiện</span>
+                                    </div>
                                 <div className="card-body p-4 bg-light">
                                     {activityLoading ? (
                                         <div className="text-center text-muted py-5">Đang tải hoạt động...</div>
                                     ) : activityError ? (
                                         <div className="alert alert-danger mb-0">{activityError}</div>
-                                    ) : activityEntries.length === 0 ? (
+                                    ) : filteredActivityEntries.length === 0 ? (
                                         <div className="text-center text-muted py-5"><i className="bi bi-clock-history fs-1 d-block mb-2"></i>Chưa có hoạt động nào để hiển thị.</div>
                                     ) : (
                                         <div className="d-flex flex-column gap-3">
-                                            {activityEntries.map((entry) => (
+                                            {filteredActivityEntries.map((entry) => (
                                                 <div key={entry.id} className="bg-white rounded-4 shadow-sm border p-3">
                                                     <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
                                                         <div>

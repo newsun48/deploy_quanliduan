@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import api, { resolveAppUrl } from '../api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import api, { getWebSocketUrl, resolveAppUrl } from '../api';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import './ProjectChatPanel.css';
@@ -15,19 +15,7 @@ const ProjectChatPanel = ({ project, currentUser }) => {
     const [replyToMessage, setReplyToMessage] = useState(null);
     const messagesEndRef = useRef(null);
     const stompClientRef = useRef(null);
-
-    useEffect(() => {
-        if (!project || !currentUser) return;
-
-        fetchMessages();
-        connectWebSocket();
-
-        return () => {
-            if (stompClientRef.current) {
-                stompClientRef.current.disconnect();
-            }
-        };
-    }, [project, currentUser]);
+    const reconnectTimeoutRef = useRef(null);
 
     useEffect(() => {
         scrollToBottom();
@@ -37,12 +25,22 @@ const ProjectChatPanel = ({ project, currentUser }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const connectWebSocket = () => {
-        const socket = new SockJS('/ws');
+    const connectWebSocket = useCallback(() => {
+        if (!project || !currentUser) return;
+        const token = localStorage.getItem('token');
+
+        if (reconnectTimeoutRef.current) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+        }
+        if (stompClientRef.current) {
+            stompClientRef.current.disconnect();
+        }
+
+        const socket = new SockJS(getWebSocketUrl());
         const client = Stomp.over(() => socket);
         client.debug = () => {};
 
-        client.connect({}, () => {
+        client.connect({ Authorization: token ? `Bearer ${token}` : '' }, () => {
             console.log('✅ WebSocket connected for Project:', project.id);
             client.subscribe(`/topic/project/${project.id}`, (messageOutput) => {
                 const newMsg = JSON.parse(messageOutput.body);
@@ -56,13 +54,13 @@ const ProjectChatPanel = ({ project, currentUser }) => {
             });
         }, (error) => {
             console.error('❌ WebSocket Error:', error);
-            setTimeout(connectWebSocket, 5000);
+            reconnectTimeoutRef.current = window.setTimeout(connectWebSocket, 5000);
         });
 
         stompClientRef.current = client;
-    };
+    }, [currentUser, project]);
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get(
@@ -74,7 +72,23 @@ const ProjectChatPanel = ({ project, currentUser }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentUser?.id, project?.id]);
+
+    useEffect(() => {
+        if (!project || !currentUser) return;
+
+        fetchMessages();
+        connectWebSocket();
+
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                window.clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+        };
+    }, [connectWebSocket, currentUser, fetchMessages, project]);
 
     // Kiểm tra tin nhắn có thể sửa/xóa không (trong vòng 1 giờ)
     const canEditOrDelete = (msg) => {
@@ -113,7 +127,14 @@ const ProjectChatPanel = ({ project, currentUser }) => {
                 replyToId: replyToMessage?.id || ''
             };
 
-            await api.post('/project-messages/send', payload);
+            const response = await api.post('/project-messages/send', payload);
+            const savedMessage = response.data;
+
+            setMessages((prev) => {
+                const exists = prev.find((message) => message.id === savedMessage?.id);
+                if (exists || !savedMessage?.id) return prev;
+                return [...prev, savedMessage];
+            });
 
             setNewMessage('');
             setFile(null);

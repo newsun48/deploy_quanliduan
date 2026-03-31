@@ -39,7 +39,17 @@ public class NotificationService {
         notification.setRead(false);
         notification.setCreatedAt(System.currentTimeMillis());
 
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        pushNotificationRefresh(receiver);
+        return saved;
+    }
+
+    public void pushNotificationRefresh(User receiver) {
+        if (receiver == null || receiver.getEmail() == null || receiver.getEmail().isBlank()) {
+            return;
+        }
+
+        messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/notifications", "REFRESH_NOTIFICATIONS");
     }
 
     // Lấy danh sách thông báo của user (sắp xếp mới nhất trước)

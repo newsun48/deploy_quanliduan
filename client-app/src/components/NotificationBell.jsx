@@ -1,44 +1,111 @@
-import { useEffect, useState } from 'react';
-import { notificationAPI } from '../api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import SockJS from 'sockjs-client';
+import { Stomp } from '@stomp/stompjs';
+import { getWebSocketUrl, notificationAPI } from '../api';
 import './NotificationBell.css';
 
-const NotificationBell = () => {
+const NotificationBell = ({ currentUser = null }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const stompClientRef = useRef(null);
+    const reconnectTimeoutRef = useRef(null);
+    const showDropdownRef = useRef(false);
+    const tokenRef = useRef(localStorage.getItem('token'));
+    const activeUser = useMemo(() => {
+        if (currentUser) return currentUser;
 
-    // Fetch unread count mỗi 10 giây
+        const userJson = localStorage.getItem('user');
+        if (!userJson) return null;
+
+        try {
+            return JSON.parse(userJson);
+        } catch {
+            return null;
+        }
+    }, [currentUser]);
+
     useEffect(() => {
-        fetchUnreadCount();
-        const interval = setInterval(fetchUnreadCount, 10000);
-        return () => clearInterval(interval);
-    }, []);
+        showDropdownRef.current = showDropdown;
+    }, [showDropdown]);
 
-    const fetchUnreadCount = async () => {
-        try {
-            const res = await notificationAPI.getUnreadCount();
-            setUnreadCount(res.data.unreadCount || 0);
-        } catch (err) {
-            console.error('Lỗi fetch unread count:', err);
+    const refreshNotificationState = useCallback(async ({ includeList = showDropdownRef.current } = {}) => {
+        if (!activeUser?.id) return;
+
+        const requests = [notificationAPI.getUnreadCount()];
+        if (includeList) {
+            requests.push(notificationAPI.getNotifications());
         }
-    };
 
-    const fetchNotifications = async () => {
-        setIsLoading(true);
         try {
-            const res = await notificationAPI.getNotifications();
-            setNotifications(res.data || []);
+            if (includeList) {
+                setIsLoading(true);
+            }
+            const [countRes, notificationsRes] = await Promise.all(requests);
+            setUnreadCount(countRes.data.unreadCount || 0);
+            if (includeList && notificationsRes) {
+                setNotifications(notificationsRes.data || []);
+            }
         } catch (err) {
-            console.error('Lỗi fetch notifications:', err);
+            console.error('Lỗi làm mới thông báo:', err);
         } finally {
-            setIsLoading(false);
+            if (includeList) {
+                setIsLoading(false);
+            }
         }
-    };
+    }, [activeUser?.id]);
+
+    useEffect(() => {
+        refreshNotificationState();
+        const interval = setInterval(() => refreshNotificationState(), 10000);
+        return () => clearInterval(interval);
+    }, [refreshNotificationState]);
+
+    useEffect(() => {
+        if (!activeUser?.id) return;
+
+        const connectWebSocket = () => {
+            if (reconnectTimeoutRef.current) {
+                window.clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+
+            const socket = new SockJS(getWebSocketUrl());
+            const client = Stomp.over(() => socket);
+            client.debug = () => {};
+
+            client.connect({ Authorization: tokenRef.current ? `Bearer ${tokenRef.current}` : '' }, () => {
+                client.subscribe('/user/queue/notifications', async (message) => {
+                    if (message.body === 'REFRESH_NOTIFICATIONS') {
+                        await refreshNotificationState();
+                    }
+                });
+            }, (error) => {
+                console.error('❌ Notification WebSocket error:', error);
+                reconnectTimeoutRef.current = window.setTimeout(connectWebSocket, 5000);
+            });
+
+            stompClientRef.current = client;
+        };
+
+        connectWebSocket();
+
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                window.clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect();
+            }
+        };
+    }, [activeUser?.id, refreshNotificationState]);
 
     const handleBellClick = () => {
         if (!showDropdown) {
-            fetchNotifications();
+            refreshNotificationState({ includeList: true });
         }
         setShowDropdown(!showDropdown);
     };
@@ -50,7 +117,7 @@ const NotificationBell = () => {
             setNotifications(prev => 
                 prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
             );
-            await fetchUnreadCount();
+            await refreshNotificationState();
         } catch (err) {
             console.error('Lỗi mark as read:', err);
         }

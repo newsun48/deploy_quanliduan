@@ -10,6 +10,8 @@ export const resolveAppUrl = (value) => {
     }
 };
 
+export const getWebSocketUrl = () => resolveAppUrl('/ws');
+
 // Tạo axios instance với base URL
 const api = axios.create({
     baseURL: '/api',
@@ -45,7 +47,10 @@ api.interceptors.response.use(
         console.error('❌ [Response Interceptor] Error:', error.config?.url);
         console.error('❌ [Response Interceptor] Status:', error.response?.status);
         console.error('❌ [Response Interceptor] Headers:', error.response?.headers);
-        if (error.response?.status === 401) {
+        const requestUrl = error.config?.url || '';
+        const isPublicAuthRequest = requestUrl.startsWith('/auth/');
+
+        if (error.response?.status === 401 && !isPublicAuthRequest) {
             console.error("⛔ Unauthorized access - clearing localStorage and redirecting");
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -74,6 +79,8 @@ export const notificationAPI = {
 };
 
 export const authAPI = {
+    signup: (payload) => api.post('/auth/signup', payload),
+    googleLogin: (credential) => api.post('/auth/google', { credential }),
     forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
     validateResetToken: (token) => api.get('/auth/reset-password/validate', { params: { token } }),
     resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
@@ -98,12 +105,24 @@ export const userAPI = {
     // Lấy tất cả user
     getAllUsers: () => api.get('/users'),
 
+    // Lấy user hiện tại
+    getCurrentUser: () => api.get('/users/me'),
+
+    // Lấy nhân sự cùng phòng với user hiện tại
+    getMyDepartmentUsers: () => api.get('/users/my-department'),
+
     // Tạo user mới
     createUser: (userData, deptId) => 
         api.post('/users', userData, { params: { deptId } }),
 
     // Cập nhật user
     updateUser: (userId, payload) => api.patch(`/users/${userId}`, payload),
+
+    // Phê duyệt user tự đăng ký
+    approveUser: (userId, payload) => api.patch(`/users/${userId}/approve`, payload),
+
+    // Từ chối user tự đăng ký
+    rejectUser: (userId, payload) => api.patch(`/users/${userId}/reject`, payload),
 
     // Khóa / mở khóa user
     updateUserStatus: (userId, active) => api.patch(`/users/${userId}/status`, { active }),
@@ -118,8 +137,14 @@ export const fileAPI = {
     }),
 };
 
+export const projectAPI = {
+    getAccessibleProjects: (userId) => api.get(`/projects/accessible/${userId}`),
+};
+
 export const taskAPI = {
     getDetail: (taskId) => api.get(`/tasks/${taskId}`),
+    update: (taskId, payload) => api.put(`/tasks/${taskId}`, payload),
+    delete: (taskId) => api.delete(`/tasks/${taskId}`),
     getActivity: (taskId) => api.get(`/tasks/${taskId}/activity`),
     addChecklistItem: (taskId, payload) => api.post(`/tasks/${taskId}/checklist-items`, payload),
     updateChecklistItem: (taskId, itemId, payload) => api.put(`/tasks/${taskId}/checklist-items/${itemId}`, payload),

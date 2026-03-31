@@ -1,6 +1,7 @@
 package com.projectmanagement.core_system.repository;
 
 import com.projectmanagement.core_system.model.Notification;
+import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
@@ -17,4 +18,8 @@ public interface NotificationRepository extends MongoRepository<Notification, St
 
     // Lấy danh sách thông báo chưa đọc
     List<Notification> findByReceiverAndReadFalseOrderByCreatedAtDesc(User receiver);
+
+    long deleteByReceiverAndTaskAndType(User receiver, Task task, String type);
+
+    void deleteByTask(Task task);
 }

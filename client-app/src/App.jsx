@@ -3,6 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 // Import các trang bạn vừa tạo trong thư mục pages
 import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -13,12 +14,20 @@ import StatisticsPage from './pages/StatisticsPage';
 
 // --- HÀM BẢO VỆ (Private Route) ---
 // Hàm này kiểm tra: Nếu chưa đăng nhập (không có user trong localStorage) -> Đá về trang Login
-const PrivateRoute = ({ children }) => {
-    // Lấy thông tin user đã lưu khi đăng nhập
+const PrivateRoute = ({ children, allowedRoles }) => {
     const user = JSON.parse(localStorage.getItem('user'));
-    
-    // Nếu có user -> Cho vào trang con (children). Nếu không -> Chuyển về trang chủ ("/")
-    return user ? children : <Navigate to="/" />;
+
+    if (!user) {
+        return <Navigate to="/" />;
+    }
+
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+        if (user.role === 'ADMIN') return <Navigate to="/admin" />;
+        if (user.role === 'MANAGER') return <Navigate to="/manager" />;
+        return <Navigate to="/employee" />;
+    }
+
+    return children;
 };
 
 function App() {
@@ -27,36 +36,37 @@ function App() {
             <Routes>
                 {/* 1. Trang mặc định là trang Đăng nhập */}
                 <Route path="/" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                 {/* 2. Các trang nội bộ (Được bảo vệ bởi PrivateRoute) */}
                 <Route path="/admin" element={
-                    <PrivateRoute>
+                    <PrivateRoute allowedRoles={['ADMIN']}>
                         <AdminDashboard />
                     </PrivateRoute>
                 } />
 
                 <Route path="/manager" element={
-                    <PrivateRoute>
+                    <PrivateRoute allowedRoles={['MANAGER']}>
                         <ManagerDashboard />
                     </PrivateRoute>
                 } />
 
                 <Route path="/employee" element={
-                    <PrivateRoute>
+                    <PrivateRoute allowedRoles={['EMPLOYEE', 'QA']}>
                         <EmployeeDashboard />
                     </PrivateRoute>
                 } />
 
                 <Route path="/profile" element={
-                    <PrivateRoute>
+                    <PrivateRoute allowedRoles={['ADMIN', 'MANAGER', 'EMPLOYEE', 'QA']}>
                         <ProfilePage />
                     </PrivateRoute>
                 } />
 
                 <Route path="/admin/statistics" element={
-                    <PrivateRoute>
+                    <PrivateRoute allowedRoles={['ADMIN']}>
                         <StatisticsPage />
                     </PrivateRoute>
                 } />

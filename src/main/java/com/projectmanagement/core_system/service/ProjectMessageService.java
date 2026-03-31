@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.logging.Logger;
 
 @Service
@@ -37,10 +38,15 @@ public class ProjectMessageService {
 
     // Lấy tin nhắn group chat (có kiểm tra quyền truy cập)
     public List<ProjectMessage> getMessagesByProjectIdWithAccess(String projectId, String userId) {
+        User currentUser = getAuthenticatedUser();
+        if (!currentUser.getId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền xem chat dự án này!");
+        }
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
 
-        if (!canUserAccessProjectChat(userId, project)) {
+        if (!canUserAccessProjectChat(currentUser.getId(), project)) {
             throw new RuntimeException("Bạn không có quyền xem chat dự án này!");
         }
 
@@ -51,15 +57,21 @@ public class ProjectMessageService {
 
     // Lấy tin nhắn private giữa 2 user
     public List<ProjectMessage> getPrivateMessages(String userId1, String userId2) {
-        String currentUserEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        User currentUser = getAuthenticatedUser();
 
         if (!currentUser.getId().equals(userId1) && !currentUser.getId().equals(userId2)) {
             throw new RuntimeException("Bạn không có quyền xem tin nhắn riêng tư này!");
         }
 
-        return projectMessageRepository.findPrivateMessages(userId1, userId2);
+        User user1 = findUserById(userId1, "Người dùng không tồn tại!");
+        User user2 = findUserById(userId2, "Người dùng không tồn tại!");
+        ensureSameDepartment(user1, user2);
+
+        return projectMessageRepository.findByReceiverIsNotNullOrderByCreatedAtAsc()
+                .stream()
+                .filter(message -> message.getSender() != null && message.getReceiver() != null)
+                .filter(message -> isPrivateConversationMatch(message, userId1, userId2))
+                .collect(Collectors.toList());
     }
 
     // ==================== SEND MESSAGE (Chung cho cả 2) ====================
@@ -73,16 +85,18 @@ public class ProjectMessageService {
         String fileUrl = payload.get("fileUrl");
         String replyToId = payload.get("replyToId");
 
-        // Validate sender
-        User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        User authenticatedUser = getAuthenticatedUser();
+        if (senderId != null && !senderId.isBlank() && !authenticatedUser.getId().equals(senderId)) {
+            throw new RuntimeException("Bạn không có quyền gửi tin nhắn dưới danh nghĩa người dùng khác!");
+        }
+        senderId = authenticatedUser.getId();
 
         // Build message
         ProjectMessage message = new ProjectMessage();
         message.setContent(content);
         message.setMessageType(messageType);
         message.setFileUrl(fileUrl);
-        message.setSender(sender);
+        message.setSender(authenticatedUser);
         message.setCreatedAt(LocalDateTime.now());
         message.setUpdatedAt(LocalDateTime.now());
 
@@ -97,8 +111,9 @@ public class ProjectMessageService {
 
         if (isPrivateChat) {
             // === PRIVATE CHAT ===
-            User receiver = userRepository.findById(receiverId)
-                    .orElseThrow(() -> new RuntimeException("Người nhận không tồn tại!"));
+            User receiver = findUserById(receiverId, "Người nhận không tồn tại!");
+            ensureSameDepartment(authenticatedUser, receiver);
+
             message.setReceiver(receiver);
             message.setProject(null); // Private chat không thuộc project
 
@@ -106,8 +121,8 @@ public class ProjectMessageService {
             logger.info("✅ Private message saved: " + saved.getId());
 
             // Broadcast qua WebSocket tới cả sender và receiver
-            messagingTemplate.convertAndSend("/topic/user/" + receiverId + "/messages", saved);
-            messagingTemplate.convertAndSend("/topic/user/" + senderId + "/messages", saved);
+            messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/messages", saved);
+            messagingTemplate.convertAndSendToUser(authenticatedUser.getEmail(), "/queue/messages", saved);
 
             return saved;
         } else {
@@ -120,7 +135,7 @@ public class ProjectMessageService {
                     .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
 
             // Kiểm tra quyền truy cập
-            if (!canUserAccessProjectChat(senderId, project)) {
+            if (!canUserAccessProjectChat(authenticatedUser.getId(), project)) {
                 throw new RuntimeException("Không có quyền chat dự án này!");
             }
 
@@ -211,10 +226,10 @@ public class ProjectMessageService {
                     "/topic/project/" + message.getProject().getId(), message);
         } else if (message.getReceiver() != null && message.getSender() != null) {
             // Private chat
-            messagingTemplate.convertAndSend(
-                    "/topic/user/" + message.getReceiver().getId() + "/messages", message);
-            messagingTemplate.convertAndSend(
-                    "/topic/user/" + message.getSender().getId() + "/messages", message);
+            messagingTemplate.convertAndSendToUser(
+                    message.getReceiver().getEmail(), "/queue/messages", message);
+            messagingTemplate.convertAndSendToUser(
+                    message.getSender().getEmail(), "/queue/messages", message);
         }
     }
 
@@ -247,6 +262,45 @@ public class ProjectMessageService {
 
         logger.warning("❌ DENIED: " + userId);
         return false;
+    }
+
+    private User getAuthenticatedUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new RuntimeException("Thiếu thông tin xác thực người dùng!");
+        }
+
+        String currentUserEmail = authentication.getName();
+        return userRepository.findByEmailIgnoreCase(currentUserEmail)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+    }
+
+    private User findUserById(String userId, String notFoundMessage) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException(notFoundMessage));
+    }
+
+    private void ensureSameDepartment(User firstUser, User secondUser) {
+        if (firstUser.getDepartment() == null || secondUser.getDepartment() == null) {
+            throw new RuntimeException("Chỉ có thể nhắn tin riêng với người cùng phòng ban!");
+        }
+
+        String firstDepartmentId = firstUser.getDepartment().getId();
+        String secondDepartmentId = secondUser.getDepartment().getId();
+
+        if (firstDepartmentId == null || secondDepartmentId == null || !firstDepartmentId.equals(secondDepartmentId)) {
+            throw new RuntimeException("Chỉ có thể nhắn tin riêng với người cùng phòng ban!");
+        }
+    }
+
+    private boolean isPrivateConversationMatch(ProjectMessage message, String userId1, String userId2) {
+        String senderId = message.getSender().getId();
+        String receiverId = message.getReceiver().getId();
+
+        return (userId1.equals(senderId) && userId2.equals(receiverId))
+                || (userId2.equals(senderId) && userId1.equals(receiverId));
     }
 }
 

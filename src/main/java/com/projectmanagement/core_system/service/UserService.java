@@ -1,17 +1,29 @@
 package com.projectmanagement.core_system.service;
 
+import com.projectmanagement.core_system.enums.ApprovalStatus;
 import com.projectmanagement.core_system.model.Department;
+import com.projectmanagement.core_system.model.ApproveUserRequest;
+import com.projectmanagement.core_system.model.GoogleAuthenticatedUser;
+import com.projectmanagement.core_system.model.GoogleLoginResult;
+import com.projectmanagement.core_system.model.RejectUserRequest;
+import com.projectmanagement.core_system.model.SignupRequest;
 import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
+import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.Map;
+import java.util.UUID;
 
 import java.util.List;
 import java.io.IOException;
@@ -19,9 +31,13 @@ import java.net.URL;
 import java.net.URLConnection;
 import com.projectmanagement.core_system.model.UpdateUserRequest;
 import com.projectmanagement.core_system.enums.ERole;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class UserService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -30,10 +46,22 @@ public class UserService {
     private DepartmentRepository departmentRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
+    private GoogleTokenVerifierService googleTokenVerifierService;
+
+    @Autowired
     private UserActivityService userActivityService;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String senderEmail;
 
     // 1. Tạo User (Thêm Validate kỹ càng hơn)
     public User createUser(User user, String deptId) {
@@ -51,9 +79,26 @@ public class UserService {
         if (!StringUtils.hasText(user.getPassword())) {
             throw new RuntimeException("Mật khẩu không được để trống!");
         }
+        if (user.getPassword().trim().length() < 6) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 6 ký tự!");
+        }
+        if (user.getRole() == null) {
+            throw new RuntimeException("Vai trò không được để trống!");
+        }
+
+        user.setFullName(user.getFullName().trim());
+        user.setEmail(normalizeEmail(user.getEmail()));
 
         // Check trùng email
-        if (userRepository.existsByEmail(user.getEmail())) {
+        Optional<User> existingUserOpt = userRepository.findByEmailIgnoreCase(user.getEmail());
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            if (existingUser.getApprovalStatus() == ApprovalStatus.PENDING) {
+                throw new RuntimeException("Email '" + user.getEmail() + "' đã có tài khoản đang chờ duyệt. Vui lòng duyệt tài khoản này trong danh sách người dùng thay vì tạo mới!");
+            }
+            if (existingUser.getApprovalStatus() == ApprovalStatus.REJECTED) {
+                throw new RuntimeException("Email '" + user.getEmail() + "' đã tồn tại với trạng thái bị từ chối. Vui lòng cập nhật hoặc xử lý tài khoản hiện có thay vì tạo mới!");
+            }
             throw new RuntimeException("Email '" + user.getEmail() + "' đã tồn tại trong hệ thống!");
         }
 
@@ -66,6 +111,7 @@ public class UserService {
 
         // Mã hóa pass - ID để MongoDB tự tạo
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setApprovalStatus(ApprovalStatus.APPROVED);
         if (user.getRole() == ERole.ADMIN) {
             user.setActive(true);
         }
@@ -83,7 +129,7 @@ public class UserService {
         userActivityService.record(actor, user, "USER_CREATED",
                 (actor != null ? actor.getFullName() : "Hệ thống") + " đã tạo tài khoản cho " + user.getFullName(),
                 Map.of(
-                        "role", user.getRole().name(),
+                        "role", roleNameOrEmpty(user),
                         "departmentId", user.getDepartment() != null ? user.getDepartment().getId() : ""
                 ));
 
@@ -95,20 +141,192 @@ public class UserService {
         return userRepository.findAll(); 
     }
 
+    public User signupPendingUser(SignupRequest request) {
+        if (!StringUtils.hasText(request.getFullName())) {
+            throw new RuntimeException("Họ tên không được để trống!");
+        }
+        if (!StringUtils.hasText(request.getEmail())) {
+            throw new RuntimeException("Email không được để trống!");
+        }
+        if (!StringUtils.hasText(request.getPassword())) {
+            throw new RuntimeException("Mật khẩu không được để trống!");
+        }
+        if (request.getPassword().trim().length() < 6) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 6 ký tự!");
+        }
+
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        String normalizedFullName = request.getFullName().trim();
+
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new RuntimeException("Email '" + normalizedEmail + "' đã tồn tại trong hệ thống!");
+        }
+
+        User user = new User();
+        user.setFullName(normalizedFullName);
+        user.setEmail(normalizedEmail);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(null);
+        user.setDepartment(null);
+        user.setApprovalStatus(ApprovalStatus.PENDING);
+        user.setActive(false);
+        user.setRejectionReason(null);
+
+        User savedUser = userRepository.save(user);
+        userActivityService.record(null, savedUser, "USER_SIGNUP_PENDING",
+                savedUser.getFullName() + " đã tự đăng ký tài khoản và đang chờ phê duyệt");
+        return savedUser;
+    }
+
+    public GoogleLoginResult authenticateWithGoogle(String credential) {
+        GoogleAuthenticatedUser googleUser = googleTokenVerifierService.verify(credential);
+        String normalizedEmail = normalizeEmail(googleUser.getEmail());
+
+        Optional<User> userByGoogleSubject = userRepository.findByGoogleSubject(googleUser.getSubject());
+        if (userByGoogleSubject.isPresent()) {
+            User linkedUser = syncGoogleProfile(userByGoogleSubject.get(), googleUser, normalizedEmail);
+            validateUserCanLogin(linkedUser);
+            return new GoogleLoginResult(GoogleLoginResult.Status.APPROVED, linkedUser, "Đăng nhập Google thành công!");
+        }
+
+        Optional<User> existingUserOpt = userRepository.findByEmailIgnoreCase(normalizedEmail);
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            String existingGoogleSubject = existingUser.getGoogleSubject();
+            if (StringUtils.hasText(existingGoogleSubject) && !existingGoogleSubject.equals(googleUser.getSubject())) {
+                throw new RuntimeException("Tài khoản này đã được liên kết với một tài khoản Google khác!");
+            }
+
+            User linkedUser = syncGoogleProfile(existingUser, googleUser, normalizedEmail);
+            validateUserCanLogin(linkedUser);
+            return new GoogleLoginResult(GoogleLoginResult.Status.APPROVED, linkedUser, "Đăng nhập Google thành công!");
+        }
+
+        User pendingUser = createPendingGoogleUser(googleUser, normalizedEmail);
+        return new GoogleLoginResult(
+                GoogleLoginResult.Status.PENDING,
+                pendingUser,
+                "Email Google này chưa có trong hệ thống. Tài khoản của bạn đã được tạo và đang chờ quản trị viên phê duyệt!"
+        );
+    }
+
+    public User approvePendingUser(String userId, ApproveUserRequest request, String adminEmail) {
+        User admin = requireAdminActor(adminEmail);
+        User user = getUserById(userId);
+
+        if (request == null) {
+            throw new RuntimeException("Thiếu dữ liệu phê duyệt tài khoản!");
+        }
+        if (request.getRole() == null) {
+            throw new RuntimeException("Vai trò không được để trống khi phê duyệt tài khoản!");
+        }
+        if (user.getApprovalStatus() != ApprovalStatus.PENDING) {
+            throw new RuntimeException("Tài khoản này không ở trạng thái chờ phê duyệt!");
+        }
+
+        user.setRole(request.getRole());
+
+        if (StringUtils.hasText(request.getDeptId())) {
+            Department dept = departmentRepository.findById(request.getDeptId())
+                    .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
+            user.setDepartment(dept);
+        }
+
+        user.setApprovalStatus(ApprovalStatus.APPROVED);
+        user.setActive(true);
+        user.setRejectionReason(null);
+        User savedUser = userRepository.save(user);
+
+        if (savedUser.getRole() == ERole.MANAGER && savedUser.getDepartment() != null) {
+            Department dept = savedUser.getDepartment();
+            dept.setManager(savedUser);
+            departmentRepository.save(dept);
+        }
+
+        userActivityService.record(admin, savedUser, "USER_APPROVED",
+                admin.getFullName() + " đã phê duyệt tài khoản " + savedUser.getFullName(),
+                Map.of(
+                        "role", roleNameOrEmpty(savedUser),
+                        "departmentId", savedUser.getDepartment() != null ? savedUser.getDepartment().getId() : ""
+                ));
+
+        try {
+            sendApprovalEmail(savedUser);
+        } catch (RuntimeException e) {
+            logger.error("Failed to send approval email for {}", savedUser.getEmail(), e);
+        }
+
+        return savedUser;
+    }
+
+    public User rejectPendingUser(String userId, RejectUserRequest request, String adminEmail) {
+        User admin = requireAdminActor(adminEmail);
+        User user = getUserById(userId);
+
+        if (request == null || !StringUtils.hasText(request.getReason())) {
+            throw new RuntimeException("Lý do từ chối không được để trống!");
+        }
+        if (user.getApprovalStatus() != ApprovalStatus.PENDING) {
+            throw new RuntimeException("Tài khoản này không ở trạng thái chờ phê duyệt!");
+        }
+
+        String normalizedReason = request.getReason().trim();
+        user.setApprovalStatus(ApprovalStatus.REJECTED);
+        user.setActive(false);
+        user.setRejectionReason(normalizedReason);
+        User savedUser = userRepository.save(user);
+
+        userActivityService.record(admin, savedUser, "USER_REJECTED",
+                admin.getFullName() + " đã từ chối tài khoản " + savedUser.getFullName(),
+                Map.of("reason", normalizedReason));
+
+        try {
+            sendRejectionEmail(savedUser, normalizedReason);
+        } catch (RuntimeException e) {
+            logger.error("Failed to send rejection email for {}", savedUser.getEmail(), e);
+        }
+
+        return savedUser;
+    }
+
+    public void validateUserCanLogin(User user) {
+        if (user.getApprovalStatus() == ApprovalStatus.PENDING) {
+            throw new RuntimeException("Tài khoản của bạn đang chờ quản trị viên phê duyệt!");
+        }
+
+        if (user.getApprovalStatus() == ApprovalStatus.REJECTED) {
+            if (StringUtils.hasText(user.getRejectionReason())) {
+                throw new RuntimeException("Tài khoản của bạn đã bị từ chối: " + user.getRejectionReason());
+            }
+            throw new RuntimeException("Tài khoản của bạn đã bị từ chối bởi quản trị viên!");
+        }
+
+        if (user.getRole() == null) {
+            throw new RuntimeException("Tài khoản chưa được gán vai trò. Vui lòng liên hệ quản trị viên!");
+        }
+
+        if (!user.isActive()) {
+            throw new RuntimeException("Tài khoản của bạn đang bị khóa!");
+        }
+    }
+
     // 3. Xóa User
     public void deleteUser(String userId) {
         deleteUser(userId, null);
     }
 
     public void deleteUser(String userId, String actorEmail) {
+        User actor = requireAdminActor(actorEmail);
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User không tồn tại!"));
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
             throw new RuntimeException("Không được phép xóa tài khoản Quản trị viên (ADMIN)!");
         }
-        User actor = getActorByEmail(actorEmail);
+        if (taskRepository.existsByAssignee_Id(userId)) {
+            throw new RuntimeException("Không thể xóa nhân viên này vì vẫn còn công việc đang được giao!");
+        }
         userActivityService.record(actor, user, "USER_DELETED",
                 (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa tài khoản của " + user.getFullName(),
-                Map.of("role", user.getRole().name()));
+                Map.of("role", roleNameOrEmpty(user)));
         userRepository.deleteById(userId);
     }
 
@@ -246,10 +464,11 @@ public class UserService {
 
         // Optional fields only
         if (request.getEmail() != null && !request.getEmail().isEmpty()) {
-            if (userRepository.existsByEmail(request.getEmail()) && !user.getEmail().equals(request.getEmail())) {
-                throw new RuntimeException("Email '" + request.getEmail() + "' đã được sử dụng bởi tài khoản khác!");
+            String normalizedEmail = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCase(normalizedEmail) && !user.getEmail().equalsIgnoreCase(normalizedEmail)) {
+                throw new RuntimeException("Email '" + normalizedEmail + "' đã được sử dụng bởi tài khoản khác!");
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(normalizedEmail);
         }
 
         Department oldDepartment = user.getDepartment();
@@ -301,8 +520,8 @@ public class UserService {
                 Map.of(
                         "oldEmail", oldEmail,
                         "newEmail", user.getEmail(),
-                        "oldRole", oldRole.name(),
-                        "newRole", user.getRole().name(),
+                        "oldRole", oldRole != null ? oldRole.name() : "",
+                        "newRole", roleNameOrEmpty(user),
                         "oldDepartmentId", oldDepartment != null ? oldDepartment.getId() : "",
                         "newDepartmentId", user.getDepartment() != null ? user.getDepartment().getId() : ""
                 ));
@@ -316,6 +535,10 @@ public class UserService {
 
         if (request.getActive() == null) {
             throw new RuntimeException("Trạng thái active không được để trống!");
+        }
+
+        if (request.getActive() && user.getApprovalStatus() == ApprovalStatus.PENDING) {
+            throw new RuntimeException("Không thể mở khóa tài khoản đang chờ phê duyệt. Vui lòng phê duyệt tài khoản trước!");
         }
 
         if (user.getRole() == ERole.ADMIN) {
@@ -363,7 +586,7 @@ public class UserService {
             throw new RuntimeException("Thiếu thông tin quản trị viên!");
         }
 
-        User admin = userRepository.findByEmail(adminEmail)
+        User admin = userRepository.findByEmailIgnoreCase(normalizeEmail(adminEmail))
                 .orElseThrow(() -> new RuntimeException("Quản trị viên không tồn tại!"));
 
         if (admin.getRole() != ERole.ADMIN) {
@@ -382,6 +605,94 @@ public class UserService {
             return null;
         }
 
-        return userRepository.findByEmail(actorEmail).orElse(null);
+        return userRepository.findByEmailIgnoreCase(normalizeEmail(actorEmail)).orElse(null);
+    }
+
+    private String roleNameOrEmpty(User user) {
+        return user.getRole() != null ? user.getRole().name() : "";
+    }
+
+    private String normalizeEmail(String email) {
+        if (!StringUtils.hasText(email)) {
+            throw new RuntimeException("Email không được để trống!");
+        }
+
+        return email.trim().toLowerCase();
+    }
+
+    private User syncGoogleProfile(User user, GoogleAuthenticatedUser googleUser, String normalizedEmail) {
+        boolean changed = false;
+
+        if (!normalizedEmail.equalsIgnoreCase(user.getEmail())) {
+            user.setEmail(normalizedEmail);
+            changed = true;
+        }
+
+        if (!StringUtils.hasText(user.getGoogleSubject())) {
+            user.setGoogleSubject(googleUser.getSubject());
+            changed = true;
+        }
+
+        if (!Boolean.TRUE.equals(user.getGoogleEmailVerified())) {
+            user.setGoogleEmailVerified(googleUser.isEmailVerified());
+            changed = true;
+        }
+
+        if (!StringUtils.hasText(user.getFullName()) && StringUtils.hasText(googleUser.getFullName())) {
+            user.setFullName(googleUser.getFullName().trim());
+            changed = true;
+        }
+
+        if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(googleUser.getPictureUrl())) {
+            user.setAvatarUrl(googleUser.getPictureUrl().trim());
+            changed = true;
+        }
+
+        return changed ? userRepository.save(user) : user;
+    }
+
+    private User createPendingGoogleUser(GoogleAuthenticatedUser googleUser, String normalizedEmail) {
+        User user = new User();
+        user.setFullName(StringUtils.hasText(googleUser.getFullName()) ? googleUser.getFullName().trim() : normalizedEmail);
+        user.setEmail(normalizedEmail);
+        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setRole(null);
+        user.setDepartment(null);
+        user.setApprovalStatus(ApprovalStatus.PENDING);
+        user.setActive(false);
+        user.setRejectionReason(null);
+        user.setGoogleSubject(googleUser.getSubject());
+        user.setGoogleEmailVerified(googleUser.isEmailVerified());
+        if (StringUtils.hasText(googleUser.getPictureUrl())) {
+            user.setAvatarUrl(googleUser.getPictureUrl().trim());
+        }
+
+        User savedUser = userRepository.save(user);
+        userActivityService.record(null, savedUser, "USER_SIGNUP_PENDING_GOOGLE",
+                savedUser.getFullName() + " đã đăng ký bằng Google và đang chờ phê duyệt");
+        return savedUser;
+    }
+
+    private void sendApprovalEmail(User user) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(user.getEmail());
+        message.setFrom(senderEmail);
+        message.setSubject("Tai khoan da duoc phe duyet");
+        message.setText("Xin chao " + user.getFullName() + ",\n\n"
+                + "Tai khoan cua ban da duoc phe duyet va co the dang nhap vao he thong.\n"
+                + "Neu can ho tro them, vui long lien he quan tri vien.");
+        mailSender.send(message);
+    }
+
+    private void sendRejectionEmail(User user, String reason) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(user.getEmail());
+        message.setFrom(senderEmail);
+        message.setSubject("Tai khoan da bi tu choi phe duyet");
+        message.setText("Xin chao " + user.getFullName() + ",\n\n"
+                + "Yeu cau dang ky tai khoan cua ban da bi tu choi.\n"
+                + "Ly do: " + reason + "\n\n"
+                + "Ban co the lien he quan tri vien de duoc huong dan them.");
+        mailSender.send(message);
     }
 }
