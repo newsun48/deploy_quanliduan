@@ -81,6 +81,7 @@ export const authAPI = {
 
 export const adminActivityAPI = {
     getRecentActivities: (userId, limit = 50) => api.get('/admin/user-activities', { params: { userId, limit } }),
+    undoActivity: (activityId) => api.post(`/admin/user-activities/${activityId}/undo`),
 };
 
 // ========== USER API ==========
@@ -121,7 +122,7 @@ export const userAPI = {
     updateUserStatus: (userId, active) => api.patch(`/users/${userId}/status`, { active }),
 
     // Xóa user
-    deleteUser: (userId) => api.delete(`/users/${userId}`),
+    deleteUser: (userId, params = {}) => api.delete(`/users/${userId}`, { params }),
 };
 
 export const fileAPI = {

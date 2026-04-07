@@ -10,7 +10,7 @@ const TEMPLATE_STATUS_META = {
 };
 
 const REVIEW_STATUS_META = {
-    ON_TRACK: { label: 'On track', className: 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' },
+    ON_TRACK: { label: 'Đúng tiến độ', className: 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' },
     AT_RISK: { label: 'Cần chú ý', className: 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25' },
     OFF_TRACK: { label: 'Trễ mục tiêu', className: 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25' },
     COMPLETED: { label: 'Hoàn tất', className: 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25' },
@@ -31,9 +31,9 @@ export const REQUEST_PRIORITY_OPTIONS = [
 ];
 
 export const TEMPLATE_PRIORITY_OPTIONS = [
-    { value: 'LOW', label: 'Low' },
-    { value: 'MEDIUM', label: 'Medium' },
-    { value: 'HIGH', label: 'High' },
+    { value: 'LOW', label: 'Thấp' },
+    { value: 'MEDIUM', label: 'Trung bình' },
+    { value: 'HIGH', label: 'Cao' },
 ];
 
 export const extractItems = (payload) => {
@@ -153,7 +153,7 @@ export const normalizeRequestItem = (request = {}) => ({
 
 export const normalizeTemplateItem = (template = {}) => ({
     id: template.id || template.templateId || template._id,
-    name: template.name || template.title || 'Project template',
+    name: template.name || template.title || 'Mẫu dự án',
     summary: template.description || template.summary || '',
     status: template.archived ? 'ARCHIVED' : 'ACTIVE',
     priority: template.taskTemplates?.[0]?.priority || template.priority || 'MEDIUM',

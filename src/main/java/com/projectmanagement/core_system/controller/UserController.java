@@ -21,8 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.projectmanagement.core_system.model.UpdateUserRequest;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -118,9 +116,12 @@ public class UserController {
 
     // 4. Xóa nhân viên
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id, Authentication authentication) {
+    public ResponseEntity<?> deleteUser(
+            @PathVariable String id,
+            @RequestParam(required = false) String handoffManagerId,
+            Authentication authentication) {
         try {
-            userService.deleteUser(id, authenticatedUserHelper.requireActorEmail(authentication));
+            userService.deleteUser(id, handoffManagerId, authenticatedUserHelper.requireActorEmail(authentication));
             return ResponseEntity.ok("Đã xóa nhân viên thành công!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

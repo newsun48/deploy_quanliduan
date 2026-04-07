@@ -67,6 +67,9 @@ public class TaskService {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private AdminActivityService adminActivityService;
+
     // 1. Tạo Task mới
     public Task createTask(Task task, String projectId, String assigneeId) {
         Project project = projectRepository.findById(projectId)
@@ -239,14 +242,18 @@ public class TaskService {
 
         User manager = ensureManagerCanManageTask(task, managerEmail);
 
-        commentRepository.deleteByTask(task);
-        taskActivityRepository.deleteByTaskId(task.getId());
-        notificationRepository.deleteByTask(task);
-        taskRepository.delete(task);
+        task.setDeleted(true);
+        taskRepository.save(task);
 
         userActivityService.record(manager, manager, "TASK_DELETED",
                 manager.getFullName() + " đã xóa task '" + task.getTitle() + "'",
                 Map.of("taskId", task.getId(), "projectId", task.getProject().getId()));
+
+        adminActivityService.recordActivity(manager, "TASK_DELETED", "TASK", task.getId(),
+                manager.getFullName() + " đã xóa task '" + task.getTitle() + "'",
+                Map.of("title", task.getTitle(), "projectId", task.getProject().getId()),
+                Map.of("isDeleted", true),
+                true);
     }
 
     // 2. Cập nhật trạng thái và tiến độ
@@ -578,8 +585,82 @@ public class TaskService {
             "DRAFT", draftProjects
         ));
         results.put("userDept", userDept);
-
         return results;
+    }
+
+    public List<Map<String, Object>> getWorkloadStatistics(String actorEmail, String departmentId) {
+        User actor = requireActiveUser(actorEmail);
+        // Admin see all or by dept, Manager see their own dept
+        String targetDeptId = (actor.getRole() == ERole.ADMIN) ? departmentId : (actor.getDepartment() != null ? actor.getDepartment().getId() : null);
+
+        List<Task> tasks;
+        if (targetDeptId == null || targetDeptId.equalsIgnoreCase("ALL")) {
+            tasks = taskRepository.findAll();
+        } else {
+            List<Project> projects = projectRepository.findByDepartment_Id(targetDeptId);
+            tasks = taskRepository.findByProjectIn(projects);
+        }
+
+        LocalDate today = LocalDate.now();
+        // Filter out completed tasks
+        List<Task> openTasks = tasks.stream()
+                .filter(t -> t.getStatus() != TaskStatus.DONE)
+                .filter(t -> t.getAssignee() != null)
+                .collect(Collectors.toList());
+
+        Map<String, List<Task>> byAssignee = openTasks.stream()
+                .collect(Collectors.groupingBy(t -> t.getAssignee().getFullName()));
+
+        List<Map<String, Object>> workload = new ArrayList<>();
+        byAssignee.forEach((name, userTasks) -> {
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("assigneeName", name);
+            entry.put("openTasks", userTasks.size());
+            long overdue = userTasks.stream()
+                    .filter(t -> t.getDeadline() != null && t.getDeadline().isBefore(today))
+                    .count();
+            entry.put("overdueOpenTasks", overdue);
+            workload.add(entry);
+        });
+
+        // Add users with 0 tasks if they belong to the department
+        if (targetDeptId != null && !targetDeptId.equalsIgnoreCase("ALL")) {
+            List<User> deptUsers = userRepository.findAll().stream()
+                    .filter(u -> u.getDepartment() != null && targetDeptId.equals(u.getDepartment().getId()))
+                    .toList();
+            for (User u : deptUsers) {
+                if (!byAssignee.containsKey(u.getFullName())) {
+                    Map<String, Object> zeroEntry = new HashMap<>();
+                    zeroEntry.put("assigneeName", u.getFullName());
+                    zeroEntry.put("openTasks", 0);
+                    zeroEntry.put("overdueOpenTasks", 0);
+                    workload.add(zeroEntry);
+                }
+            }
+        }
+
+        return workload;
+    }
+
+    public List<Task> getTasksByDepartment(String departmentId, String actorEmail) {
+        User actor = requireActiveUser(actorEmail);
+        
+        List<Task> tasks;
+        if (departmentId.equalsIgnoreCase("all")) {
+            ensureAdmin(actor);
+            tasks = taskRepository.findAll();
+        } else {
+            // Check if manager of this dept or admin
+            if (actor.getRole() != ERole.ADMIN) {
+                if (actor.getDepartment() == null || !actor.getDepartment().getId().equals(departmentId)) {
+                    throw new AccessDeniedException("Bạn không có quyền xem task của phòng ban này!");
+                }
+            }
+            List<Project> projects = projectRepository.findByDepartment_Id(departmentId);
+            tasks = taskRepository.findByProjectIn(projects);
+        }
+        
+        return tasks;
     }
 
     public void ensureCanAccessAttachmentFile(String filename, String actorEmail) {

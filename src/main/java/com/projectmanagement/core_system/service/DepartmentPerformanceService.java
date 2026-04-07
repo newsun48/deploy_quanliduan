@@ -198,6 +198,19 @@ public class DepartmentPerformanceService {
                 .findByDepartment_IdAndYearAndQuarter(department.getId(), request.getYear(), request.getQuarter())
                 .orElseGet(DepartmentQuarterlyOkr::new);
 
+        // Capture snapshot before modification
+        DepartmentQuarterlyOkr snapshot = null;
+        if (okr.getId() != null) {
+            snapshot = new DepartmentQuarterlyOkr();
+            snapshot.setId(okr.getId());
+            snapshot.setDepartment(okr.getDepartment());
+            snapshot.setYear(okr.getYear());
+            snapshot.setQuarter(okr.getQuarter());
+            snapshot.setObjective(okr.getObjective());
+            snapshot.setKeyResults(new ArrayList<>(okr.getKeyResults()));
+            snapshot.setReviewSummary(okr.getReviewSummary());
+        }
+
         if (okr.getId() == null) {
             okr.setCreatedAt(System.currentTimeMillis());
         }
@@ -214,7 +227,8 @@ public class DepartmentPerformanceService {
                 actor.getFullName() + " đã cập nhật OKR quý " + saved.getQuarter() + "/" + saved.getYear() + " cho phòng ban " + department.getName(),
                 Map.of(
                         "departmentId", department.getId(),
-                        "okrId", saved.getId()
+                        "okrId", saved.getId(),
+                        "snapshot", snapshot != null ? snapshot : "NEW_OKR"
                 ));
         return saved;
     }
@@ -229,6 +243,11 @@ public class DepartmentPerformanceService {
             throw new RuntimeException("currentValue không được để trống!");
         }
 
+        // Capture snapshot
+        DepartmentQuarterlyOkr snapshot = new DepartmentQuarterlyOkr();
+        snapshot.setId(okr.getId());
+        snapshot.setKeyResults(new ArrayList<>(okr.getKeyResults()));
+
         DepartmentOkrKeyResult keyResult = okr.getKeyResults().stream()
                 .filter(item -> keyResultId.equals(item.getId()))
                 .findFirst()
@@ -240,7 +259,7 @@ public class DepartmentPerformanceService {
         DepartmentQuarterlyOkr saved = departmentQuarterlyOkrRepository.save(okr);
         userActivityService.record(actor, actor, "DEPARTMENT_OKR_KEY_RESULT_UPDATED",
                 actor.getFullName() + " đã cập nhật tiến độ key result " + keyResult.getName(),
-                Map.of("okrId", saved.getId(), "keyResultId", keyResultId));
+                Map.of("okrId", saved.getId(), "keyResultId", keyResultId, "snapshot", snapshot));
         return saved;
     }
 
@@ -250,12 +269,17 @@ public class DepartmentPerformanceService {
                 .orElseThrow(() -> new RuntimeException("OKR không tồn tại!"));
         ensureCanManageDepartment(actor, okr.getDepartment());
 
+        // Capture snapshot
+        DepartmentQuarterlyOkr snapshot = new DepartmentQuarterlyOkr();
+        snapshot.setId(okr.getId());
+        snapshot.setReviewSummary(okr.getReviewSummary());
+
         okr.setReviewSummary(request != null ? request.getReviewSummary() : null);
         okr.setUpdatedAt(System.currentTimeMillis());
 
         DepartmentQuarterlyOkr saved = departmentQuarterlyOkrRepository.save(okr);
         userActivityService.record(actor, actor, "DEPARTMENT_OKR_REVIEW_UPDATED",
-                actor.getFullName() + " đã cập nhật tổng kết quý cho OKR", Map.of("okrId", saved.getId()));
+                actor.getFullName() + " đã cập nhật tổng kết quý cho OKR", Map.of("okrId", saved.getId(), "snapshot", snapshot));
         return saved;
     }
 

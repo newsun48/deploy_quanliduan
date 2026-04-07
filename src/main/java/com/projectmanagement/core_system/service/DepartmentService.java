@@ -17,38 +17,49 @@ public class DepartmentService {
     private DepartmentRepository departmentRepository;
 
     @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
-    private ProjectRepository projectRepository;
+    private UserActivityService userActivityService;
 
-    // 1. Lấy danh sách
+    @Autowired
+    private AdminActivityService adminActivityService;
+
+    // 1. Lấy danh sách (Chỉ lấy phòng ban chưa bị xóa)
     public List<Department> getAllDepartments() {
-        return departmentRepository.findAll();
+        return departmentRepository.findAllByIsDeletedFalse();
     }
 
-    // 2. Tạo phòng ban mới (Nâng cấp)
-    public Department createDepartment(Department department) {
-        // 🔥 Validate: Tên không được rỗng
+    // 2. Tạo phòng ban mới
+    public Department createDepartment(Department department, String actorEmail) {
         if (!StringUtils.hasText(department.getName())) {
             throw new RuntimeException("Tên phòng ban không được để trống!");
         }
-
-        // 🔥 Validate: Check trùng tên (Không phân biệt hoa thường)
         if (departmentRepository.existsByNameIgnoreCase(department.getName())) {
             throw new RuntimeException("Phòng ban '" + department.getName() + "' đã tồn tại!");
         }
 
-        // Để MongoDB tự tạo ID
-        return departmentRepository.save(department);
+        Department saved = departmentRepository.save(department);
+        
+        com.projectmanagement.core_system.model.User actor = null;
+        if (actorEmail != null) {
+            actor = userRepository.findByEmailIgnoreCase(actorEmail).orElse(null);
+        }
+
+        userActivityService.record(actor, null, "DEPARTMENT_CREATED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã tạo phòng ban: " + saved.getName(),
+                java.util.Map.of("departmentId", saved.getId(), "name", saved.getName()));
+
+        return saved;
     }
 
     // 3. Xóa phòng ban an toàn
-    public void deleteDepartment(String id) {
-        // Kiểm tra xem phòng ban có tồn tại không
-        if (!departmentRepository.existsById(id)) {
-            throw new RuntimeException("Phòng ban không tồn tại!");
-        }
+    public void deleteDepartment(String id, String actorEmail) {
+        Department dept = departmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
 
         // 🛑 Chặn xóa nếu còn Nhân viên
         if (!userRepository.findByDepartment_Id(id).isEmpty()) {
@@ -60,20 +71,36 @@ public class DepartmentService {
             throw new RuntimeException("Không thể xóa: Phòng ban đang phụ trách dự án!");
         }
 
-        departmentRepository.deleteById(id);
+        dept.setDeleted(true);
+        departmentRepository.save(dept);
+        
+        com.projectmanagement.core_system.model.User actor = null;
+        if (actorEmail != null) {
+            actor = userRepository.findByEmailIgnoreCase(actorEmail).orElse(null);
+        }
+
+        userActivityService.record(actor, null, "DEPARTMENT_DELETED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa phòng ban: " + dept.getName(),
+                java.util.Map.of("snapshot", dept));
+
+        adminActivityService.recordActivity(actor, "DEPARTMENT_DELETED", "DEPARTMENT", dept.getId(),
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa phòng ban: " + dept.getName(),
+                java.util.Map.of("name", dept.getName()),
+                java.util.Map.of("isDeleted", true),
+                true);
     }
 
-    // 4. Cập nhật tên phòng ban
-    public Department updateDepartment(String id, Department updatedData) {
-        if (!StringUtils.hasText(updatedData.getName())) {
-            throw new RuntimeException("Tên phòng ban không được để trống!");
-        }
-        
+    // 4. Cập nhật phòng ban
+    public Department updateDepartment(String id, Department updatedData, String actorEmail) {
         Department existingDept = departmentRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
 
+        String oldName = existingDept.getName();
+        String oldDescription = existingDept.getDescription();
+        com.projectmanagement.core_system.model.User oldManager = existingDept.getManager();
+
         // Cập nhật nếu tên thay đổi
-        if (!existingDept.getName().equalsIgnoreCase(updatedData.getName())) {
+        if (StringUtils.hasText(updatedData.getName()) && !existingDept.getName().equalsIgnoreCase(updatedData.getName())) {
             if (departmentRepository.existsByNameIgnoreCase(updatedData.getName())) {
                 throw new RuntimeException("Phòng ban '" + updatedData.getName() + "' đã tồn tại!");
             }
@@ -100,6 +127,42 @@ public class DepartmentService {
             existingDept.setManager(null);
         }
 
-        return departmentRepository.save(existingDept);
+
+        Department savedDept = departmentRepository.save(existingDept);
+
+        // Record activity
+        com.projectmanagement.core_system.model.User actor = null;
+        if (actorEmail != null) {
+            actor = userRepository.findByEmailIgnoreCase(actorEmail).orElse(null);
+        }
+
+        java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+        metadata.put("departmentId", savedDept.getId());
+        if (!oldName.equals(savedDept.getName())) metadata.put("oldName", oldName);
+        if (oldDescription != null && !oldDescription.equals(savedDept.getDescription())) metadata.put("oldDescription", oldDescription);
+        if (oldManager != null) metadata.put("oldManagerId", oldManager.getId());
+
+        userActivityService.record(actor, null, "DEPARTMENT_UPDATED",
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã cập nhật phòng ban: " + savedDept.getName(),
+                metadata);
+
+        // 🔥 Auto-sync logic
+        if (savedDept.getManager() != null) {
+            com.projectmanagement.core_system.model.User newDeptManager = savedDept.getManager();
+            List<com.projectmanagement.core_system.model.Project> projectsOfDept = projectRepository.findByIsDeletedFalseAndDepartment_Id(savedDept.getId());
+            
+            boolean changed = false;
+            for (com.projectmanagement.core_system.model.Project project : projectsOfDept) {
+                project.setManager(newDeptManager);
+                if (project.getMembers() == null) project.setMembers(new java.util.ArrayList<>());
+                if (project.getMembers().stream().noneMatch(m -> m.getId().equals(newDeptManager.getId()))) {
+                    project.getMembers().add(newDeptManager);
+                }
+                changed = true;
+            }
+            if (changed) projectRepository.saveAll(projectsOfDept);
+        }
+
+        return savedDept;
     }
 }

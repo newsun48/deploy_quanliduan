@@ -48,7 +48,6 @@ public class AnalyticsService {
     @Autowired
     private DepartmentRepository departmentRepository;
 
-    private static final ZoneId ANALYTICS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     public Map<String, Object> getDeliveryAnalytics(String actorEmail, String departmentId, Integer rangeDays, Integer stalledDays) {
         User actor = requireActiveUser(actorEmail);
@@ -155,7 +154,6 @@ public class AnalyticsService {
             timeline.doneAtMillis = inferDoneAtMillis(task, activities);
             timeline.inProgressAtMillis = inferInProgressAtMillis(activities, timeline.doneAtMillis);
             timeline.lastActivityAtMillis = inferLastActivityAtMillis(activities, timeline.createdAtMillis);
-            timeline.hasActivityHistory = !activities.isEmpty();
             timelineByTask.put(taskId, timeline);
         }
         return timelineByTask;
@@ -859,6 +857,9 @@ public class AnalyticsService {
             throw new AccessDeniedException("Trưởng phòng chưa được gán phòng ban!");
         }
 
+        if (managerDepartmentId == null) {
+            throw new AccessDeniedException("ID phòng ban không hợp lệ!");
+        }
         Department managedDepartment = departmentRepository.findById(managerDepartmentId)
                 .orElseThrow(() -> new AccessDeniedException("Phòng ban quản lý không tồn tại!"));
 
@@ -895,6 +896,5 @@ public class AnalyticsService {
         private Long inProgressAtMillis;
         private Long doneAtMillis;
         private Long lastActivityAtMillis;
-        private boolean hasActivityHistory;
     }
 }

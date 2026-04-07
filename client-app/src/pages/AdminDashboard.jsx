@@ -191,6 +191,40 @@ const AdminDashboard = () => {
 
         loadActivities();
     }, [activeTab, selectedActivityUserId]);
+
+    const [undoingActivityId, setUndoingActivityId] = useState(null);
+
+    const handleUndoActivity = async (activity) => {
+        if (!(await askConfirm(`Hoàn tác hoạt động: "${activity.message}"?`))) return;
+
+        try {
+            setUndoingActivityId(activity.id);
+            await adminActivityAPI.undoActivity(activity.id);
+            Swal.fire('Thành công', 'Đã hoàn tác hoạt động thành công!', 'success');
+            
+            // Refresh activities
+            const res = await adminActivityAPI.getRecentActivities(selectedActivityUserId || undefined, 80);
+            setActivityEntries(res.data || []);
+            
+            // Also refresh common data as it might have changed users/projects
+            fetchData();
+        } catch (err) {
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            Swal.fire('Lỗi hoàn tác', message, 'error');
+        } finally {
+            setUndoingActivityId(null);
+        }
+    };
+
+    const isUndoable = (type) => [
+        'USER_APPROVED', 'USER_REJECTED', 'USER_LOCKED', 'USER_UNLOCKED', 
+        'USER_UPDATED', 'MANAGER_HANDOFF_COMPLETED', 'USER_DELETED', 'USER_CREATED',
+        'DEPARTMENT_CREATED', 'DEPARTMENT_DELETED', 'DEPARTMENT_UPDATED',
+        'PROJECT_CREATED', 'PROJECT_DELETED', 'PROJECT_UPDATED', 'PROJECT_MEMBER_ADDED', 'PROJECT_MEMBER_REMOVED',
+        'TASK_CREATED', 'TASK_DELETED', 'TASK_UPDATED'
+    ].includes(type);
+
     const handleLogout = () => { localStorage.removeItem('user'); navigate('/'); };
 
     const handleSearchUser = (e) => {
@@ -320,15 +354,28 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteUser = async (id) => {
-        if (!(await askConfirm("Xóa nhân viên này?"))) return;
+        const userToDelete = users.find(u => u.id === id);
+        if (!userToDelete) return;
+
         try {
-            await api.delete(`/users/${id}`);
+            const handoffPayload = await collectManagerHandoffPayload(userToDelete, { forceHandoff: true, actionType: 'delete' });
+            if (handoffPayload === null) return;
+
+            const isManager = Object.keys(handoffPayload).length > 0;
+            const confirmMessage = isManager 
+                ? `Đã xong bước chuyển vai trò. Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản manager ${userToDelete.fullName} (${userToDelete.email})?`
+                : `Bạn có chắc chắn muốn xóa nhân viên ${userToDelete.fullName}?`;
+
+            if (!(await askConfirm(confirmMessage))) return;
+
+            await userAPI.deleteUser(id, handoffPayload);
+            Swal.fire('Thành công', 'Đã xóa nhân viên thành công!', 'success');
             fetchData();
         } catch (err) {
             console.error(err);
             const errorData = err.response?.data;
             const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message || 'Lỗi xóa!');
-            alert(message);
+            Swal.fire('Lỗi', message, 'error');
         }
     };
 
@@ -359,11 +406,18 @@ const AdminDashboard = () => {
         ));
     };
 
-    const collectManagerHandoffPayload = async (user) => {
+    const collectManagerHandoffPayload = async (user, { forceHandoff = false, actionType = 'change' } = {}) => {
         const currentDepartment = departments.find((department) => department.id === user?.department?.id);
         const isCurrentDepartmentManager = Boolean(currentDepartment?.manager?.id && currentDepartment.manager.id === user?.id);
-        const isLeavingManagedDepartment = isCurrentDepartmentManager
-            && (editRole !== 'MANAGER' || (editDeptId && editDeptId !== currentDepartment.id));
+        
+        // If not a manager, no handoff needed
+        if (!isCurrentDepartmentManager) {
+            return {};
+        }
+
+        const isLeavingManagedDepartment = forceHandoff || (
+            editRole !== 'MANAGER' || (editDeptId && editDeptId !== currentDepartment.id)
+        );
 
         if (!isLeavingManagedDepartment) {
             return {};
@@ -373,18 +427,28 @@ const AdminDashboard = () => {
         if (candidates.length === 0) {
             await Swal.fire({
                 icon: 'warning',
-                title: 'Chưa thể downgrade manager',
-                text: `Phòng ${formatDeptName(currentDepartment?.name || user.department?.name || '')} chưa có MANAGER thay thế đang hoạt động. Hãy bổ nhiệm hoặc chuyển giao manager trước.`,
+                title: 'Chưa thể chuyển vai trò manager',
+                text: `Phòng ${formatDeptName(currentDepartment?.name || user.department?.name || '')} chưa có MANAGER thay thế đang hoạt động. Hãy bổ nhiệm hoặc chuyển vai trò manager khác trước.`,
             });
             return null;
         }
 
+        const dialogConfig = actionType === 'delete' ? {
+            title: 'Chuyển vai trò trước khi xóa tài khoản',
+            alertText: 'Tài khoản này đang là Manager của phòng ban. Bạn phải chuyển vai trò quản lý cho người khác trước khi có thể xóa.',
+            confirmText: 'Xác nhận chuyển vai trò & Tiếp tục xóa'
+        } : {
+            title: 'Chuyển vai trò trước khi hạ quyền',
+            alertText: 'Department này vẫn phải có manager phụ trách trước khi hạ quyền hoặc chuyển phòng trưởng phòng hiện tại.',
+            confirmText: 'Xác nhận chuyển vai trò'
+        };
+
         const { value: handoffValues } = await Swal.fire({
-            title: 'Chuyển giao manager trước khi hạ quyền',
+            title: dialogConfig.title,
             html: `
                 <div class="text-start">
                     <div class="alert alert-warning small mb-3">
-                        Department này vẫn phải có manager phụ trách trước khi hạ quyền hoặc chuyển phòng trưởng phòng hiện tại.
+                        ${dialogConfig.alertText}
                     </div>
                     <label class="form-label fw-bold small text-muted">Người nhận bàn giao <span class="text-danger">*</span></label>
                     <select id="swal-handoff-manager" class="form-select mb-3">
@@ -396,7 +460,7 @@ const AdminDashboard = () => {
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'Xác nhận chuyển giao',
+            confirmButtonText: dialogConfig.confirmText,
             cancelButtonText: 'Hủy',
             focusConfirm: false,
             preConfirm: () => {
@@ -404,7 +468,7 @@ const AdminDashboard = () => {
                 const handoffNote = document.getElementById('swal-handoff-note').value.trim();
 
                 if (!handoffManagerId) {
-                    Swal.showValidationMessage('Vui lòng chọn MANAGER nhận bàn giao trước khi downgrade.');
+                    Swal.showValidationMessage('Vui lòng chọn MANAGER nhận bàn giao trước khi chuyển vai trò.');
                     return false;
                 }
 
@@ -1649,15 +1713,32 @@ const AdminDashboard = () => {
                                                 {filteredActivityEntries.map((entry) => (
                                                     <div key={entry.id} className="bg-white rounded-4 shadow-sm border p-3">
                                                         <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
-                                                            <div>
+                                                            <div className="flex-grow-1">
                                                                 <div className="fw-bold text-dark">{entry.message}</div>
                                                                 <div className="small text-muted mt-1">
                                                                     Actor: {entry.actorName || entry.actorEmail || 'Hệ thống'}{entry.targetUserName ? ` • Target: ${entry.targetUserName}` : ''}
                                                                 </div>
+                                                                <div className="small text-muted mt-1">{formatActivityTime(entry.createdAt)}</div>
                                                             </div>
-                                                            <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">{entry.type}</span>
+                                                            <div className="d-flex flex-column align-items-end gap-2">
+                                                                <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">{entry.type}</span>
+                                                                {isUndoable(entry.type) && (
+                                                                    <button 
+                                                                        className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 d-flex align-items-center gap-1"
+                                                                        style={{ fontSize: '0.7rem' }}
+                                                                        onClick={() => handleUndoActivity(entry)}
+                                                                        disabled={undoingActivityId === entry.id}
+                                                                    >
+                                                                        {undoingActivityId === entry.id ? (
+                                                                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                                        ) : (
+                                                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                                                        )}
+                                                                        Hoàn tác
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                        <div className="small text-muted">{formatActivityTime(entry.createdAt)}</div>
                                                     </div>
                                                 ))}
                                             </div>

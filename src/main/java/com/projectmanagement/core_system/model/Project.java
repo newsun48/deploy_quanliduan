@@ -37,8 +37,12 @@ public class Project {
     private ProjectStatus status = ProjectStatus.OPEN;
 
     @DBRef
-    @JsonIgnoreProperties({"manager", "members"})
+    @JsonIgnoreProperties({"manager", "members", "department"})
     private Department department;
+
+    @DBRef
+    @JsonIgnoreProperties({"department"})
+    private User manager;
 
     @DBRef
     @JsonIgnoreProperties({"department"})

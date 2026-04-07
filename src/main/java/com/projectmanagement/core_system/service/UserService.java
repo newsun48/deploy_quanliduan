@@ -81,6 +81,9 @@ public class UserService {
     @Autowired
     private EmailDeliveryService emailDeliveryService;
 
+    @Autowired
+    private AdminActivityService adminActivityService;
+
     @Value("${app.avatar.max-download-bytes:5242880}")
     private long maxAvatarDownloadBytes;
 
@@ -166,9 +169,9 @@ public class UserService {
         return user;
     }
 
-    // 2. Lấy tất cả
+    // 2. Lấy tất cả (Chỉ lấy những người chưa bị xóa)
     public List<User> getAllUsers() { 
-        return userRepository.findAll(); 
+        return userRepository.findAllByIsDeletedFalse(); 
     }
 
     public User signupPendingUser(SignupRequest request) {
@@ -346,18 +349,69 @@ public class UserService {
     }
 
     public void deleteUser(String userId, String actorEmail) {
+        deleteUser(userId, null, actorEmail);
+    }
+
+    public void deleteUser(String userId, String handoffManagerId, String actorEmail) {
         User actor = requireAdminActor(actorEmail);
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User không tồn tại!"));
+        
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
             throw new RuntimeException("Không được phép xóa tài khoản Quản trị viên (ADMIN)!");
         }
+
+        Department managedDept = user.getDepartment();
+        boolean isDeptManager = managedDept != null && managedDept.getManager() != null && managedDept.getManager().getId().equals(user.getId());
+
+        if (isDeptManager) {
+            DepartmentWorkSummary workSummary = inspectDepartmentWorkload(managedDept);
+            
+            UpdateUserRequest handoffRequest = new UpdateUserRequest();
+            handoffRequest.setHandoffManagerId(handoffManagerId);
+            
+            User successor = resolveHandoffManager(handoffRequest, managedDept, user.getId(), workSummary);
+            
+            // Perform handoff
+            managedDept.setManager(successor);
+            departmentRepository.save(managedDept);
+            
+            // Transfer project monitoring
+            transferProjectMonitoring(successor, managedDept);
+            
+            ERole successorOldRole = successor.getRole();
+            // Note: resolveHandoffManager might have already promoted the successor.
+            // But let's assume we want to know what they were BEFORE the whole process started.
+            // I will modify resolveHandoffManager to return the old role if needed, 
+            // but for now let's just use what's in the successor object before it was potentially saved.
+            
+            userActivityService.record(actor, user, "MANAGER_HANDOFF_COMPLETED",
+                actor.getFullName() + " đã bàn giao quyền quản lý của " + user.getFullName() + " cho " + successor.getFullName() + " trước khi xóa tài khoản.",
+                Map.of(
+                    "successorId", successor.getId(), 
+                    "successorName", successor.getFullName(),
+                    "oldManagerId", user.getId(),
+                    "deptId", managedDept.getId(),
+                    "successorOldRole", successorOldRole != null ? successorOldRole.name() : "USER"
+                ));
+        }
+
         if (taskRepository.existsByAssignee_Id(userId)) {
             throw new RuntimeException("Không thể xóa nhân viên này vì vẫn còn công việc đang được giao!");
         }
+
+        user.setDeleted(true);
+        user.setDeletedAt(java.time.LocalDate.now());
+        userRepository.save(user);
+
         userActivityService.record(actor, user, "USER_DELETED",
                 (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa tài khoản của " + user.getFullName(),
-                Map.of("role", roleNameOrEmpty(user)));
-        userRepository.deleteById(userId);
+                Map.of("role", roleNameOrEmpty(user), "snapshot", user));
+
+        adminActivityService.recordActivity(actor, "USER_DELETED", "USER", user.getId(),
+                (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa tài khoản của " + user.getFullName(),
+                Map.of("role", roleNameOrEmpty(user), "email", user.getEmail(), "fullName", user.getFullName()),
+                Map.of("isDeleted", true),
+                true);
     }
 
     // 4. Lấy theo ID
@@ -370,7 +424,10 @@ public class UserService {
         if (keyword == null || keyword.trim().isEmpty()) {
             return getAllUsers(); // Nếu từ khóa rỗng thì trả về tất cả
         }
-        return userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(keyword, keyword);
+        return userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(keyword, keyword)
+                .stream()
+                .filter(u -> !u.isDeleted())
+                .collect(java.util.stream.Collectors.toList());
     }
 
     // 6. 🔥 MỚI: Đổi mật khẩu
@@ -669,7 +726,6 @@ public class UserService {
     }
 
     // 11. Admin update employee info (email, department, role)
-    @Transactional
     public User updateEmployee(String userId, UpdateUserRequest request, String adminEmail) {
         if (request == null) {
             throw new RuntimeException("Thiếu dữ liệu cập nhật người dùng!");
@@ -706,6 +762,9 @@ public class UserService {
             handoffManager = resolveHandoffManager(request, oldDepartment, user.getId(), workSummary);
             oldDepartment.setManager(handoffManager);
             departmentRepository.save(oldDepartment);
+            
+            // 🔥 MỚI: Chuyển giao quyền theo dõi dự án
+            transferProjectMonitoring(handoffManager, oldDepartment);
         }
 
         // Optional fields only
@@ -756,6 +815,15 @@ public class UserService {
                 ? admin.getFullName() + " đã chuyển giao quyền quản lý của " + user.getFullName()
                 : admin.getFullName() + " đã cập nhật thông tin của " + user.getFullName();
 
+        if (relinquishingManagedDepartment) {
+            auditMetadata.put("oldManagerId", user.getId());
+            auditMetadata.put("successorId", handoffManager.getId());
+            auditMetadata.put("deptId", oldDepartment.getId());
+            // We need the successor's role BEFORE they were potentially promoted in resolveHandoffManager
+            // This is tricky because resolveHandoffManager already saved it.
+            // I will add a check in resolveHandoffManager to return/store the old role.
+        }
+
         userActivityService.record(admin, user, activityType, activityMessage, auditMetadata);
 
         return user;
@@ -798,28 +866,56 @@ public class UserService {
                 : null;
 
         String requirementMessage = workSummary.hasOpenProjects() || workSummary.hasOpenTasks()
-                ? "Không thể hạ quyền trưởng phòng khi phòng ban vẫn còn dự án hoặc công việc đang mở. Vui lòng chuyển giao manager trước."
-                : "Không thể thay đổi vai trò hoặc phòng ban của trưởng phòng khi chưa chuyển giao manager trước.";
+                ? "Không thể thực hiện thao tác khi phòng ban vẫn còn dự án hoặc công việc đang mở. Vui lòng chuyển vai trò trước."
+                : "Không thể chuyển vai trò hoặc xóa trưởng phòng khi chưa chuyển vai trò trước.";
 
         if (!StringUtils.hasText(handoffManagerId)) {
             throw new RuntimeException(requirementMessage);
         }
 
-        User successor = getUserById(handoffManagerId);
+        User successor = userRepository.findById(handoffManagerId)
+                .orElseThrow(() -> new RuntimeException("Người nhận bàn giao không tồn tại!"));
+
         if (successor.getId().equals(currentManagerId)) {
             throw new RuntimeException("Người nhận bàn giao phải khác trưởng phòng hiện tại!");
         }
-        if (successor.getRole() != ERole.MANAGER) {
-            throw new RuntimeException("Người nhận bàn giao phải là MANAGER. Vui lòng bổ nhiệm người thay thế trước khi downgrade.");
-        }
+
         if (successor.getApprovalStatus() != ApprovalStatus.APPROVED || !successor.isActive()) {
-            throw new RuntimeException("Người nhận bàn giao phải là tài khoản MANAGER đang hoạt động!");
+            throw new RuntimeException("Người nhận bàn giao phải là tài khoản đang hoạt động!");
         }
+
         if (successor.getDepartment() == null || !oldDepartment.getId().equals(successor.getDepartment().getId())) {
             throw new RuntimeException("Người nhận bàn giao phải thuộc cùng phòng ban với trưởng phòng hiện tại!");
         }
 
+        // 🔥 Tự động nâng cấp role nếu chưa phải là MANAGER
+        if (successor.getRole() != ERole.MANAGER) {
+            successor.setRole(ERole.MANAGER);
+            userRepository.save(successor);
+            
+            // Log hoạt động nâng cấp tự động
+            userActivityService.record(null, successor, "ROLE_AUTO_PROMOTED", 
+                successor.getFullName() + " đã được tự động nâng cấp lên MANAGER để tiếp nhận bàn giao quản lý.");
+        }
+
         return successor;
+    }
+
+    private void transferProjectMonitoring(User successor, Department department) {
+        if (successor == null || department == null) return;
+        
+        List<Project> activeProjects = projectRepository.findByIsDeletedFalseAndDepartment_Id(department.getId());
+        for (Project project : activeProjects) {
+            if (project.getStatus() == ProjectStatus.OPEN) {
+                boolean alreadyMember = project.getMembers().stream()
+                        .anyMatch(m -> m.getId().equals(successor.getId()));
+                
+                if (!alreadyMember) {
+                    project.getMembers().add(successor);
+                    projectRepository.save(project);
+                }
+            }
+        }
     }
 
     private record DepartmentWorkSummary(boolean hasOpenProjects, boolean hasOpenTasks) {

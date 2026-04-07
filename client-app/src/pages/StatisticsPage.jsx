@@ -203,8 +203,8 @@ const normalizeObjectives = (payload) => {
 const normalizeQuarterlyReviews = (payload) => {
     return extractItems(payload).map((item, index) => ({
         id: item.id || item.reviewId || item._id || `review-${index}`,
-        title: item.department?.name || item.departmentName || item.name || 'Bao cao quy',
-        departmentName: item.department?.name || item.departmentName || item.name || 'Bao cao quy',
+        title: item.department?.name || item.departmentName || item.name || 'Báo cáo quý',
+        departmentName: item.department?.name || item.departmentName || item.name || 'Báo cáo quý',
         status: item.reviewSummary ? 'COMPLETED' : 'AT_RISK',
         score: extractItems(item.keyResults || []).length,
         summary: item.reviewSummary || '',
@@ -221,7 +221,7 @@ const StatisticsPage = () => {
     const currentUser = useMemo(() => parseStoredUser(), []);
     const isAdmin = currentUser?.role === 'ADMIN';
     const roleBasePath = isAdmin ? '/admin' : '/manager';
-    const roleLabel = isAdmin ? 'Administrator' : `Trưởng ${formatDepartmentName(currentUser?.department?.name || 'Phòng')}`;
+    const roleLabel = isAdmin ? 'Quản trị viên' : `Trưởng ${formatDepartmentName(currentUser?.department?.name || 'Phòng')}`;
     const brandLabel = isAdmin ? 'ADMIN PRO' : 'MANAGER PRO';
 
     const [stats, setStats] = useState(null);
@@ -526,7 +526,7 @@ const StatisticsPage = () => {
             objectiveId: objective.id,
             keyResultId: keyResult.id,
             objectiveTitle: objective.title,
-            keyResultName: keyResult.title || keyResult.name || 'Ket qua then chot',
+            keyResultName: keyResult.title || keyResult.name || 'Kết quả then chốt',
             departmentName: objective.owner,
             currentValue: String(keyResult.currentValue ?? 0),
             targetValue: String(keyResult.targetValue ?? 0),
@@ -793,9 +793,9 @@ const StatisticsPage = () => {
         if (!stats) return [];
 
         return [
-            { name: 'To Do', value: stats.byStatus?.TO_DO || 0, color: COLORS_STATUS[0] },
-            { name: 'In Progress', value: stats.byStatus?.IN_PROGRESS || 0, color: COLORS_STATUS[1] },
-            { name: 'Done', value: stats.byStatus?.DONE || 0, color: COLORS_STATUS[2] },
+            { name: 'Cần làm', value: stats.byStatus?.TO_DO || 0, color: COLORS_STATUS[0] },
+            { name: 'Đang thực hiện', value: stats.byStatus?.IN_PROGRESS || 0, color: COLORS_STATUS[1] },
+            { name: 'Hoàn thành', value: stats.byStatus?.DONE || 0, color: COLORS_STATUS[2] },
         ];
     }, [stats]);
 
@@ -858,9 +858,9 @@ const StatisticsPage = () => {
 
         return [
             {
-                label: 'Lead time TB',
+                label: 'Thành công (Lead time TB)',
                 value: formatDurationDays(deliveryAnalytics.leadTime?.averageDays),
-                note: `${deliveryAnalytics.leadTime?.count || 0} task co du lieu hop le.`,
+                note: `${deliveryAnalytics.leadTime?.count || 0} task có dữ liệu hợp lệ.`,
             },
             {
                 label: 'Cycle time TB',
@@ -890,9 +890,9 @@ const StatisticsPage = () => {
     const bottleneckData = useMemo(() => {
         const statusCounts = deliveryAnalytics?.bottleneck?.statusCounts || {};
         return [
-            { name: 'To do', value: statusCounts.TO_DO || 0 },
-            { name: 'In progress', value: statusCounts.IN_PROGRESS || 0 },
-            { name: 'Review', value: statusCounts.REVIEW || 0 },
+            { name: 'Cần làm', value: statusCounts.TO_DO || 0 },
+            { name: 'Đang thực hiện', value: statusCounts.IN_PROGRESS || 0 },
+            { name: 'Đang kiểm tra', value: statusCounts.REVIEW || 0 },
         ];
     }, [deliveryAnalytics]);
 
@@ -910,7 +910,7 @@ const StatisticsPage = () => {
 
                 <div className="top-menu admin-top-menu d-none d-xl-flex justify-content-center">
                     <button className="top-menu-item" onClick={() => navigate(roleBasePath)}>
-                        <i className="bi bi-grid-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Dashboard
+                        <i className="bi bi-grid-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Tổng quan
                     </button>
                     <button className="top-menu-item active">
                         <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#1d6fa3' }}></i> KPI / OKR
@@ -960,7 +960,7 @@ const StatisticsPage = () => {
                         <div className="d-flex justify-content-between align-items-center mb-4 d-xl-none bg-white p-3 rounded-4 shadow-sm">
                             <h4 className="page-title mb-0 fs-5">KPI / OKR / Reviews</h4>
                             <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value="statistics" onChange={(e) => { if (e.target.value === 'dashboard') navigate(roleBasePath); }}>
-                                <option value="dashboard">Dashboard</option>
+                                <option value="dashboard">Tổng quan</option>
                                 <option value="statistics">KPI / OKR</option>
                             </select>
                         </div>
@@ -983,7 +983,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-secondary-light text-secondary">
                                                 <i className="bi bi-clock-history"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">To do</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Cần làm</div>
                                             <div className="fs-1 fw-bold text-secondary">{statsLoading ? '--' : (statusData[0]?.value || 0)}</div>
                                         </div>
                                     </div>
@@ -992,7 +992,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-primary-light text-primary statistics-summary-icon statistics-summary-icon-accent">
                                                 <i className="bi bi-play-fill"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">In progress</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Đang thực hiện</div>
                                             <div className="fs-1 fw-bold text-primary">{statsLoading ? '--' : (statusData[1]?.value || 0)}</div>
                                         </div>
                                     </div>
@@ -1001,7 +1001,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-success-light text-success">
                                                 <i className="bi bi-check-all"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Done</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Hoàn thành</div>
                                             <div className="fs-1 fw-bold text-success">{statsLoading ? '--' : (statusData[2]?.value || 0)}</div>
                                         </div>
                                     </div>
@@ -1169,7 +1169,7 @@ const StatisticsPage = () => {
                                 <div className="row g-4 mb-4">
                                     <div className="col-xl-7">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Burn-down trend</div>
+                                            <div className="modern-card-header">Xu hướng Burn-down</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={320}>
                                                     <AreaChart data={burndownData}>
@@ -1179,7 +1179,7 @@ const StatisticsPage = () => {
                                                         <Tooltip />
                                                         <Legend />
                                                         <Area type="monotone" dataKey="remaining" stroke="#d05f45" fill="#f7d7cf" name="Còn lại" />
-                                                        <Line type="monotone" dataKey="completedCumulative" stroke="#2b8a5d" strokeWidth={2} dot={false} name="Đã xong lũy kế" />
+                                                        <Line type="monotone" dataKey="completedCumulative" stroke="#2b8a5d" strokeWidth={2} dot={false} name="Lũy kế hoàn tất" />
                                                     </AreaChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -1187,7 +1187,7 @@ const StatisticsPage = () => {
                                     </div>
                                     <div className="col-xl-5">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Velocity theo tuần</div>
+                                            <div className="modern-card-header">Vận tốc (Velocity) theo tuần</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={320}>
                                                     <BarChart data={velocityData}>
@@ -1206,7 +1206,7 @@ const StatisticsPage = () => {
                                 <div className="row g-4 mb-4">
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Throughput theo tuần</div>
+                                            <div className="modern-card-header">Năng suất (Throughput) theo tuần</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={300}>
                                                     <LineChart data={throughputWeekly}>
@@ -1222,7 +1222,7 @@ const StatisticsPage = () => {
                                     </div>
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Throughput theo phòng ban</div>
+                                            <div className="modern-card-header">Năng suất (Throughput) theo phòng ban</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={300}>
                                                     <BarChart data={throughputByDepartment.length ? throughputByDepartment : [{ departmentName: 'Current', completed: 0 }]} layout="vertical">
@@ -1230,7 +1230,7 @@ const StatisticsPage = () => {
                                                         <XAxis type="number" allowDecimals={false} />
                                                         <YAxis type="category" dataKey="departmentName" width={120} tick={{ fontSize: 11 }} />
                                                         <Tooltip />
-                                                        <Bar dataKey="completed" fill="#6f42c1" radius={[0, 10, 10, 0]} name="Task xong" />
+                                                        <Bar dataKey="completed" fill="#6f42c1" radius={[0, 10, 10, 0]} name="Hoàn thành" />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -1241,7 +1241,7 @@ const StatisticsPage = () => {
                                 <div className="row g-4 mb-4">
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Bottleneck summary</div>
+                                            <div className="modern-card-header">Tóm tắt điểm nghẽn (Bottlenecks)</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={260}>
                                                     <BarChart data={bottleneckData}>
@@ -1255,13 +1255,13 @@ const StatisticsPage = () => {
                                                 <div className="row g-3 mt-2">
                                                     <div className="col-6">
                                                         <div className="workflow-summary-card h-100">
-                                                            <span className="workflow-summary-label">Overdue open</span>
+                                                            <span className="workflow-summary-label">Quá hạn đang mở</span>
                                                             <div className="workflow-summary-value">{deliveryAnalytics?.bottleneck?.overdueOpenTasks || 0}</div>
                                                         </div>
                                                     </div>
                                                     <div className="col-6">
                                                         <div className="workflow-summary-card h-100">
-                                                            <span className="workflow-summary-label">Stalled</span>
+                                                            <span className="workflow-summary-label">Đang đình trệ (Stalled)</span>
                                                             <div className="workflow-summary-value">{deliveryAnalytics?.bottleneck?.stalledTasks || 0}</div>
                                                         </div>
                                                     </div>
@@ -1271,7 +1271,7 @@ const StatisticsPage = () => {
                                     </div>
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Workload distribution</div>
+                                            <div className="modern-card-header">Phân bổ khối lượng công việc</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={320}>
                                                     <BarChart data={workloadDistribution} layout="vertical">
@@ -1281,7 +1281,7 @@ const StatisticsPage = () => {
                                                         <Tooltip />
                                                         <Legend />
                                                         <Bar dataKey="openTasks" fill="#1d6fa3" radius={[0, 10, 10, 0]} name="Đang mở" />
-                                                        <Bar dataKey="overdueOpenTasks" fill="#d05f45" radius={[0, 10, 10, 0]} name="Tre han" />
+                                                        <Bar dataKey="overdueOpenTasks" fill="#d05f45" radius={[0, 10, 10, 0]} name="Trễ hạn" />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -1293,7 +1293,7 @@ const StatisticsPage = () => {
                                     <div className="workflow-panel-header">
                                         <div className="d-flex justify-content-between align-items-center w-100">
                                             <div>
-                                                <h3 className="workflow-panel-title">🔥 Resource Load Heatmap</h3>
+                                                <h3 className="workflow-panel-title">🔥 Bản đồ nhiệt Tải trọng Nhân sự</h3>
                                                 <p className="workflow-panel-copy">Giám sát mức độ bận rộn và rủi ro quá tải của nhân sự trong thời gian thực.</p>
                                             </div>
                                             {resourceWorkloadLoading && <div className="spinner-border spinner-border-sm text-primary"></div>}
@@ -1307,7 +1307,7 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel mb-4">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Performance heatmap</h3>
+                                            <h3 className="workflow-panel-title">Bản đồ nhiệt Hiệu suất</h3>
                                             <p className="workflow-panel-copy">Số task hoàn tất theo nhân sự và ngày trong tuần trong khoảng dữ liệu đã chọn.</p>
                                         </div>
                                     </div>
@@ -1319,7 +1319,7 @@ const StatisticsPage = () => {
                                                 <table className="table align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th>Nhan su</th>
+                                                            <th>Nhân sự</th>
                                                             {heatmapRows[0].cells.map((cell) => <th key={cell.key} className="text-center">{cell.label}</th>)}
                                                         </tr>
                                                     </thead>
@@ -1346,8 +1346,8 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel mb-5">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Deadline risk radar</h3>
-                                            <p className="workflow-panel-copy">Danh sach task co nguy co tre han cao nhat, su dung rule-based scoring tu tien do, deadline, priority va tai hien tai.</p>
+                                            <h3 className="workflow-panel-title">Giám sát Rủi ro Hạn chót (Radar)</h3>
+                                            <p className="workflow-panel-copy">Danh sách task có nguy cơ trễ hạn cao nhất, sử dụng rule-based scoring từ tiến độ, deadline, mức độ ưu tiên và tải hiện tại.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
@@ -1358,11 +1358,11 @@ const StatisticsPage = () => {
                                                 <table className="table align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th>Task</th>
-                                                            <th>Assignee</th>
-                                                            <th>Status</th>
-                                                            <th>Risk</th>
-                                                            <th>Deadline</th>
+                                                            <th>Công việc</th>
+                                                            <th>Người thực hiện</th>
+                                                            <th>Trạng thái</th>
+                                                            <th>Rủi ro</th>
+                                                            <th>Hạn chót</th>
                                                             <th>Lý do</th>
                                                         </tr>
                                                     </thead>
@@ -1373,7 +1373,7 @@ const StatisticsPage = () => {
                                                                 <tr key={item.taskId}>
                                                                     <td>
                                                                         <div className="fw-semibold">{item.taskTitle}</div>
-                                                                        <small className="text-muted">Progress {item.completionPercentage || 0}%</small>
+                                                                        <small className="text-muted">Tiến độ {item.completionPercentage || 0}%</small>
                                                                     </td>
                                                                     <td>{item.assigneeName || '--'}</td>
                                                                     <td>{item.status || '--'}</td>
@@ -1425,7 +1425,7 @@ const StatisticsPage = () => {
                                 <span className="admin-section-kicker">Báo cáo chiến lược</span>
                                 <h1 className="workflow-hero-title">{isAdmin ? 'Góc nhìn KPI / OKR toàn tổ chức' : 'Báo cáo KPI / OKR phòng ban'} cho {formatQuarterLabel(filters.quarter)}</h1>
                                 <p className="workflow-hero-copy">
-                                    Theo dõi KPI, tiến độ OKR và kết quả quarterly review trong một màn hình, đồng bộ với luồng phê duyệt và vận hành dự án hiện có.
+                                    Theo dõi KPI, tiến độ OKR và kết quả đánh giá hàng quý trong một màn hình, đồng bộ với luồng phê duyệt và vận hành dự án hiện có.
                                 </p>
                             </div>
                         </div>
@@ -1465,7 +1465,7 @@ const StatisticsPage = () => {
                         {insightsError ? <div className="workflow-error mb-4">{insightsError}</div> : null}
 
                         {insightsLoading ? (
-                                    <div className="workflow-empty">Đang tải báo cáo KPI / OKR / quarterly review...</div>
+                                    <div className="workflow-empty">Đang tải báo cáo KPI / OKR / báo cáo định kỳ...</div>
                         ) : (
                             <div className="workflow-shell">
                                 <div className="workflow-summary-grid">
@@ -1500,8 +1500,8 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Mục tiêu và key results</h3>
-                                            <p className="workflow-panel-copy">Danh sách OKR nhẹ, hiển thị tiến độ và các key result nổi bật trong quý được chọn.</p>
+                                            <h3 className="workflow-panel-title">Mục tiêu và kết quả then chốt (Key Results)</h3>
+                                            <p className="workflow-panel-copy">Danh sách OKR, hiển thị tiến độ và các kết quả then chốt nổi bật trong quý được chọn.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
@@ -1516,7 +1516,7 @@ const StatisticsPage = () => {
                                                                 <h4 className="workflow-objective-title">{objective.title}</h4>
                                                                 <p className="workflow-objective-copy">{objective.description || 'Không có mô tả chi tiết.'}</p>
                                                                 <div className="workflow-meta-value mt-2">
-                                                                    <span className="badge bg-light text-dark border rounded-pill px-3 py-1">Owner: {objective.owner}</span>
+                                                                    <span className="badge bg-light text-dark border rounded-pill px-3 py-1">Phụ trách: {objective.owner}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="circular-progress-container ms-3">
@@ -1549,7 +1549,7 @@ const StatisticsPage = () => {
                                                                             {canManagePerformance && isObj && keyResult.id && (
                                                                                 <div className="mt-2 d-flex justify-content-end">
                                                                                     <button className="btn btn-sm statistics-inline-action" onClick={() => handleUpdateKeyResult(objective, keyResult)}>
-                                                                                        Cap nhat ket qua
+                                                                                        Cập nhật kết quả
                                                                                     </button>
                                                                                 </div>
                                                                             )}
@@ -1568,13 +1568,13 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Quarterly reviews</h3>
-                                            <p className="workflow-panel-copy">Tổng hợp kết quả review, tình trạng sức khỏe và các hành động tiếp theo cho từng đơn vị hoặc mục tiêu.</p>
+                                            <h3 className="workflow-panel-title">Đánh giá hàng quý (Quarterly reviews)</h3>
+                                            <p className="workflow-panel-copy">Tổng hợp kết quả đánh giá, tình trạng sức khỏe và các hành động tiếp theo cho từng đơn vị hoặc mục tiêu.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
                                         {quarterlyReviews.length === 0 ? (
-                                            <div className="workflow-empty">Chưa có quarterly review nào cho bộ lọc hiện tại.</div>
+                                            <div className="workflow-empty">Chưa có đánh giá quý nào cho bộ lọc hiện tại.</div>
                                         ) : (
                                             <div className="workflow-review-grid">
                                                 {quarterlyReviews.map((review) => {
@@ -1612,7 +1612,7 @@ const StatisticsPage = () => {
 
                                                             {review.actionItems.length > 0 ? (
                                                                 <div className="mt-3">
-                                                                    <h6 className="text-uppercase small fw-bold text-muted mb-2">Hành động tiếp theo</h6>
+                                                                    <h6 className="text-uppercase small fw-bold text-muted mb-2" style={{ letterSpacing: '0.05em' }}>Hành động cần thực hiện</h6>
                                                                     <ul className="list-unstyled mb-0">
                                                                         {review.actionItems.slice(0, 4).map((action, index) => (
                                                                             <li key={`${review.id}-action-${index}`} className="d-flex align-items-center gap-2 mb-1 small text-muted">
@@ -1682,14 +1682,14 @@ const StatisticsPage = () => {
 
                                     {isAdmin && filters.departmentId === 'ALL' ? (
                                         <div className="statistics-modal-field">
-                                            <label className="statistics-modal-label" htmlFor="statistics-okr-department">Phong ban</label>
+                                            <label className="statistics-modal-label" htmlFor="statistics-okr-department">Phòng ban</label>
                                             <select
                                                 id="statistics-okr-department"
                                                 className={`form-select modern-input ${okrModal.errors.departmentId ? 'is-invalid' : ''}`}
                                                 value={okrModal.departmentId}
                                                 onChange={(event) => handleOkrFieldChange('departmentId', event.target.value)}
                                             >
-                                                <option value="">Chon phong ban can cap nhat</option>
+                                                <option value="">Chọn phòng ban cần cập nhật</option>
                                                 {departments.map((department) => (
                                                     <option key={department.id} value={department.id}>{formatDepartmentName(department.name)}</option>
                                                 ))}
@@ -1698,18 +1698,18 @@ const StatisticsPage = () => {
                                         </div>
                                     ) : (
                                         <div className="statistics-modal-field">
-                                            <span className="statistics-modal-label">Don vi ap dung</span>
+                                            <span className="statistics-modal-label">Đơn vị áp dụng</span>
                                             <div className="statistics-modal-static">{modalDepartmentName || selectedDepartmentName}</div>
                                         </div>
                                     )}
 
                                     <div className="statistics-modal-field">
-                                        <label className="statistics-modal-label" htmlFor="statistics-okr-objective">Muc tieu quy</label>
+                                        <label className="statistics-modal-label" htmlFor="statistics-okr-objective">Mục tiêu quý</label>
                                         <input
                                             id="statistics-okr-objective"
                                             type="text"
                                             className={`form-control modern-input ${okrModal.errors.objective ? 'is-invalid' : ''}`}
-                                            placeholder="Vi du: Nang cao chat luong giao hang du an"
+                                            placeholder="Ví dụ: Nâng cao chất lượng giao hàng dự án"
                                             value={okrModal.objective}
                                             onChange={(event) => handleOkrFieldChange('objective', event.target.value)}
                                         />
@@ -1718,11 +1718,11 @@ const StatisticsPage = () => {
 
                                     <div className="statistics-modal-section-head">
                                         <div>
-                                            <h3 className="statistics-modal-section-title">Danh sach ket qua then chot</h3>
-                                            <p className="statistics-modal-section-copy">Bo sung nhieu KR, dieu chinh muc tieu va gia tri hien tai ngay trong cung mot form.</p>
+                                            <h3 className="statistics-modal-section-title">Danh sách kết quả then chốt</h3>
+                                            <p className="statistics-modal-section-copy">Bổ sung nhiều KR, điều chỉnh mục tiêu và giá trị hiện tại ngay trong cùng một biểu mẫu.</p>
                                         </div>
                                         <button type="button" className="btn statistics-mini-action" onClick={handleAddOkrKeyResult}>
-                                            <i className="bi bi-plus-lg me-1"></i>Them KR
+                                            <i className="bi bi-plus-lg me-1"></i>Thêm KR
                                         </button>
                                     </div>
 
@@ -1745,12 +1745,12 @@ const StatisticsPage = () => {
                                                     </div>
 
                                                     <div className="statistics-modal-field">
-                                                        <label className="statistics-modal-label" htmlFor={`statistics-okr-name-${index}`}>Ten ket qua then chot</label>
+                                                        <label className="statistics-modal-label" htmlFor={`statistics-okr-name-${index}`}>Tên kết quả then chốt</label>
                                                         <input
                                                             id={`statistics-okr-name-${index}`}
                                                             type="text"
                                                             className={`form-control modern-input ${rowErrors.name ? 'is-invalid' : ''}`}
-                                                            placeholder="Vi du: Giam bug Critical ve duoi 5 bug"
+                                                            placeholder="Ví dụ: Giảm lỗi nghiêm trọng xuống dưới 5 lỗi"
                                                             value={item.name}
                                                             onChange={(event) => handleOkrKeyResultChange(index, 'name', event.target.value)}
                                                         />
@@ -1759,7 +1759,7 @@ const StatisticsPage = () => {
 
                                                     <div className="statistics-modal-grid">
                                                         <div className="statistics-modal-field">
-                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-target-${index}`}>Muc tieu</label>
+                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-target-${index}`}>Mục tiêu</label>
                                                             <input
                                                                 id={`statistics-okr-target-${index}`}
                                                                 type="number"
@@ -1773,7 +1773,7 @@ const StatisticsPage = () => {
                                                             {rowErrors.targetValue ? <div className="statistics-modal-error">{rowErrors.targetValue}</div> : null}
                                                         </div>
                                                         <div className="statistics-modal-field">
-                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-current-${index}`}>Hien tai</label>
+                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-current-${index}`}>Hiện tại</label>
                                                             <input
                                                                 id={`statistics-okr-current-${index}`}
                                                                 type="number"
@@ -1787,7 +1787,7 @@ const StatisticsPage = () => {
                                                             {rowErrors.currentValue ? <div className="statistics-modal-error">{rowErrors.currentValue}</div> : null}
                                                         </div>
                                                         <div className="statistics-modal-field">
-                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-unit-${index}`}>Don vi</label>
+                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-unit-${index}`}>Đơn vị</label>
                                                             <input
                                                                 id={`statistics-okr-unit-${index}`}
                                                                 type="text"
@@ -1808,9 +1808,9 @@ const StatisticsPage = () => {
                                 </div>
 
                                 <div className="statistics-modal-footer">
-                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Dong</button>
+                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Đóng</button>
                                     <button type="submit" className="btn statistics-modal-btn statistics-modal-btn-primary" disabled={okrModal.submitting}>
-                                        {okrModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Dang luu OKR...</> : 'Luu OKR quy nay'}
+                                        {okrModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Đang lưu OKR...</> : 'Lưu OKR quý này'}
                                     </button>
                                 </div>
                             </form>
@@ -1822,11 +1822,11 @@ const StatisticsPage = () => {
                             <form onSubmit={submitKeyResultModal} className="statistics-modal-shell">
                                 <div className="statistics-modal-header">
                                     <div>
-                                        <span className="statistics-modal-kicker">Cap nhat ket qua then chot</span>
-                                        <h2 id="statistics-kr-modal-title" className="statistics-modal-title">Dieu chinh gia tri thuc hien</h2>
-                                        <p className="statistics-modal-copy">Cap nhat tien do KR ngay trong trang KPI/OKR va giu nguyen luong dong bo du lieu hien tai.</p>
+                                        <span className="statistics-modal-kicker">Cập nhật kết quả then chốt</span>
+                                        <h2 id="statistics-kr-modal-title" className="statistics-modal-title">Điều chỉnh giá trị thực hiện</h2>
+                                        <p className="statistics-modal-copy">Cập nhật tiến độ KR ngay trong trang KPI/OKR và giữ nguyên luồng đồng bộ dữ liệu hiện tại.</p>
                                     </div>
-                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Dong form">
+                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Đóng form">
                                         <i className="bi bi-x-lg"></i>
                                     </button>
                                 </div>
@@ -1834,33 +1834,33 @@ const StatisticsPage = () => {
                                 <div className="statistics-modal-body">
                                     <div className="statistics-modal-meta-card">
                                         <div>
-                                            <span className="workflow-meta-label">Muc tieu</span>
+                                            <span className="workflow-meta-label">Mục tiêu</span>
                                             <div className="workflow-meta-value fw-bold">{keyResultModal.objectiveTitle}</div>
                                         </div>
                                         <div>
-                                            <span className="workflow-meta-label">Phong ban</span>
+                                            <span className="workflow-meta-label">Phòng ban</span>
                                             <div className="workflow-meta-value fw-bold">{keyResultModal.departmentName}</div>
                                         </div>
                                     </div>
 
                                     <div className="statistics-modal-field">
-                                        <span className="statistics-modal-label">Ket qua then chot</span>
+                                        <span className="statistics-modal-label">Kết quả then chốt</span>
                                         <div className="statistics-modal-static">{keyResultModal.keyResultName}</div>
                                     </div>
 
                                     <div className="statistics-modal-grid statistics-modal-grid-compact">
                                         <div className="statistics-modal-field">
-                                            <span className="statistics-modal-label">Muc tieu</span>
+                                            <span className="statistics-modal-label">Mục tiêu</span>
                                             <div className="statistics-modal-static">{toDisplayValue(keyResultModal.targetValue)} {keyResultModal.unit}</div>
                                         </div>
                                         <div className="statistics-modal-field">
-                                            <label className="statistics-modal-label" htmlFor="statistics-key-result-value">Gia tri hien tai</label>
+                                            <label className="statistics-modal-label" htmlFor="statistics-key-result-value">Giá trị hiện tại</label>
                                             <input
                                                 id="statistics-key-result-value"
                                                 type="number"
                                                 step="any"
                                                 className={`form-control modern-input ${keyResultModal.errors.currentValue ? 'is-invalid' : ''}`}
-                                                placeholder="Nhap gia tri moi"
+                                                placeholder="Nhập giá trị mới"
                                                 value={keyResultModal.currentValue}
                                                 onChange={(event) => handleKeyResultValueChange(event.target.value)}
                                             />
@@ -1872,9 +1872,9 @@ const StatisticsPage = () => {
                                 </div>
 
                                 <div className="statistics-modal-footer">
-                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Dong</button>
+                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Đóng</button>
                                     <button type="submit" className="btn statistics-modal-btn statistics-modal-btn-primary" disabled={keyResultModal.submitting}>
-                                        {keyResultModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Dang cap nhat...</> : 'Luu gia tri moi'}
+                                        {keyResultModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Đang cập nhật...</> : 'Lưu giá trị mới'}
                                     </button>
                                 </div>
                             </form>
@@ -1886,11 +1886,11 @@ const StatisticsPage = () => {
                             <form onSubmit={submitReviewSummaryModal} className="statistics-modal-shell">
                                 <div className="statistics-modal-header">
                                     <div>
-                                        <span className="statistics-modal-kicker">Tong ket quy</span>
-                                        <h2 id="statistics-review-modal-title" className="statistics-modal-title">Cap nhat tong ket quy</h2>
-                                        <p className="statistics-modal-copy">Hoan thien nhan xet tong quan, diem nhan va huong hanh dong tiep theo cho don vi dang duoc theo doi.</p>
+                                        <span className="statistics-modal-kicker">Tổng kết quý</span>
+                                        <h2 id="statistics-review-modal-title" className="statistics-modal-title">Cập nhật tổng kết quý</h2>
+                                        <p className="statistics-modal-copy">Hoàn thiện nhận xét tổng quan, điểm nhấn và hướng hành động tiếp theo cho đơn vị đang được theo dõi.</p>
                                     </div>
-                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Dong form">
+                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Đóng form">
                                         <i className="bi bi-x-lg"></i>
                                     </button>
                                 </div>
@@ -1898,27 +1898,27 @@ const StatisticsPage = () => {
                                 <div className="statistics-modal-body">
                                     <div className="statistics-modal-meta-card">
                                         <div>
-                                            <span className="workflow-meta-label">Don vi</span>
+                                            <span className="workflow-meta-label">Đơn vị</span>
                                             <div className="workflow-meta-value fw-bold">{reviewModal.departmentName}</div>
                                         </div>
                                         <div>
-                                            <span className="workflow-meta-label">Quy du lieu</span>
+                                            <span className="workflow-meta-label">Quý dữ liệu</span>
                                             <div className="workflow-meta-value fw-bold">{formatQuarterLabel(filters.quarter)}</div>
                                         </div>
                                     </div>
 
                                     <div className="statistics-modal-field">
-                                        <span className="statistics-modal-label">Bao cao</span>
+                                        <span className="statistics-modal-label">Báo cáo</span>
                                         <div className="statistics-modal-static">{reviewModal.reviewTitle}</div>
                                     </div>
 
                                     <div className="statistics-modal-field">
-                                        <label className="statistics-modal-label" htmlFor="statistics-review-summary">Noi dung tong ket</label>
+                                        <label className="statistics-modal-label" htmlFor="statistics-review-summary">Nội dung tổng kết</label>
                                         <textarea
                                             id="statistics-review-summary"
                                             rows="6"
                                             className={`form-control modern-input statistics-modal-textarea ${reviewModal.errors.summary ? 'is-invalid' : ''}`}
-                                            placeholder="Tom tat ket qua dat duoc, rui ro can xu ly va buoc tiep theo cua quy nay..."
+                                            placeholder="Tóm tắt kết quả đạt được, rủi ro cần xử lý và bước tiếp theo của quý này..."
                                             value={reviewModal.summary}
                                             onChange={(event) => handleReviewSummaryChange(event.target.value)}
                                         />
@@ -1929,9 +1929,9 @@ const StatisticsPage = () => {
                                 </div>
 
                                 <div className="statistics-modal-footer">
-                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Dong</button>
+                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Đóng</button>
                                     <button type="submit" className="btn statistics-modal-btn statistics-modal-btn-primary" disabled={reviewModal.submitting}>
-                                        {reviewModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Dang cap nhat...</> : 'Luu tong ket quy'}
+                                        {reviewModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Đang cập nhật...</> : 'Lưu tổng kết quý'}
                                     </button>
                                 </div>
                             </form>

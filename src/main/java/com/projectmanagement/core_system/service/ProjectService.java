@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import java.util.Map;
+import java.util.HashMap;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -36,6 +38,12 @@ public class ProjectService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private UserActivityService userActivityService;
+
+    @Autowired
+    private AdminActivityService adminActivityService;
 
     // 1. Tạo dự án mới
     public Project createProject(Project project, String departmentId, String creatorEmail) {
@@ -61,7 +69,32 @@ public class ProjectService {
             project.setStatus(ProjectStatus.OPEN); 
         }
 
-        return projectRepository.save(project);
+        // 🔥 Auto-assign department manager as project manager
+        if (dept.getManager() != null) {
+            project.setManager(dept.getManager());
+            
+            // Also add to members list for visibility in UI
+            if (project.getMembers() == null) {
+                project.setMembers(new ArrayList<>());
+            }
+            if (!project.getMembers().contains(dept.getManager())) {
+                project.getMembers().add(dept.getManager());
+            }
+        }
+
+        Project saved = projectRepository.save(project);
+
+        userActivityService.record(actor, null, "PROJECT_CREATED",
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã tạo dự án mới: " + saved.getName(),
+            Map.of("projectId", saved.getId(), "name", saved.getName(), "deptId", departmentId));
+
+        adminActivityService.recordActivity(actor, "PROJECT_CREATED", "PROJECT", saved.getId(),
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã khởi tạo dự án: " + saved.getName(),
+            Map.of("name", saved.getName(), "deptId", departmentId),
+            Map.of("isCreated", true),
+            false);
+
+        return saved;
     }
 
     // 1b. Cập nhật dự án
@@ -72,6 +105,12 @@ public class ProjectService {
         LocalDate effectiveStartDate = updatedInfo.getStartDate() != null ? updatedInfo.getStartDate() : project.getStartDate();
         LocalDate effectiveDeadline = updatedInfo.getDeadline() != null ? updatedInfo.getDeadline() : project.getDeadline();
         validateProjectDatesForUpdate(project, updatedInfo, effectiveStartDate, effectiveDeadline);
+
+        String oldName = project.getName();
+        String oldDescription = project.getDescription();
+        ProjectStatus oldStatus = project.getStatus();
+        LocalDate oldStartDate = project.getStartDate();
+        LocalDate oldDeadline = project.getDeadline();
 
         if (StringUtils.hasText(updatedInfo.getName())) {
             project.setName(updatedInfo.getName());
@@ -85,10 +124,51 @@ public class ProjectService {
         if (updatedInfo.getDeadline() != null) {
             project.setDeadline(updatedInfo.getDeadline());
         }
+
+        // ... existing department sync logic ...
+        if (updatedInfo.getDepartment() != null && updatedInfo.getDepartment().getId() != null) {
+            String newDeptId = updatedInfo.getDepartment().getId();
+            if (project.getDepartment() == null || !project.getDepartment().getId().equals(newDeptId)) {
+                Department newDept = departmentRepository.findById(newDeptId)
+                        .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
+                project.setDepartment(newDept);
+                
+                // 🔥 Sync manager when department changes
+                if (newDept.getManager() != null) {
+                    project.setManager(newDept.getManager());
+                    // Add manager to members
+                    if (!project.getMembers().stream().anyMatch(m -> m.getId().equals(newDept.getManager().getId()))) {
+                        project.getMembers().add(newDept.getManager());
+                    }
+                }
+            }
+        } else if (project.getManager() == null && project.getDepartment() != null && project.getDepartment().getManager() != null) {
+            // Fill missing manager if department has one
+            project.setManager(project.getDepartment().getManager());
+            if (!project.getMembers().stream().anyMatch(m -> m.getId().equals(project.getDepartment().getManager().getId()))) {
+                project.getMembers().add(project.getDepartment().getManager());
+            }
+        }
+
         if (updatedInfo.getDocumentLink() != null) {
             project.setDocumentLink(updatedInfo.getDocumentLink());
         }
-        return projectRepository.save(project);
+        
+        Project saved = projectRepository.save(project);
+        
+        User actor = userRepository.findByEmailIgnoreCase(actorEmail).orElse(null);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("projectId", project.getId());
+        if (!oldName.equals(saved.getName())) metadata.put("oldName", oldName);
+        if (oldDescription != null && !oldDescription.equals(saved.getDescription())) metadata.put("oldDescription", oldDescription);
+        if (oldStartDate != null && !oldStartDate.equals(saved.getStartDate())) metadata.put("oldStartDate", oldStartDate.toString());
+        if (oldDeadline != null && !oldDeadline.equals(saved.getDeadline())) metadata.put("oldDeadline", oldDeadline.toString());
+        
+        userActivityService.record(actor, null, "PROJECT_UPDATED",
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã cập nhật thông tin dự án: " + saved.getName(),
+            metadata);
+
+        return saved;
     }
 
     // 2. Thêm thành viên vào dự án
@@ -113,9 +193,6 @@ public class ProjectService {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Nhân viên " + userId + " không tìm thấy!"));
 
-            if (manager != null && manager.getId() != null && manager.getId().equals(userId)) {
-                throw new RuntimeException("Không thể thêm trưởng phòng vào danh sách thành viên dự án!");
-            }
 
             // Check cùng phòng ban
             String userDeptId = (user.getDepartment() != null) ? user.getDepartment().getId() : null;
@@ -136,6 +213,10 @@ public class ProjectService {
         for (User newMember : newMembers) {
             String message = "Bạn đã được thêm vào dự án: " + project.getName();
             notificationService.createNotification(newMember, actor, null, message, "PROJECT_JOINED");
+            
+            userActivityService.record(actor, newMember, "PROJECT_MEMBER_ADDED",
+                actor.getFullName() + " đã thêm " + newMember.getFullName() + " vào dự án " + project.getName(),
+                Map.of("projectId", project.getId(), "memberId", newMember.getId()));
         }
 
         // Broadcast real-time update to the department topic (🔥 MỚI)
@@ -166,6 +247,10 @@ public class ProjectService {
         String message = "Bạn đã bị xóa khỏi dự án: " + project.getName() + 
                          (userToRemove.isActive() ? "" : " (tài khoản bị khóa)");
         notificationService.createNotification(userToRemove, actor, null, message, "PROJECT_REMOVED");
+
+        userActivityService.record(actor, userToRemove, "PROJECT_MEMBER_REMOVED",
+            actor.getFullName() + " đã xóa " + userToRemove.getFullName() + " khỏi dự án " + project.getName(),
+            Map.of("projectId", project.getId(), "memberId", userToRemove.getId()));
 
         // Broadcast real-time update to the department topic
         String projectDeptId = (project.getDepartment() != null) ? project.getDepartment().getId() : null;
@@ -204,6 +289,10 @@ public class ProjectService {
             String message = "Bạn đã bị xóa khỏi dự án: " + project.getName() + 
                              (removedMember.isActive() ? "" : " (tài khoản bị khóa)");
             notificationService.createNotification(removedMember, actor, null, message, "PROJECT_REMOVED");
+            
+            userActivityService.record(actor, removedMember, "PROJECT_MEMBER_REMOVED",
+                actor.getFullName() + " đã xóa " + removedMember.getFullName() + " khỏi dự án " + project.getName(),
+                Map.of("projectId", project.getId(), "memberId", removedMember.getId()));
         }
 
         // Broadcast real-time update
@@ -239,6 +328,10 @@ public class ProjectService {
 
         project.setStatus(ProjectStatus.CLOSED);
         projectRepository.save(project);
+
+        userActivityService.record(actor, null, "PROJECT_CLOSED",
+            actor.getFullName() + " đã kết thúc dự án: " + project.getName(),
+            Map.of("projectId", project.getId(), "status", "CLOSED"));
 
         // 🔥 Bắn thông báo: Dự án đóng cho tất cả thành viên
         String message = "Dự án '" + project.getName() + "' đã hoàn thành và chính thức đóng lại!";
@@ -296,6 +389,11 @@ public class ProjectService {
                         return true;
                     }
 
+                    // 3. User là quản lý của chính dự án đó (Project Manager)
+                    if (project.getManager() != null && project.getManager().getId().equals(userId)) {
+                        return true;
+                    }
+
                     return false;
                 })
                 .toList();
@@ -324,7 +422,20 @@ public class ProjectService {
         
         project.setDeleted(false);
         project.setDeletedAt(null);
-        return projectRepository.save(project);
+        Project saved = projectRepository.save(project);
+        User actor = userRepository.findByEmailIgnoreCase(adminEmail).orElse(null);
+        
+        userActivityService.record(actor, null, "PROJECT_RESTORED",
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã khôi phục dự án: " + project.getName(),
+            Map.of("projectId", project.getId()));
+
+        adminActivityService.recordActivity(actor, "PROJECT_RESTORED", "PROJECT", project.getId(),
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã khôi phục dự án: " + project.getName(),
+            Map.of("name", project.getName()),
+            Map.of("isDeleted", false),
+            true);
+            
+        return saved;
     }
 
     // Soft delete project (Admin only)
@@ -343,7 +454,20 @@ public class ProjectService {
         
         project.setDeleted(true);
         project.setDeletedAt(LocalDate.now());
-        return projectRepository.save(project);
+        Project saved = projectRepository.save(project);
+        User actor = userRepository.findByEmailIgnoreCase(adminEmail).orElse(null);
+        
+        userActivityService.record(actor, null, "PROJECT_DELETED",
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã chuyển dự án vào thùng rác: " + project.getName(),
+            Map.of("projectId", project.getId(), "name", project.getName(), "snapshot", project));
+
+        adminActivityService.recordActivity(actor, "PROJECT_DELETED", "PROJECT", project.getId(),
+            (actor != null ? actor.getFullName() : "Hệ thống") + " đã chuyển dự án vào thùng rác: " + project.getName(),
+            Map.of("name", project.getName()),
+            Map.of("isDeleted", true),
+            true);
+
+        return saved;
     }
 
     private Project getMutableProject(String projectId) {
@@ -413,6 +537,11 @@ public class ProjectService {
         }
 
         if (isManagerProjectMember(project, actor)) {
+            return actor;
+        }
+
+        // 🆕 Check if the actor is the designated project manager
+        if (project.getManager() != null && project.getManager().getId().equals(actor.getId())) {
             return actor;
         }
 

@@ -42,6 +42,8 @@ public class User {
     private Department department;
 
     private boolean isActive = true;
+    private boolean isDeleted = false;
+    private java.time.LocalDate deletedAt;
     private Long createdAt = System.currentTimeMillis();
     private Long authVersion = 0L;
     private String rejectionReason;

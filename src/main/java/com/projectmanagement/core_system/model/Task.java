@@ -46,4 +46,13 @@ public class Task {
     @DBRef
     @JsonIgnoreProperties({"department"})
     private User assignee;
+
+    private boolean isDeleted = false;
+    private java.time.LocalDate deletedAt;
+    
+    public void setDeleted(boolean deleted) {
+        this.isDeleted = deleted;
+        if (deleted) this.deletedAt = java.time.LocalDate.now();
+        else this.deletedAt = null;
+    }
 }

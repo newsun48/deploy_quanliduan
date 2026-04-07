@@ -25,6 +25,8 @@ public interface TaskRepository extends MongoRepository<Task, String> {
 
     boolean existsByAssignee_Id(String userId);
 
+    List<Task> findByProjectIn(Collection<Project> projects);
+
     boolean existsByProjectInAndStatusIn(List<Project> projects, Collection<TaskStatus> statuses);
 
     // ✅ SỬA LẠI: Tìm theo đối tượng User (Assignee)

@@ -27,4 +27,10 @@ public interface UserRepository extends MongoRepository<User, String> {
     // 🔥 MỚI: Tìm kiếm theo Tên HOẶC Email (Không phân biệt hoa thường)
     // Ví dụ: Nhập "nam" sẽ ra "Phan Đức Nam" và "nam@gmail.com"
     List<User> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String fullName, String email);
+
+    @org.springframework.data.mongodb.repository.Query("{ '$or': [ { 'isDeleted': false }, { 'isDeleted': { '$exists': false } } ] }")
+    List<User> findAllByIsDeletedFalse();
+
+    @org.springframework.data.mongodb.repository.Query("{ '_id': ?0, '$or': [ { 'isDeleted': false }, { 'isDeleted': { '$exists': false } } ] }")
+    Optional<User> findByIdAndIsDeletedFalse(String id);
 }

@@ -119,6 +119,34 @@ public class TaskController {
         return taskService.getTaskStatistics(authenticatedUserHelper.requireActorEmail(authentication));
     }
 
+    @GetMapping("/stats/workload")
+    public ResponseEntity<?> getWorkloadStatistics(
+            @RequestParam(required = false) String departmentId,
+            Authentication authentication) {
+        try {
+            return ResponseEntity.ok(taskService.getWorkloadStatistics(
+                    authenticatedUserHelper.requireActorEmail(authentication),
+                    departmentId
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/department/{deptId}")
+    public ResponseEntity<?> getTasksByDepartment(
+            @PathVariable String deptId,
+            Authentication authentication) {
+        try {
+            return ResponseEntity.ok(taskService.getTasksByDepartment(
+                    deptId,
+                    authenticatedUserHelper.requireActorEmail(authentication)
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PostMapping("/{taskId}/checklist-items")
     public ResponseEntity<?> addChecklistItem(
             @PathVariable String taskId,

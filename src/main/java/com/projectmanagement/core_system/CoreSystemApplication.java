@@ -1,25 +1,15 @@
 package com.projectmanagement.core_system;
 
 import com.projectmanagement.core_system.enums.ERole;
-import com.projectmanagement.core_system.enums.Priority;
-import com.projectmanagement.core_system.enums.ProjectStatus;
-import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.Department;
 import com.projectmanagement.core_system.model.User;
-import com.projectmanagement.core_system.model.Project;
-import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
-import com.projectmanagement.core_system.repository.ProjectRepository;
-import com.projectmanagement.core_system.repository.TaskRepository;
-import com.projectmanagement.core_system.service.SequenceGeneratorService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import java.time.LocalDate;
-import java.util.Arrays;
 
 @SpringBootApplication
 public class CoreSystemApplication {

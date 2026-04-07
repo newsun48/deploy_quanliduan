@@ -21,9 +21,16 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
     List<Project> findByNameContainingIgnoreCase(String name);
     
     // Soft delete support
+    @org.springframework.data.mongodb.repository.Query("{ '$or': [ { 'isDeleted': false }, { 'isDeleted': { '$exists': false } } ] }")
     List<Project> findByIsDeletedFalse();
+
+    @org.springframework.data.mongodb.repository.Query("{ 'department.id': ?0, '$or': [ { 'isDeleted': false }, { 'isDeleted': { '$exists': false } } ] }")
     List<Project> findByIsDeletedFalseAndDepartment_Id(String departmentId);
+
+    @org.springframework.data.mongodb.repository.Query("{ 'name': { '$regex': ?0, '$options': 'i' }, '$or': [ { 'isDeleted': false }, { 'isDeleted': { '$exists': false } } ] }")
     List<Project> findByIsDeletedFalseAndNameContainingIgnoreCase(String name);
+
+    @org.springframework.data.mongodb.repository.Query(value = "{ 'department.id': ?0, 'status': { '$in': ?1 }, '$or': [ { 'isDeleted': false }, { 'isDeleted': { '$exists': false } } ] }", exists = true)
     boolean existsByDepartment_IdAndIsDeletedFalseAndStatusIn(String departmentId, Collection<ProjectStatus> statuses);
     
     // Deleted projects support

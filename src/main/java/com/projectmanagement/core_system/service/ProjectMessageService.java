@@ -253,6 +253,12 @@ public class ProjectMessageService {
             }
         }
 
+        // 3. Project manager
+        if (project.getManager() != null && project.getManager().getId().equals(userId)) {
+            logger.info("✅ PROJECT MANAGER");
+            return true;
+        }
+
         logger.warning("❌ DENIED: " + userId);
         return false;
     }

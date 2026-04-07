@@ -313,7 +313,7 @@ class UserServiceTest {
         RuntimeException error = assertThrows(RuntimeException.class,
                 () -> userService.updateEmployee("manager-1", request, "admin@example.com"));
 
-        assertEquals("Không thể thay đổi vai trò hoặc phòng ban của trưởng phòng khi chưa chuyển giao manager trước.", error.getMessage());
+        assertEquals("Không thể chuyển vai trò hoặc xóa trưởng phòng khi chưa chuyển vai trò trước.", error.getMessage());
         verify(userRepository, never()).save(any(User.class));
         verify(departmentRepository, never()).save(any(Department.class));
     }
@@ -323,7 +323,7 @@ class UserServiceTest {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         Department department = buildDepartment("dept-1", "Engineering");
         User manager = buildUser("manager-1", "manager@example.com", ERole.MANAGER, true);
-        User employeeSuccessor = buildUser("employee-2", "employee2@example.com", ERole.EMPLOYEE, true);
+        User employeeSuccessor = buildUser("employee-2", "employee2@example.com", ERole.EMPLOYEE, false);
         manager.setDepartment(department);
         employeeSuccessor.setDepartment(department);
         department.setManager(manager);
@@ -347,7 +347,7 @@ class UserServiceTest {
         RuntimeException error = assertThrows(RuntimeException.class,
                 () -> userService.updateEmployee("manager-1", request, "admin@example.com"));
 
-        assertEquals("Người nhận bàn giao phải là MANAGER. Vui lòng bổ nhiệm người thay thế trước khi downgrade.", error.getMessage());
+        assertEquals("Người nhận bàn giao phải là tài khoản đang hoạt động!", error.getMessage());
         verify(userRepository, never()).save(any(User.class));
         verify(departmentRepository, never()).save(any(Department.class));
     }

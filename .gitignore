@@ -39,3 +39,10 @@ auth_debug.txt
 
 # Local secrets
 src/main/resources/application.properties
+tmp-librarian/hg
+tmp-librarian/plane
+tmp-librarian/sb-doc
+tmp-librarian/sparrow
+tmp-librarian/spring-boot
+tmp-librarian/spring-framework
+tmp-librarian/taiga-back
