@@ -153,6 +153,7 @@ export const departmentInsightsAPI = {
     getKpis: () => api.get('/department-performance/kpis'),
     getOkrs: (departmentId, params = {}) => api.get(`/department-performance/okrs/${departmentId}`, { params }),
     upsertOkr: (payload) => api.post('/department-performance/okrs', payload),
+    generateInsights: (params) => api.post('/department-performance/generate-insights', null, { params }),
     updateKeyResult: (okrId, keyResultId, payload) => api.patch(`/department-performance/okrs/${okrId}/key-results/${keyResultId}`, payload),
     updateReviewSummary: (okrId, payload) => api.patch(`/department-performance/okrs/${okrId}/review-summary`, payload),
 };

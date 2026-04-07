@@ -19,6 +19,9 @@ import {
 import api, { analyticsAPI, departmentInsightsAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
+import ProjectGantt from '../components/ProjectGantt';
+import HeatmapGrid from '../components/HeatmapGrid';
+import Swal from 'sweetalert2';
 import '../components/EnterpriseWorkflow.css';
 import './AdminDashboard.css';
 import {
@@ -191,9 +194,14 @@ const StatisticsPage = () => {
     const [deliveryLoading, setDeliveryLoading] = useState(true);
     const [deliveryError, setDeliveryError] = useState('');
     const [deliveryAnalytics, setDeliveryAnalytics] = useState(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [resourceWorkload, setResourceWorkload] = useState([]);
+    const [resourceWorkloadLoading, setResourceWorkloadLoading] = useState(true);
     const [kpiCards, setKpiCards] = useState([]);
     const [okrObjectives, setOkrObjectives] = useState([]);
     const [quarterlyReviews, setQuarterlyReviews] = useState([]);
+    const [scopedTasks, setScopedTasks] = useState([]);
+    const [scopedTasksLoading, setScopedTasksLoading] = useState(false);
     const [filters, setFilters] = useState(() => ({
         quarter: getCurrentQuarterKey(),
         departmentId: isAdmin ? 'ALL' : (currentUser?.department?.id || ''),
@@ -275,6 +283,44 @@ const StatisticsPage = () => {
 
     useEffect(() => {
         if (!currentUser) return;
+        
+        const fetchWorkload = async () => {
+            try {
+                setResourceWorkloadLoading(true);
+                const res = await api.get('/tasks/stats/workload');
+                setResourceWorkload(res.data || []);
+            } catch (err) {
+                console.error("Lỗi tải bản đồ nhiệt:", err);
+            } finally {
+                setResourceWorkloadLoading(false);
+            }
+        };
+        fetchWorkload();
+    }, [currentUser, filters.departmentId]); // Reload when dept changes
+
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const loadScopedTasks = async () => {
+            try {
+                setScopedTasksLoading(true);
+                const deptId = (filters.departmentId && filters.departmentId !== 'ALL') ? filters.departmentId : 'all';
+                // Note: I added a 'getTasksByDepartment' endpoint to the backend earlier
+                const res = await api.get(`/tasks/department/${deptId}`);
+                setScopedTasks(res.data || []);
+            } catch (err) {
+                console.error('Lỗi tải tasks cho Gantt:', err);
+                setScopedTasks([]);
+            } finally {
+                setScopedTasksLoading(false);
+            }
+        };
+
+        loadScopedTasks();
+    }, [currentUser, filters.departmentId]);
+
+    useEffect(() => {
+        if (!currentUser) return;
 
         const loadInsights = async () => {
             try {
@@ -345,21 +391,114 @@ const StatisticsPage = () => {
 
     const canManagePerformance = isAdmin || currentUser?.role === 'MANAGER';
 
-    const handleUpsertOkr = async () => {
+    const handleGenerateInsights = async () => {
         const departmentId = isAdmin
-            ? (filters.departmentId === 'ALL' ? departments[0]?.id : filters.departmentId)
+            ? (filters.departmentId === 'ALL' ? (departments[0]?.id || '') : filters.departmentId)
             : currentUser?.department?.id;
 
-        if (!departmentId) {
-            alert('Vui lòng chọn phòng ban để cập nhật OKR.');
+        if (!departmentId || departmentId === 'all') {
+            alert('Vui lòng chọn một phòng ban cụ thể để phân tích Insights!');
             return;
         }
 
-        const objective = window.prompt('Nhập objective cho quý hiện tại:', '');
-        if (objective === null) return;
+        const { year, quarter } = parseQuarterKey(filters.quarter);
 
-        const keyResultText = window.prompt('Nhập key results, mỗi dòng theo định dạng: tên|target|current|unit', '');
-        if (keyResultText === null) return;
+        try {
+            setIsGenerating(true);
+            await departmentInsightsAPI.generateInsights({
+                departmentId,
+                year,
+                quarter
+            });
+            alert('Đã phân tích và cập nhật Insights thành công!');
+            setInsightsLoading(true);
+            setFilters((prev) => ({ ...prev }));
+        } catch (err) {
+            console.error('Lỗi khi tạo insights:', err);
+            const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
+            alert(`Lỗi: ${message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleUpsertOkr = async () => {
+        let finalDept = isAdmin
+            ? (filters.departmentId === 'ALL' ? null : departments.find(d => d.id === filters.departmentId))
+            : currentUser?.department;
+
+        // Nếu Admin ở chế độ Toàn công ty, cho phép chọn nhanh phòng ban ngay trong Modal
+        if (isAdmin && !finalDept) {
+            const deptOptions = {};
+            departments.forEach(d => {
+                deptOptions[d.id] = formatDepartmentName(d.name);
+            });
+
+            const { value: selectedId } = await Swal.fire({
+                title: '🏢 Chọn phòng ban cần cập nhật',
+                input: 'select',
+                inputOptions: deptOptions,
+                inputPlaceholder: 'Chọn một phòng ban...',
+                showCancelButton: true,
+                confirmButtonText: 'Tiếp theo',
+                cancelButtonText: 'Hủy',
+                confirmButtonColor: '#1d6fa3',
+                inputValidator: (value) => {
+                    if (!value) return 'Bạn cần chọn một phòng ban!';
+                }
+            });
+
+            if (!selectedId) return;
+            finalDept = departments.find(d => d.id === selectedId);
+        }
+        
+        const departmentId = finalDept?.id;
+        const departmentName = formatDepartmentName(finalDept?.name || 'Phòng ban');
+
+        if (!departmentId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Thiếu thông tin!',
+                text: 'Vui lòng chọn hoặc làm mới danh sách phòng ban để cập nhật OKR.',
+                confirmButtonColor: '#1d6fa3'
+            });
+            return;
+        }
+
+        const { value: objective } = await Swal.fire({
+            title: `🎯 Nhập mục tiêu cho ${departmentName}`,
+            input: 'text',
+            inputLabel: isAdmin && filters.departmentId === 'ALL' 
+                ? `Đang cập nhật cho phòng ban mặc định: ${departmentName}` 
+                : `Phạm vi: ${departmentName}`,
+            inputPlaceholder: 'Ví dụ: Tăng chất lượng quản lý dự án',
+            showCancelButton: true,
+            confirmButtonText: 'Tiếp theo',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#1d6fa3',
+            inputValidator: (value) => {
+                if (!value) return 'Bạn cần nhập mục tiêu!';
+            }
+        });
+
+        if (!objective) return;
+
+        const { value: keyResultText } = await Swal.fire({
+            title: `🏁 Nhập Kết quả then chốt cho ${departmentName}`,
+            input: 'textarea',
+            inputLabel: 'Danh sách các KR (mỗi dòng một KR)',
+            inputPlaceholder: 'Định dạng: tên|target|current|unit\nVí dụ:\nGiảm bug Critical|5|10|bug\nĐạt tiến độ|100|85|%',
+            footer: `<small>Bạn đang cập nhật dữ liệu cho <b>${departmentName}</b></small>`,
+            showCancelButton: true,
+            confirmButtonText: 'Cập nhật',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#1d6fa3',
+            inputValidator: (value) => {
+                if (!value) return 'Bạn cần ít nhất một kết quả then chốt!';
+            }
+        });
+
+        if (!keyResultText) return;
 
         const keyResults = keyResultText
             .split('\n')
@@ -597,43 +736,6 @@ const StatisticsPage = () => {
                             </select>
                         </div>
 
-                        <div className="workflow-hero mb-4">
-                            <div>
-                                    <span className="admin-section-kicker">Báo cáo chiến lược</span>
-                                    <h1 className="workflow-hero-title">{isAdmin ? 'Góc nhìn KPI / OKR toàn tổ chức' : 'Báo cáo KPI / OKR phòng ban'} cho {formatQuarterLabel(filters.quarter)}</h1>
-                                    <p className="workflow-hero-copy">
-                                        Theo dõi KPI, tiến độ OKR và kết quả quarterly review trong một màn hình, đồng bộ với luồng phê duyệt và vận hành dự án hiện có.
-                                    </p>
-                            </div>
-                        </div>
-
-                        <div className="workflow-panel mb-4">
-                            <div className="workflow-panel-body">
-                                <div className="workflow-filter-bar">
-                                    <div>
-                                        <span className="workflow-meta-label">Quý báo cáo</span>
-                                        <select className="form-select modern-input mt-2" value={filters.quarter} onChange={(e) => setFilters((prev) => ({ ...prev, quarter: e.target.value }))}>
-                                            {quarterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                        </select>
-                                    </div>
-
-                                    {isAdmin ? (
-                                        <div>
-                                            <span className="workflow-meta-label">Phạm vi đơn vị</span>
-                                            <select className="form-select modern-input mt-2" value={filters.departmentId} onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}>
-                                                <option value="ALL">Toàn công ty</option>
-                                                {departments.map((department) => <option key={department.id} value={department.id}>{formatDepartmentName(department.name)}</option>)}
-                                            </select>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <span className="workflow-meta-label">Phòng ban</span>
-                                            <div className="workflow-meta-value mt-2">{formatDepartmentName(currentUser.department?.name || '--')}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
 
                         {isAdmin && (
                             <>
@@ -958,6 +1060,21 @@ const StatisticsPage = () => {
                                     </div>
                                 </div>
 
+                                <div className="workflow-panel mb-5">
+                                    <div className="workflow-panel-header">
+                                        <div className="d-flex justify-content-between align-items-center w-100">
+                                            <div>
+                                                <h3 className="workflow-panel-title">🔥 Resource Load Heatmap</h3>
+                                                <p className="workflow-panel-copy">Giám sát mức độ bận rộn và rủi ro quá tải của nhân sự trong thời gian thực.</p>
+                                            </div>
+                                            {resourceWorkloadLoading && <div className="spinner-border spinner-border-sm text-primary"></div>}
+                                        </div>
+                                    </div>
+                                    <div className="workflow-panel-body">
+                                        <HeatmapGrid data={resourceWorkload} />
+                                    </div>
+                                </div>
+
                                 <div className="workflow-panel mb-4">
                                     <div className="workflow-panel-header">
                                         <div>
@@ -1047,8 +1164,71 @@ const StatisticsPage = () => {
                                         )}
                                     </div>
                                 </div>
+
+                                <div className="workflow-panel mb-5">
+                                    <div className="workflow-panel-header">
+                                        <div>
+                                            <h3 className="workflow-panel-title">📅 Project Gantt Timeline</h3>
+                                            <p className="workflow-panel-copy">Trực quan hóa lộ trình công việc theo thời gian. Kéo thả các thanh để thay đổi deadline và ngày bắt đầu.</p>
+                                        </div>
+                                    </div>
+                                    <div className="workflow-panel-body">
+                                        {scopedTasksLoading ? (
+                                            <div className="text-center py-5">
+                                                <div className="spinner-border text-primary" role="status"></div>
+                                                <div className="mt-2 text-muted">Đang chuẩn bị dữ liệu Gantt...</div>
+                                            </div>
+                                        ) : (
+                                            <ProjectGantt 
+                                                tasks={scopedTasks} 
+                                                onTaskUpdate={() => {
+                                                    // Refresh delivery stats when timeline changes
+                                                    setDeliveryFilters(prev => ({...prev}));
+                                                }} 
+                                            />
+                                        )}
+                                    </div>
+                                </div>
                             </>
                         ) : null}
+
+                        <div className="workflow-hero mb-4">
+                            <div>
+                                <span className="admin-section-kicker">Báo cáo chiến lược</span>
+                                <h1 className="workflow-hero-title">{isAdmin ? 'Góc nhìn KPI / OKR toàn tổ chức' : 'Báo cáo KPI / OKR phòng ban'} cho {formatQuarterLabel(filters.quarter)}</h1>
+                                <p className="workflow-hero-copy">
+                                    Theo dõi KPI, tiến độ OKR và kết quả quarterly review trong một màn hình, đồng bộ với luồng phê duyệt và vận hành dự án hiện có.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="workflow-panel mb-4">
+                            <div className="workflow-panel-body">
+                                <div className="workflow-filter-bar">
+                                    <div>
+                                        <span className="workflow-meta-label">Quý báo cáo</span>
+                                        <select className="form-select modern-input mt-2" value={filters.quarter} onChange={(e) => setFilters((prev) => ({ ...prev, quarter: e.target.value }))}>
+                                            {quarterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {isAdmin ? (
+                                        <div>
+                                            <span className="workflow-meta-label">Phạm vi đơn vị</span>
+                                            <select className="form-select modern-input mt-2" value={filters.departmentId} onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}>
+                                                <option value="ALL">Toàn công ty</option>
+                                                {departments.map((department) => <option key={department.id} value={department.id}>{formatDepartmentName(department.name)}</option>)}
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <span className="workflow-meta-label">Phòng ban</span>
+                                            <div className="workflow-meta-value mt-2">{formatDepartmentName(currentUser.department?.name || '--')}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
 
                         <div className="statistics-section-header">
                             <i className="bi bi-bullseye"></i> KPI / OKR / Quarterly review
@@ -1071,9 +1251,20 @@ const StatisticsPage = () => {
                                     </div>
 
                                     {canManagePerformance ? (
-                                        <div className="d-flex justify-content-end mt-3">
+                                        <div className="d-flex justify-content-end mt-3 gap-2">
+                                            <button 
+                                                className="btn btn-outline-primary rounded-pill px-4 fw-bold" 
+                                                onClick={handleGenerateInsights}
+                                                disabled={isGenerating || !filters.departmentId || filters.departmentId === 'ALL'}
+                                            >
+                                                {isGenerating ? (
+                                                    <><span className="spinner-border spinner-border-sm me-2"></span>Đang phân tích...</>
+                                                ) : (
+                                                    <><i className="bi bi-magic me-2"></i>🚀 Đồng bộ & Phân tích Insights</>
+                                                )}
+                                            </button>
                                             <button className="btn btn-primary rounded-pill px-4 fw-bold" onClick={handleUpsertOkr}>
-                                            <i className="bi bi-plus-circle me-2"></i>Cập nhật OKR quý này
+                                                <i className="bi bi-plus-circle me-2"></i>Cập nhật OKR quý này
                                             </button>
                                         </div>
                                     ) : null}
@@ -1093,29 +1284,51 @@ const StatisticsPage = () => {
                                                 {okrObjectives.map((objective) => (
                                                     <article key={objective.id} className="workflow-objective-card">
                                                         <div className="workflow-item-head">
-                                                            <div>
+                                                            <div style={{ flex: 1 }}>
                                                                 <h4 className="workflow-objective-title">{objective.title}</h4>
-                                                    <p className="workflow-objective-copy">{objective.description || 'Không có mô tả chi tiết.'}</p>
+                                                                <p className="workflow-objective-copy">{objective.description || 'Không có mô tả chi tiết.'}</p>
+                                                                <div className="workflow-meta-value mt-2">
+                                                                    <span className="badge bg-light text-dark border rounded-pill px-3 py-1">Owner: {objective.owner}</span>
+                                                                </div>
                                                             </div>
-                                                            <div className="workflow-review-score">{objective.progress}%</div>
+                                                            <div className="circular-progress-container ms-3">
+                                                                <div className="circular-progress" style={{ '--progress': `${(objective.progress / 100) * 360}deg` }}>
+                                                                    <div className="circular-progress-inner">
+                                                                        {objective.progress}%
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="workflow-meta-value mt-3">Owner: {objective.owner}</div>
-                                                        <div className="workflow-progress-track">
-                                                            <div className="workflow-progress-bar" style={{ width: `${objective.progress}%` }}></div>
-                                                        </div>
+                                                        
                                                         {objective.keyResults.length > 0 ? (
-                                                            <ul className="workflow-template-list">
-                                                                {objective.keyResults.slice(0, 4).map((keyResult, index) => (
-                                                                    <li key={`${objective.id}-kr-${index}`} className="d-flex justify-content-between align-items-center gap-2">
-                                                                        <span>{typeof keyResult === 'string' ? keyResult : `${keyResult.title || keyResult.name || `Key result ${index + 1}`}: ${toDisplayValue(keyResult.currentValue)} / ${toDisplayValue(keyResult.targetValue)} ${keyResult.unit || ''}`.trim()}</span>
-                                                                        {canManagePerformance && typeof keyResult !== 'string' && keyResult.id ? (
-                                                                            <button className="btn btn-sm btn-outline-primary rounded-pill px-3" onClick={() => handleUpdateKeyResult(objective, keyResult)}>
-                                                                Cập nhật
-                                                                            </button>
-                                                                        ) : null}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
+                                                            <div className="mt-4">
+                                                                <h6 className="text-uppercase small fw-bold text-muted mb-3" style={{ letterSpacing: '0.05em' }}>Key Results</h6>
+                                                                {objective.keyResults.slice(0, 4).map((keyResult, index) => {
+                                                                    const isObj = typeof keyResult !== 'string';
+                                                                    const krPercentage = isObj && keyResult.targetValue ? Math.min(100, Math.round((keyResult.currentValue / keyResult.targetValue) * 100)) : 0;
+                                                                    
+                                                                    return (
+                                                                        <div key={`${objective.id}-kr-${index}`} className="kr-item">
+                                                                            <div className="kr-title-row">
+                                                                                <span>{isObj ? (keyResult.title || keyResult.name) : keyResult}</span>
+                                                                                {isObj && <span className="text-primary">{toDisplayValue(keyResult.currentValue)} / {toDisplayValue(keyResult.targetValue)} {keyResult.unit || ''}</span>}
+                                                                            </div>
+                                                                            {isObj && (
+                                                                                <div className="workflow-progress-track kr-progress-mini mt-1">
+                                                                                    <div className="workflow-progress-bar" style={{ width: `${krPercentage}%` }}></div>
+                                                                                </div>
+                                                                            )}
+                                                                            {canManagePerformance && isObj && keyResult.id && (
+                                                                                <div className="mt-2 d-flex justify-content-end">
+                                                                                    <button className="btn btn-sm btn-link text-decoration-none p-0 fw-bold" style={{ fontSize: '0.75rem' }} onClick={() => handleUpdateKeyResult(objective, keyResult)}>
+                                                                                        Cập nhật →
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         ) : null}
                                                     </article>
                                                 ))}
@@ -1138,35 +1351,55 @@ const StatisticsPage = () => {
                                             <div className="workflow-review-grid">
                                                 {quarterlyReviews.map((review) => {
                                                     const statusMeta = getReviewStatusMeta(review.status);
+                                                    const score = Number(review.score || 0);
+                                                    const scoreClass = score >= 8 ? 'excellent' : score >= 6 ? 'good' : score >= 4 ? 'average' : 'poor';
 
                                                     return (
                                                         <article key={review.id} className="workflow-review-card">
-                                                            <div className="workflow-review-head">
-                                                                <div>
+                                                            <div className="workflow-review-head mb-3">
+                                                                <div style={{ flex: 1 }}>
                                                                     <h4 className="workflow-review-title">{review.title}</h4>
-                                                    <p className="workflow-review-copy">{review.summary || 'Không có tóm tắt cho đợt review này.'}</p>
+                                                                    <span className={`workflow-pill mt-2 ${statusMeta.className}`}>{statusMeta.label}</span>
                                                                 </div>
-                                                                <span className={`workflow-pill ${statusMeta.className}`}>{statusMeta.label}</span>
-                                                            </div>
-                                                            <div className="workflow-meta-grid">
-                                                                <div>
-                                                                    <span className="workflow-meta-label">Điểm / rating</span>
-                                                                    <div className="workflow-meta-value">{review.score}</div>
-                                                                </div>
-                                                                <div>
-                                                            <span className="workflow-meta-label">Ngày review</span>
-                                                                    <div className="workflow-meta-value">{formatWorkflowDate(review.reviewDate)}</div>
+                                                                <div className={`workflow-review-score ${scoreClass}`}>
+                                                                    {review.score}
                                                                 </div>
                                                             </div>
+                                                            
+                                                            <div className="workflow-review-copy py-2 px-3 bg-light rounded-3 mb-3 border-start border-4 border-primary">
+                                                                <i className="bi bi-quote me-2 opacity-50"></i>
+                                                                {review.summary || 'Không có tóm tắt cho đợt review này.'}
+                                                            </div>
+
+                                                            <div className="workflow-meta-grid mb-3">
+                                                                <div>
+                                                                    <span className="workflow-meta-label">Ngày review</span>
+                                                                    <div className="workflow-meta-value fw-bold">{formatWorkflowDate(review.reviewDate)}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="workflow-meta-label">Phòng ban</span>
+                                                                    <div className="workflow-meta-value fw-bold">{review.departmentName || '---'}</div>
+                                                                </div>
+                                                            </div>
+
                                                             {review.actionItems.length > 0 ? (
-                                                                <ul className="workflow-template-list">
-                                                                    {review.actionItems.slice(0, 4).map((action, index) => <li key={`${review.id}-action-${index}`}>{typeof action === 'string' ? action : (action.title || action.name || `Action ${index + 1}`)}</li>)}
-                                                                </ul>
+                                                                <div className="mt-3">
+                                                                    <h6 className="text-uppercase small fw-bold text-muted mb-2">Hành động tiếp theo</h6>
+                                                                    <ul className="list-unstyled mb-0">
+                                                                        {review.actionItems.slice(0, 4).map((action, index) => (
+                                                                            <li key={`${review.id}-action-${index}`} className="d-flex align-items-center gap-2 mb-1 small text-muted">
+                                                                                <i className="bi bi-check2-circle text-primary"></i>
+                                                                                {typeof action === 'string' ? action : (action.title || action.name)}
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
                                                             ) : null}
+
                                                             {canManagePerformance ? (
-                                                                <div className="mt-3 d-flex justify-content-end">
-                                                                    <button className="btn btn-sm btn-outline-primary rounded-pill px-3" onClick={() => handleUpdateReviewSummary(review)}>
-                                                            Cập nhật tổng kết
+                                                                <div className="mt-3 pt-3 border-top d-flex justify-content-end">
+                                                                    <button className="btn btn-sm btn-outline-primary rounded-pill px-4" onClick={() => handleUpdateReviewSummary(review)}>
+                                                                        Chỉnh sửa báo cáo
                                                                     </button>
                                                                 </div>
                                                             ) : null}

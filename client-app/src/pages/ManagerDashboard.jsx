@@ -120,7 +120,7 @@ const ManagerDashboard = () => {
     const [creatingProjectFromTemplate, setCreatingProjectFromTemplate] = useState(false);
 
     // FORMS
-    const [newTask, setNewTask] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
+    const [newTask, setNewTask] = useState({ title: '', description: '', startDate: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
     const [selectedMembersToAdd, setSelectedMembersToAdd] = useState([]);
     const [editProjectForm, setEditProjectForm] = useState({ name: '', description: '', startDate: '', deadline: '', documentLink: '' });
     const [projectDocumentFile, setProjectDocumentFile] = useState(null);
@@ -366,7 +366,7 @@ const ManagerDashboard = () => {
             await api.post(`/tasks/create?projectId=${selectedProject.id}&assigneeId=${newTask.assigneeId}`, newTask);
             alert("✅ Giao việc thành công!");
             setShowTaskModal(false);
-            setNewTask({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
+            setNewTask({ title: '', description: '', startDate: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
             await refreshSelectedProjectData(selectedProject.id);
         } catch (err) { alert("Lỗi: " + (err.response?.data || err.message)); }
     };
@@ -1344,18 +1344,22 @@ const ManagerDashboard = () => {
                                     <textarea className="form-control" rows="2" value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} />
                                 </div>
                                 <div className="row g-3 mb-3">
-                                     <div className="col-6">
-                                         <label className="form-label fw-bold text-dark small">Hạn hoàn thành</label>
-                                         <input type="date" min={todayDate} className="form-control" required value={newTask.deadline} onChange={e => setNewTask({...newTask, deadline: e.target.value})} />
-                                     </div>
-                                    <div className="col-6">
-                                        <label className="form-label fw-bold text-dark small">Độ ưu tiên</label>
-                                        <select className="form-select" value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})}>
-                                            <option value="MEDIUM">Trung bình</option>
-                                            <option value="HIGH">Cao</option>
-                                            <option value="LOW">Thấp</option>
-                                        </select>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label fw-bold text-dark small">Ngày bắt đầu</label>
+                                        <input type="date" className="form-control" required value={newTask.startDate} onChange={e => setNewTask({...newTask, startDate: e.target.value})} />
                                     </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label fw-bold text-dark small">Hạn hoàn thành</label>
+                                        <input type="date" min={newTask.startDate || todayDate} className="form-control" required value={newTask.deadline} onChange={e => setNewTask({...newTask, deadline: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold text-dark small">Độ ưu tiên</label>
+                                    <select className="form-select" value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})}>
+                                        <option value="MEDIUM">Trung bình</option>
+                                        <option value="HIGH">Cao</option>
+                                        <option value="LOW">Thấp</option>
+                                    </select>
                                 </div>
                                 <div className="mb-4">
                                     <label className="form-label fw-bold text-dark small">Người thực hiện</label>
