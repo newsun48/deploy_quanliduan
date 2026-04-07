@@ -112,6 +112,7 @@ class TaskServiceTest {
     void updateTask_rejectsUserWhoIsNotDepartmentManager() {
         User manager = buildUser("manager-1", "Manager", "manager@example.com");
         User assignee = buildUser("employee-1", "Employee", "employee@example.com");
+        assignee.setRole(com.projectmanagement.core_system.enums.ERole.EMPLOYEE);
         Task task = buildTask("task-1", "Task A", manager, assignee);
         TaskUpdateRequest request = new TaskUpdateRequest();
         request.setTitle("Updated title");
@@ -130,6 +131,7 @@ class TaskServiceTest {
     void deleteTask_rejectsUserWhoIsNotDepartmentManager() {
         User manager = buildUser("manager-1", "Manager", "manager@example.com");
         User assignee = buildUser("employee-1", "Employee", "employee@example.com");
+        assignee.setRole(com.projectmanagement.core_system.enums.ERole.EMPLOYEE);
         Task task = buildTask("task-1", "Task A", manager, assignee);
 
         when(taskRepository.findById("task-1")).thenReturn(Optional.of(task));
@@ -189,6 +191,79 @@ class TaskServiceTest {
         assertEquals("employee-2", updated.getAssignee().getId());
         verify(notificationRepository).deleteByReceiverAndTaskAndType(oldAssignee, task, "TASK_ASSIGNED");
         verify(notificationService).createNotification(eq(newAssignee), eq(manager), eq(task), anyString(), eq("TASK_ASSIGNED"));
+    }
+
+    @Test
+    void createTask_allowsManagerWhoIsProjectMember() {
+        User departmentManager = buildUser("manager-1", "Department Manager", "manager@example.com");
+        User handedOffManager = buildUser("manager-2", "Handoff Manager", "handoff@example.com");
+        handedOffManager.setRole(com.projectmanagement.core_system.enums.ERole.MANAGER);
+        User assignee = buildUser("employee-1", "Employee", "employee@example.com");
+        assignee.setRole(com.projectmanagement.core_system.enums.ERole.EMPLOYEE);
+        Project project = buildProject("project-1", departmentManager, assignee);
+        project.getMembers().add(handedOffManager);
+
+        Task task = new Task();
+        task.setId("task-new");
+        task.setTitle("New Task");
+        task.setDeadline(LocalDate.now().plusDays(2));
+
+        when(projectRepository.findById("project-1")).thenReturn(Optional.of(project));
+        when(userRepository.findByEmailIgnoreCase("handoff@example.com")).thenReturn(Optional.of(handedOffManager));
+        when(userRepository.findById("employee-1")).thenReturn(Optional.of(assignee));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task savedTask = invocation.getArgument(0);
+            savedTask.setId("task-new");
+            return savedTask;
+        });
+
+        Task saved = taskService.createTask(task, "project-1", "employee-1", "handoff@example.com");
+
+        assertEquals("New Task", saved.getTitle());
+        verify(userActivityService).record(eq(handedOffManager), eq(assignee), eq("TASK_CREATED"), anyString(), anyMap());
+    }
+
+    @Test
+    void updateTask_allowsManagerWhoIsProjectMember() {
+        User departmentManager = buildUser("manager-1", "Department Manager", "manager@example.com");
+        User handedOffManager = buildUser("manager-2", "Handoff Manager", "handoff@example.com");
+        handedOffManager.setRole(com.projectmanagement.core_system.enums.ERole.MANAGER);
+        User assignee = buildUser("employee-1", "Employee", "employee@example.com");
+        Task task = buildTask("task-1", "Task A", departmentManager, assignee);
+        task.getProject().getMembers().add(handedOffManager);
+
+        TaskUpdateRequest request = new TaskUpdateRequest();
+        request.setTitle("Updated by handoff manager");
+
+        when(taskRepository.findById("task-1")).thenReturn(Optional.of(task));
+        when(userRepository.findByEmailIgnoreCase("handoff@example.com")).thenReturn(Optional.of(handedOffManager));
+        when(taskRepository.save(task)).thenReturn(task);
+
+        Task updated = taskService.updateTask("task-1", request, "handoff@example.com");
+
+        assertEquals("Updated by handoff manager", updated.getTitle());
+        verify(taskRepository).save(task);
+    }
+
+    @Test
+    void deleteTask_allowsManagerWhoIsProjectMember() {
+        User departmentManager = buildUser("manager-1", "Department Manager", "manager@example.com");
+        User handedOffManager = buildUser("manager-2", "Handoff Manager", "handoff@example.com");
+        handedOffManager.setRole(com.projectmanagement.core_system.enums.ERole.MANAGER);
+        User assignee = buildUser("employee-1", "Employee", "employee@example.com");
+        assignee.setRole(com.projectmanagement.core_system.enums.ERole.EMPLOYEE);
+        Task task = buildTask("task-1", "Task A", departmentManager, assignee);
+        task.getProject().getMembers().add(handedOffManager);
+
+        when(taskRepository.findById("task-1")).thenReturn(Optional.of(task));
+        when(userRepository.findByEmailIgnoreCase("handoff@example.com")).thenReturn(Optional.of(handedOffManager));
+
+        taskService.deleteTask("task-1", "handoff@example.com");
+
+        verify(commentRepository).deleteByTask(task);
+        verify(taskActivityRepository).deleteByTaskId("task-1");
+        verify(notificationRepository).deleteByTask(task);
+        verify(taskRepository).delete(task);
     }
 
     @Test
@@ -286,6 +361,8 @@ class TaskServiceTest {
         user.setId(id);
         user.setFullName(fullName);
         user.setEmail(email);
+        user.setRole(com.projectmanagement.core_system.enums.ERole.MANAGER);
+        user.setActive(true);
         return user;
     }
 

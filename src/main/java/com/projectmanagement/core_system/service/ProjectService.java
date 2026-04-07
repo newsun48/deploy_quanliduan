@@ -396,8 +396,26 @@ public class ProjectService {
         return actor;
     }
 
+    private boolean isManagerProjectMember(Project project, User actor) {
+        if (project == null || actor == null || actor.getRole() != ERole.MANAGER || project.getMembers() == null) {
+            return false;
+        }
+
+        return project.getMembers().stream()
+                .filter(member -> member != null && member.getId() != null)
+                .anyMatch(member -> member.getId().equals(actor.getId()));
+    }
+
     private User ensureProjectManagerOrAdmin(Project project, String actorEmail) {
         User actor = requireActiveActor(actorEmail);
+        if (actor.getRole() == ERole.ADMIN) {
+            return actor;
+        }
+
+        if (isManagerProjectMember(project, actor)) {
+            return actor;
+        }
+
         Department department = project.getDepartment();
         if (department == null) {
             throw new RuntimeException("Dự án này không thuộc về phòng ban nào!");

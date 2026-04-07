@@ -154,6 +154,47 @@ class ProjectServiceTest {
     }
 
     @Test
+    void addMembers_allowsManagerWhoIsAlreadyProjectMember() {
+        User departmentManager = buildUser("manager-1", "manager@example.com", "Department Manager", ERole.MANAGER, true, "dept-1");
+        User handedOffManager = buildUser("manager-2", "handoff@example.com", "Handoff Manager", ERole.MANAGER, true, "dept-1");
+        User employee = buildUser("employee-1", "employee@example.com", "Employee", ERole.EMPLOYEE, true, "dept-1");
+        Department department = buildDepartment("dept-1", departmentManager);
+        Project project = buildProject("project-1", department);
+        project.getMembers().add(handedOffManager);
+
+        when(projectRepository.findById("project-1")).thenReturn(Optional.of(project));
+        when(userRepository.findByEmailIgnoreCase("handoff@example.com")).thenReturn(Optional.of(handedOffManager));
+        when(userRepository.findById("employee-1")).thenReturn(Optional.of(employee));
+        when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Project saved = projectService.addMembers("project-1", List.of("employee-1"), "handoff@example.com");
+
+        assertEquals(2, saved.getMembers().size());
+        verify(notificationService).createNotification(employee, handedOffManager, null, "Bạn đã được thêm vào dự án: Project project-1", "PROJECT_JOINED");
+    }
+
+    @Test
+    void removeMember_allowsManagerWhoIsAlreadyProjectMember() {
+        User departmentManager = buildUser("manager-1", "manager@example.com", "Department Manager", ERole.MANAGER, true, "dept-1");
+        User handedOffManager = buildUser("manager-2", "handoff@example.com", "Handoff Manager", ERole.MANAGER, true, "dept-1");
+        User employee = buildUser("employee-1", "employee@example.com", "Employee", ERole.EMPLOYEE, true, "dept-1");
+        Department department = buildDepartment("dept-1", departmentManager);
+        Project project = buildProject("project-1", department);
+        project.getMembers().add(handedOffManager);
+        project.getMembers().add(employee);
+
+        when(projectRepository.findById("project-1")).thenReturn(Optional.of(project));
+        when(userRepository.findByEmailIgnoreCase("handoff@example.com")).thenReturn(Optional.of(handedOffManager));
+        when(userRepository.findById("employee-1")).thenReturn(Optional.of(employee));
+        when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Project saved = projectService.removeMember("project-1", "employee-1", "handoff@example.com");
+
+        assertEquals(1, saved.getMembers().size());
+        verify(notificationService).createNotification(employee, handedOffManager, null, "Bạn đã bị xóa khỏi dự án: Project project-1", "PROJECT_REMOVED");
+    }
+
+    @Test
     void addMembers_rejectsDepartmentManagerSelfInviteWithoutNotification() {
         User manager = buildUser("manager-1", "manager@example.com", "Manager", ERole.MANAGER, true, "dept-1");
         Department department = buildDepartment("dept-1", manager);
@@ -327,6 +368,27 @@ class ProjectServiceTest {
 
         assertEquals("Updated legacy project", saved.getName());
         assertEquals(LocalDate.now().minusDays(10), saved.getStartDate());
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void updateProject_allowsManagerWhoIsProjectMember() {
+        User departmentManager = buildUser("manager-1", "manager@example.com", "Department Manager", ERole.MANAGER, true, "dept-1");
+        User handedOffManager = buildUser("manager-2", "handoff@example.com", "Handoff Manager", ERole.MANAGER, true, "dept-1");
+        Department department = buildDepartment("dept-1", departmentManager);
+        Project project = buildProject("project-1", department);
+        project.getMembers().add(handedOffManager);
+
+        Project updated = new Project();
+        updated.setName("Updated by handed-off manager");
+
+        when(projectRepository.findById("project-1")).thenReturn(Optional.of(project));
+        when(userRepository.findByEmailIgnoreCase("handoff@example.com")).thenReturn(Optional.of(handedOffManager));
+        when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Project saved = projectService.updateProject("project-1", updated, "handoff@example.com");
+
+        assertEquals("Updated by handed-off manager", saved.getName());
         verify(projectRepository).save(project);
     }
 

@@ -81,6 +81,10 @@ const dedupeMembersById = (members = []) => {
     });
 };
 
+const getUserDisplayName = (user) => user?.fullName || 'Người dùng hệ thống';
+const getUserDisplayEmail = (user) => user?.email || 'Chưa có email';
+const getUserInitial = (user) => getUserDisplayName(user).charAt(0).toUpperCase();
+
 const ManagerDashboard = () => {
     const navigate = useNavigate();
     const stompClientRef = useRef(null);
@@ -367,7 +371,7 @@ const ManagerDashboard = () => {
 
     // 🔥 Xóa thành viên khỏi dự án
     const handleRemoveMember = async (member) => {
-        if (!memberToRemove) return;
+        if (!member || !member.id || !selectedProject?.id) return;
         
         const confirmMsg = `Bạn chắc chắn muốn xóa "${member.fullName}" ra khỏi dự án "${selectedProject.name}"?`;
         if (!window.confirm(confirmMsg)) {
@@ -1180,7 +1184,6 @@ const ManagerDashboard = () => {
                                                                         className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setMemberToRemove(m);
                                                                             handleRemoveMember(m);
                                                                         }}
                                                                         title="Xóa khỏi dự án"
@@ -1194,12 +1197,12 @@ const ManagerDashboard = () => {
                                                                         <img src={m.avatarUrl} className="rounded-circle me-3 border border-2 border-white shadow-sm" style={{ width: 50, height: 50, objectFit: 'cover' }} alt={m.fullName} />
                                                                     ) : (
                                                                         <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold me-3" style={{ width: 50, height: 50, fontSize: '1.2rem' }}>
-                                                                            {m.fullName.charAt(0)}
+                                                                            {getUserInitial(m)}
                                                                         </div>
                                                                     )}
                                                                     <div className="min-w-0 flex-grow-1">
-                                                                        <h6 className="fw-bold mb-0 text-truncate">{m.fullName}</h6>
-                                                                        <small className="text-muted d-block text-truncate">{m.email}</small>
+                                                                        <h6 className="fw-bold mb-0 text-truncate">{getUserDisplayName(m)}</h6>
+                                                                        <small className="text-muted d-block text-truncate">{getUserDisplayEmail(m)}</small>
                                                                         <div className="mt-1 d-flex align-items-center gap-2">
                                                                             <span className={`badge ${roleBadge.className}`} style={{ fontSize: '0.65rem' }}>{roleBadge.text}</span>
                                                                             {!m.active && (
@@ -1239,12 +1242,12 @@ const ManagerDashboard = () => {
                                                                                     <img src={m.avatarUrl} className="rounded-circle me-3 border border-2 border-white shadow-sm" style={{ width: 50, height: 50, objectFit: 'cover' }} alt={m.fullName} />
                                                                                 ) : (
                                                                                     <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold me-3" style={{ width: 50, height: 50, fontSize: '1.2rem' }}>
-                                                                                        {m.fullName.charAt(0)}
+                                                                                        {getUserInitial(m)}
                                                                                     </div>
                                                                                 )}
                                                                                 <div className="min-w-0 flex-grow-1">
-                                                                                    <h6 className="fw-bold mb-0 text-truncate">{m.fullName}</h6>
-                                                                                    <small className="text-muted d-block text-truncate">{m.email}</small>
+                                                                                    <h6 className="fw-bold mb-0 text-truncate">{getUserDisplayName(m)}</h6>
+                                                                                    <small className="text-muted d-block text-truncate">{getUserDisplayEmail(m)}</small>
                                                                                     <div className="mt-1 d-flex align-items-center gap-2">
                                                                                         <span className={`badge ${roleBadge.className}`} style={{ fontSize: '0.65rem' }}>{roleBadge.text}</span>
                                                                                         <i className="bi bi-chat-fill text-primary small ms-auto"></i>
@@ -1306,13 +1309,13 @@ const ManagerDashboard = () => {
                                                         <img src={u.avatarUrl} alt={u.fullName} className="rounded-circle shadow-sm border border-2 border-white" style={{ width: 48, height: 48, objectFit: 'cover' }} />
                                                     ) : (
                                                         <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style={{ width: 48, height: 48, fontSize: '1.2rem' }}>
-                                                            {u.fullName.charAt(0)}
+                                                            {getUserInitial(u)}
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="flex-grow-1 min-w-0">
-                                                    <div className="fw-bold text-dark text-truncate mb-0">{u.fullName}</div>
-                                                    <div className="text-muted small text-truncate"><i className="bi bi-envelope me-1"></i> {u.email}</div>
+                                                    <div className="fw-bold text-dark text-truncate mb-0">{getUserDisplayName(u)}</div>
+                                                    <div className="text-muted small text-truncate"><i className="bi bi-envelope me-1"></i> {getUserDisplayEmail(u)}</div>
                                                     <span className="badge bg-secondary bg-opacity-10 text-secondary mt-1" style={{ fontSize: '0.65rem' }}>Phòng: {u.department?.name}</span>
                                                 </div>
                                                 {selectedMembersToAdd.includes(u.id) && (

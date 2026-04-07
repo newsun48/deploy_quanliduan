@@ -180,8 +180,8 @@ const PrivateChatPanel = ({ currentUser, targetUser, onClose }) => {
             {/* Header */}
             <div style={{ padding: '12px 16px', background: '#343a40', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <strong>💬 Chat với {targetUser.fullName}</strong>
-                    <div style={{ fontSize: '12px', opacity: 0.7 }}>{targetUser.email}</div>
+                    <strong>💬 Chat với {targetUser.fullName || 'Người dùng hệ thống'}</strong>
+                    <div style={{ fontSize: '12px', opacity: 0.7 }}>{targetUser.email || 'Chưa có email'}</div>
                 </div>
                 {onClose && (
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}>✖</button>

@@ -637,6 +637,10 @@ public class TaskService {
             return actingUser;
         }
 
+        if (actingUser.getRole() == ERole.MANAGER && isProjectMember(task.getProject(), actingUser.getId())) {
+            return actingUser;
+        }
+
         User projectManager = getProjectManager(task.getProject());
         if (!projectManager.getId().equals(actingUser.getId())) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa hoặc xóa công việc này!");
@@ -662,6 +666,10 @@ public class TaskService {
 
     private void ensureCanCreateTask(User actor, Project project) {
         if (actor.getRole() == ERole.ADMIN) {
+            return;
+        }
+
+        if (actor.getRole() == ERole.MANAGER && isProjectMember(project, actor.getId())) {
             return;
         }
 
