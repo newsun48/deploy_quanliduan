@@ -14,6 +14,8 @@ public class UpdateUserRequest {
     private String email;
     private String deptId;
     private ERole role;
+    private String handoffManagerId;
+    private String handoffNote;
 
     public String getEmail() {
         return email;
@@ -37,6 +39,22 @@ public class UpdateUserRequest {
 
     public void setRole(ERole role) {
         this.role = role;
+    }
+
+    public String getHandoffManagerId() {
+        return handoffManagerId;
+    }
+
+    public void setHandoffManagerId(String handoffManagerId) {
+        this.handoffManagerId = handoffManagerId;
+    }
+
+    public String getHandoffNote() {
+        return handoffNote;
+    }
+
+    public void setHandoffNote(String handoffNote) {
+        this.handoffNote = handoffNote;
     }
 }
 

@@ -107,6 +107,11 @@ const ManagerDashboard = () => {
     const [privateChatUser, setPrivateChatUser] = useState(null);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+    
+    // 🔥 State cho xóa thành viên
+    const [memberToRemove, setMemberToRemove] = useState(null);
+    const [removingMember, setRemovingMember] = useState(false);
+    
     const [requestInbox, setRequestInbox] = useState([]);
     const [requestHistory, setRequestHistory] = useState([]);
     const [workflowLoading, setWorkflowLoading] = useState(false);
@@ -357,6 +362,35 @@ const ManagerDashboard = () => {
             console.error("❌ Lỗi thêm member:", err);
             const errorMessage = err.response?.data?.message || err.response?.data || err.message || "Thất bại";
             alert("Lỗi: " + errorMessage);
+        }
+    };
+
+    // 🔥 Xóa thành viên khỏi dự án
+    const handleRemoveMember = async (member) => {
+        if (!memberToRemove) return;
+        
+        const confirmMsg = `Bạn chắc chắn muốn xóa "${member.fullName}" ra khỏi dự án "${selectedProject.name}"?`;
+        if (!window.confirm(confirmMsg)) {
+            return;
+        }
+
+        try {
+            setRemovingMember(true);
+            await api.delete(`/projects/${selectedProject.id}/remove-member/${member.id}`);
+            alert("✅ Đã xóa nhân viên thành công!");
+            setMemberToRemove(null);
+            
+            // Refresh project data
+            await fetchDeptData(myDepartment.id);
+            const res = await api.get('/projects');
+            const updated = res.data.find(p => p.id == selectedProject.id);
+            if(updated) setSelectedProject(updated);
+        } catch (err) {
+            console.error("❌ Lỗi xóa member:", err);
+            const errorMessage = err.response?.data?.message || err.response?.data || err.message || "Thất bại";
+            alert("Lỗi: " + errorMessage);
+        } finally {
+            setRemovingMember(false);
         }
     };
 
@@ -1139,7 +1173,22 @@ const ManagerDashboard = () => {
 
                                                         return (
                                                         <div key={m.id} className="col-12 col-md-6 col-lg-4">
-                                                            <div className="card border-0 shadow-sm p-3 h-100 transition hover-shadow" style={{ cursor: 'pointer' }} onClick={() => setPrivateChatUser(m)}>
+                                                            <div className="card border-0 shadow-sm p-3 h-100 transition hover-shadow position-relative" style={{ cursor: 'pointer' }} onClick={() => setPrivateChatUser(m)}>
+                                                                {/* 🔥 Nút xóa thành viên */}
+                                                                {!isProjectClosed && (
+                                                                    <button
+                                                                        className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMemberToRemove(m);
+                                                                            handleRemoveMember(m);
+                                                                        }}
+                                                                        title="Xóa khỏi dự án"
+                                                                        disabled={removingMember}
+                                                                    >
+                                                                        <i className="bi bi-trash-fill"></i>
+                                                                    </button>
+                                                                )}
                                                                 <div className="d-flex align-items-center">
                                                                     {m.avatarUrl ? (
                                                                         <img src={m.avatarUrl} className="rounded-circle me-3 border border-2 border-white shadow-sm" style={{ width: 50, height: 50, objectFit: 'cover' }} alt={m.fullName} />
@@ -1153,6 +1202,11 @@ const ManagerDashboard = () => {
                                                                         <small className="text-muted d-block text-truncate">{m.email}</small>
                                                                         <div className="mt-1 d-flex align-items-center gap-2">
                                                                             <span className={`badge ${roleBadge.className}`} style={{ fontSize: '0.65rem' }}>{roleBadge.text}</span>
+                                                                            {!m.active && (
+                                                                                <span className="badge bg-warning text-dark" style={{ fontSize: '0.65rem' }}>
+                                                                                    <i className="bi bi-exclamation-triangle-fill me-1"></i>Khóa
+                                                                                </span>
+                                                                            )}
                                                                             <i className="bi bi-chat-fill text-primary small ms-auto"></i>
                                                                         </div>
                                                                     </div>

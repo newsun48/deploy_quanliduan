@@ -21,7 +21,6 @@ import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import ProjectGantt from '../components/ProjectGantt';
 import HeatmapGrid from '../components/HeatmapGrid';
-import Swal from 'sweetalert2';
 import '../components/EnterpriseWorkflow.css';
 import './AdminDashboard.css';
 import {
@@ -45,6 +44,46 @@ import {
 
 const COLORS_STATUS = ['#94a3b8', '#1d6fa3', '#2b8a5d'];
 const COLORS_PRIORITY = ['#d05f45', '#d79a31', '#2b8a5d'];
+
+const createEmptyOkrKeyResult = () => ({
+    name: '',
+    targetValue: '',
+    currentValue: '',
+    unit: '',
+});
+
+const createOkrModalState = (departmentId = '') => ({
+    departmentId,
+    objective: '',
+    keyResults: [createEmptyOkrKeyResult()],
+    errors: {},
+    submitError: '',
+    submitting: false,
+});
+
+const createKeyResultModalState = () => ({
+    objectiveId: '',
+    keyResultId: '',
+    objectiveTitle: '',
+    keyResultName: '',
+    departmentName: '',
+    currentValue: '',
+    targetValue: '',
+    unit: '',
+    errors: {},
+    submitError: '',
+    submitting: false,
+});
+
+const createReviewModalState = () => ({
+    reviewId: '',
+    reviewTitle: '',
+    departmentName: '',
+    summary: '',
+    errors: {},
+    submitError: '',
+    submitting: false,
+});
 
 const parseStoredUser = () => {
     try {
@@ -164,7 +203,8 @@ const normalizeObjectives = (payload) => {
 const normalizeQuarterlyReviews = (payload) => {
     return extractItems(payload).map((item, index) => ({
         id: item.id || item.reviewId || item._id || `review-${index}`,
-        title: item.department?.name || item.departmentName || item.name || 'Quarterly review',
+        title: item.department?.name || item.departmentName || item.name || 'Bao cao quy',
+        departmentName: item.department?.name || item.departmentName || item.name || 'Bao cao quy',
         status: item.reviewSummary ? 'COMPLETED' : 'AT_RISK',
         score: extractItems(item.keyResults || []).length,
         summary: item.reviewSummary || '',
@@ -210,6 +250,12 @@ const StatisticsPage = () => {
         rangeDays: 90,
         stalledDays: 7,
     });
+    const [timelineRefreshKey, setTimelineRefreshKey] = useState(0);
+    const [insightsRefreshKey, setInsightsRefreshKey] = useState(0);
+    const [activeModal, setActiveModal] = useState(null);
+    const [okrModal, setOkrModal] = useState(() => createOkrModalState());
+    const [keyResultModal, setKeyResultModal] = useState(() => createKeyResultModalState());
+    const [reviewModal, setReviewModal] = useState(() => createReviewModalState());
 
     useEffect(() => {
         if (!currentUser) {
@@ -279,7 +325,7 @@ const StatisticsPage = () => {
         };
 
         loadDeliveryAnalytics();
-    }, [currentUser, deliveryFilters.rangeDays, deliveryFilters.stalledDays, filters.departmentId]);
+    }, [currentUser, deliveryFilters.rangeDays, deliveryFilters.stalledDays, filters.departmentId, timelineRefreshKey]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -317,7 +363,7 @@ const StatisticsPage = () => {
         };
 
         loadScopedTasks();
-    }, [currentUser, filters.departmentId]);
+    }, [currentUser, filters.departmentId, timelineRefreshKey]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -381,7 +427,7 @@ const StatisticsPage = () => {
         }
 
         loadInsights();
-    }, [currentUser, departments, filters.departmentId, filters.quarter, isAdmin]);
+    }, [currentUser, departments, filters.departmentId, filters.quarter, insightsRefreshKey, isAdmin]);
 
     const handleLogout = () => {
         localStorage.removeItem('user');
@@ -390,6 +436,51 @@ const StatisticsPage = () => {
     };
 
     const canManagePerformance = isAdmin || currentUser?.role === 'MANAGER';
+    const selectedDepartmentName = isAdmin
+        ? (filters.departmentId === 'ALL'
+            ? 'Toàn công ty'
+            : formatDepartmentName(departments.find((department) => department.id === filters.departmentId)?.name || '--'))
+        : formatDepartmentName(currentUser?.department?.name || '--');
+    const modalDepartmentName = okrModal.departmentId
+        ? formatDepartmentName(departments.find((department) => department.id === okrModal.departmentId)?.name || '')
+        : '';
+    const isModalSubmitting = activeModal === 'okr'
+        ? okrModal.submitting
+        : activeModal === 'keyResult'
+            ? keyResultModal.submitting
+            : activeModal === 'review'
+                ? reviewModal.submitting
+                : false;
+
+    useEffect(() => {
+        if (!activeModal) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape' && !isModalSubmitting) {
+                setActiveModal(null);
+            }
+        };
+
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [activeModal, isModalSubmitting]);
+
+    const triggerInsightsRefresh = () => {
+        setInsightsError('');
+        setInsightsLoading(true);
+        setInsightsRefreshKey((prev) => prev + 1);
+    };
+
+    const closeActiveModal = () => {
+        if (isModalSubmitting) return;
+        setActiveModal(null);
+    };
 
     const handleGenerateInsights = async () => {
         const departmentId = isAdmin
@@ -411,8 +502,7 @@ const StatisticsPage = () => {
                 quarter
             });
             alert('Đã phân tích và cập nhật Insights thành công!');
-            setInsightsLoading(true);
-            setFilters((prev) => ({ ...prev }));
+            triggerInsightsRefresh();
         } catch (err) {
             console.error('Lỗi khi tạo insights:', err);
             const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
@@ -422,140 +512,279 @@ const StatisticsPage = () => {
         }
     };
 
-    const handleUpsertOkr = async () => {
-        let finalDept = isAdmin
-            ? (filters.departmentId === 'ALL' ? null : departments.find(d => d.id === filters.departmentId))
-            : currentUser?.department;
+    const handleUpsertOkr = () => {
+        const departmentId = isAdmin
+            ? (filters.departmentId === 'ALL' ? '' : filters.departmentId)
+            : (currentUser?.department?.id || '');
 
-        // Nếu Admin ở chế độ Toàn công ty, cho phép chọn nhanh phòng ban ngay trong Modal
-        if (isAdmin && !finalDept) {
-            const deptOptions = {};
-            departments.forEach(d => {
-                deptOptions[d.id] = formatDepartmentName(d.name);
-            });
+        setOkrModal(createOkrModalState(departmentId));
+        setActiveModal('okr');
+    };
 
-            const { value: selectedId } = await Swal.fire({
-                title: '🏢 Chọn phòng ban cần cập nhật',
-                input: 'select',
-                inputOptions: deptOptions,
-                inputPlaceholder: 'Chọn một phòng ban...',
-                showCancelButton: true,
-                confirmButtonText: 'Tiếp theo',
-                cancelButtonText: 'Hủy',
-                confirmButtonColor: '#1d6fa3',
-                inputValidator: (value) => {
-                    if (!value) return 'Bạn cần chọn một phòng ban!';
-                }
-            });
+    const handleUpdateKeyResult = (objective, keyResult) => {
+        setKeyResultModal({
+            objectiveId: objective.id,
+            keyResultId: keyResult.id,
+            objectiveTitle: objective.title,
+            keyResultName: keyResult.title || keyResult.name || 'Ket qua then chot',
+            departmentName: objective.owner,
+            currentValue: String(keyResult.currentValue ?? 0),
+            targetValue: String(keyResult.targetValue ?? 0),
+            unit: keyResult.unit || '',
+            errors: {},
+            submitError: '',
+            submitting: false,
+        });
+        setActiveModal('keyResult');
+    };
 
-            if (!selectedId) return;
-            finalDept = departments.find(d => d.id === selectedId);
+    const handleUpdateReviewSummary = (review) => {
+        setReviewModal({
+            reviewId: review.id,
+            reviewTitle: review.title,
+            departmentName: formatDepartmentName(review.departmentName || review.title || ''),
+            summary: review.summary || '',
+            errors: {},
+            submitError: '',
+            submitting: false,
+        });
+        setActiveModal('review');
+    };
+
+    const handleOkrFieldChange = (field, value) => {
+        setOkrModal((prev) => ({
+            ...prev,
+            [field]: value,
+            submitError: '',
+            errors: {
+                ...prev.errors,
+                [field]: '',
+            },
+        }));
+    };
+
+    const handleOkrKeyResultChange = (index, field, value) => {
+        setOkrModal((prev) => {
+            const nextKeyResults = prev.keyResults.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item);
+            const nextKeyResultErrors = Array.isArray(prev.errors.keyResults)
+                ? prev.errors.keyResults.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: '' } : item)
+                : prev.errors.keyResults;
+
+            return {
+                ...prev,
+                keyResults: nextKeyResults,
+                submitError: '',
+                errors: {
+                    ...prev.errors,
+                    keyResults: nextKeyResultErrors,
+                },
+            };
+        });
+    };
+
+    const handleAddOkrKeyResult = () => {
+        setOkrModal((prev) => ({
+            ...prev,
+            keyResults: [...prev.keyResults, createEmptyOkrKeyResult()],
+            submitError: '',
+        }));
+    };
+
+    const handleRemoveOkrKeyResult = (index) => {
+        setOkrModal((prev) => {
+            if (prev.keyResults.length === 1) return prev;
+
+            const nextKeyResults = prev.keyResults.filter((_, itemIndex) => itemIndex !== index);
+            const nextKeyResultErrors = Array.isArray(prev.errors.keyResults)
+                ? prev.errors.keyResults.filter((_, itemIndex) => itemIndex !== index)
+                : prev.errors.keyResults;
+
+            return {
+                ...prev,
+                keyResults: nextKeyResults,
+                submitError: '',
+                errors: {
+                    ...prev.errors,
+                    keyResults: nextKeyResultErrors,
+                },
+            };
+        });
+    };
+
+    const submitOkrModal = async (event) => {
+        event.preventDefault();
+
+        const errors = {};
+        const normalizedObjective = okrModal.objective.trim();
+        const keyResultErrors = okrModal.keyResults.map((item) => {
+            const itemErrors = {};
+
+            if (!item.name.trim()) itemErrors.name = 'Vui lòng nhập tên ket qua then chot.';
+            if (item.targetValue === '' || Number.isNaN(Number(item.targetValue))) {
+                itemErrors.targetValue = 'Vui lòng nhập mục tiêu hợp lệ.';
+            } else if (Number(item.targetValue) < 0) {
+                itemErrors.targetValue = 'Mục tiêu không được nhỏ hơn 0.';
+            }
+
+            if (item.currentValue !== '' && Number.isNaN(Number(item.currentValue))) {
+                itemErrors.currentValue = 'Giá trị hiện tại không hợp lệ.';
+            } else if (item.currentValue !== '' && Number(item.currentValue) < 0) {
+                itemErrors.currentValue = 'Giá trị hiện tại không được nhỏ hơn 0.';
+            }
+
+            return itemErrors;
+        });
+
+        if (isAdmin && filters.departmentId === 'ALL' && !okrModal.departmentId) {
+            errors.departmentId = 'Vui lòng chọn phòng ban cần cập nhật.';
         }
-        
-        const departmentId = finalDept?.id;
-        const departmentName = formatDepartmentName(finalDept?.name || 'Phòng ban');
+        if (!normalizedObjective) {
+            errors.objective = 'Vui lòng nhập mục tiêu chính.';
+        }
+        if (!okrModal.keyResults.length) {
+            errors.keyResults = 'Can it nhat mot ket qua then chot.';
+        } else if (keyResultErrors.some((item) => Object.keys(item).length > 0)) {
+            errors.keyResults = keyResultErrors;
+        }
 
-        if (!departmentId) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Thiếu thông tin!',
-                text: 'Vui lòng chọn hoặc làm mới danh sách phòng ban để cập nhật OKR.',
-                confirmButtonColor: '#1d6fa3'
-            });
+        if (Object.keys(errors).length > 0) {
+            setOkrModal((prev) => ({
+                ...prev,
+                errors,
+                submitError: '',
+            }));
             return;
         }
 
-        const { value: objective } = await Swal.fire({
-            title: `🎯 Nhập mục tiêu cho ${departmentName}`,
-            input: 'text',
-            inputLabel: isAdmin && filters.departmentId === 'ALL' 
-                ? `Đang cập nhật cho phòng ban mặc định: ${departmentName}` 
-                : `Phạm vi: ${departmentName}`,
-            inputPlaceholder: 'Ví dụ: Tăng chất lượng quản lý dự án',
-            showCancelButton: true,
-            confirmButtonText: 'Tiếp theo',
-            cancelButtonText: 'Hủy',
-            confirmButtonColor: '#1d6fa3',
-            inputValidator: (value) => {
-                if (!value) return 'Bạn cần nhập mục tiêu!';
-            }
-        });
-
-        if (!objective) return;
-
-        const { value: keyResultText } = await Swal.fire({
-            title: `🏁 Nhập Kết quả then chốt cho ${departmentName}`,
-            input: 'textarea',
-            inputLabel: 'Danh sách các KR (mỗi dòng một KR)',
-            inputPlaceholder: 'Định dạng: tên|target|current|unit\nVí dụ:\nGiảm bug Critical|5|10|bug\nĐạt tiến độ|100|85|%',
-            footer: `<small>Bạn đang cập nhật dữ liệu cho <b>${departmentName}</b></small>`,
-            showCancelButton: true,
-            confirmButtonText: 'Cập nhật',
-            cancelButtonText: 'Hủy',
-            confirmButtonColor: '#1d6fa3',
-            inputValidator: (value) => {
-                if (!value) return 'Bạn cần ít nhất một kết quả then chốt!';
-            }
-        });
-
-        if (!keyResultText) return;
-
-        const keyResults = keyResultText
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((line) => {
-                const [name, targetValue, currentValue, unit] = line.split('|').map((part) => part?.trim() || '');
-                return {
-                    name,
-                    targetValue: Number(targetValue || 0),
-                    currentValue: Number(currentValue || 0),
-                    unit,
-                };
-            })
-            .filter((item) => item.name);
+        const { year, quarter } = parseQuarterKey(filters.quarter);
+        const payload = {
+            departmentId: okrModal.departmentId || currentUser?.department?.id || '',
+            year,
+            quarter,
+            objective: normalizedObjective,
+            keyResults: okrModal.keyResults.map((item) => ({
+                name: item.name.trim(),
+                targetValue: Number(item.targetValue || 0),
+                currentValue: Number(item.currentValue || 0),
+                unit: item.unit.trim(),
+            })),
+        };
 
         try {
-            const { year, quarter } = parseQuarterKey(filters.quarter);
-            await departmentInsightsAPI.upsertOkr({ departmentId, year, quarter, objective, keyResults });
-            alert('Đã cập nhật OKR cho quý đã chọn.');
-            setInsightsLoading(true);
-            setFilters((prev) => ({ ...prev }));
+            setOkrModal((prev) => ({
+                ...prev,
+                submitting: true,
+                submitError: '',
+            }));
+            await departmentInsightsAPI.upsertOkr(payload);
+            setActiveModal(null);
+            setOkrModal(createOkrModalState(payload.departmentId));
+            triggerInsightsRefresh();
         } catch (err) {
             const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
-            alert(`Lỗi: ${message}`);
+            setOkrModal((prev) => ({
+                ...prev,
+                submitting: false,
+                submitError: message,
+            }));
             setInsightsLoading(false);
         }
     };
 
-    const handleUpdateKeyResult = async (objective, keyResult) => {
-        const value = window.prompt(`Cập nhật giá trị hiện tại cho "${keyResult.name}":`, keyResult.currentValue ?? 0);
-        if (value === null) return;
+    const handleKeyResultValueChange = (value) => {
+        setKeyResultModal((prev) => ({
+            ...prev,
+            currentValue: value,
+            submitError: '',
+            errors: {
+                ...prev.errors,
+                currentValue: '',
+            },
+        }));
+    };
+
+    const submitKeyResultModal = async (event) => {
+        event.preventDefault();
+
+        if (keyResultModal.currentValue === '' || Number.isNaN(Number(keyResultModal.currentValue))) {
+            setKeyResultModal((prev) => ({
+                ...prev,
+                errors: {
+                    ...prev.errors,
+                    currentValue: 'Vui lòng nhập giá trị hiện tại hợp lệ.',
+                },
+            }));
+            return;
+        }
 
         try {
-            await departmentInsightsAPI.updateKeyResult(objective.id, keyResult.id, { currentValue: Number(value) });
-            alert('Đã cập nhật key result.');
-            setInsightsLoading(true);
-            setFilters((prev) => ({ ...prev }));
+            setKeyResultModal((prev) => ({
+                ...prev,
+                submitting: true,
+                submitError: '',
+            }));
+            await departmentInsightsAPI.updateKeyResult(keyResultModal.objectiveId, keyResultModal.keyResultId, {
+                currentValue: Number(keyResultModal.currentValue),
+            });
+            setActiveModal(null);
+            setKeyResultModal(createKeyResultModalState());
+            triggerInsightsRefresh();
         } catch (err) {
             const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
-            alert(`Lỗi: ${message}`);
+            setKeyResultModal((prev) => ({
+                ...prev,
+                submitting: false,
+                submitError: message,
+            }));
             setInsightsLoading(false);
         }
     };
 
-    const handleUpdateReviewSummary = async (review) => {
-        const value = window.prompt('Cập nhật tổng kết quý:', review.summary || '');
-        if (value === null) return;
+    const handleReviewSummaryChange = (value) => {
+        setReviewModal((prev) => ({
+            ...prev,
+            summary: value,
+            submitError: '',
+            errors: {
+                ...prev.errors,
+                summary: '',
+            },
+        }));
+    };
+
+    const submitReviewSummaryModal = async (event) => {
+        event.preventDefault();
+
+        if (!reviewModal.summary.trim()) {
+            setReviewModal((prev) => ({
+                ...prev,
+                errors: {
+                    ...prev.errors,
+                    summary: 'Vui lòng nhập nội dung tổng kết quý.',
+                },
+            }));
+            return;
+        }
 
         try {
-            await departmentInsightsAPI.updateReviewSummary(review.id, { reviewSummary: value });
-            alert('Đã cập nhật tổng kết review.');
-            setInsightsLoading(true);
-            setFilters((prev) => ({ ...prev }));
+            setReviewModal((prev) => ({
+                ...prev,
+                submitting: true,
+                submitError: '',
+            }));
+            await departmentInsightsAPI.updateReviewSummary(reviewModal.reviewId, {
+                reviewSummary: reviewModal.summary.trim(),
+            });
+            setActiveModal(null);
+            setReviewModal(createReviewModalState());
+            triggerInsightsRefresh();
         } catch (err) {
             const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
-            alert(`Lỗi: ${message}`);
+            setReviewModal((prev) => ({
+                ...prev,
+                submitting: false,
+                submitError: message,
+            }));
             setInsightsLoading(false);
         }
     };
@@ -1169,7 +1398,7 @@ const StatisticsPage = () => {
                                     <div className="workflow-panel-header">
                                         <div>
                                             <h3 className="workflow-panel-title">📅 Project Gantt Timeline</h3>
-                                            <p className="workflow-panel-copy">Trực quan hóa lộ trình công việc theo thời gian. Kéo thả các thanh để thay đổi deadline và ngày bắt đầu.</p>
+                                            <p className="workflow-panel-copy">Trực quan hóa lộ trình công việc theo thời gian. Cập nhật ngày bắt đầu và deadline trực tiếp trong từng dòng công việc.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
@@ -1182,8 +1411,7 @@ const StatisticsPage = () => {
                                             <ProjectGantt 
                                                 tasks={scopedTasks} 
                                                 onTaskUpdate={() => {
-                                                    // Refresh delivery stats when timeline changes
-                                                    setDeliveryFilters(prev => ({...prev}));
+                                                    setTimelineRefreshKey((prev) => prev + 1);
                                                 }} 
                                             />
                                         )}
@@ -1251,9 +1479,9 @@ const StatisticsPage = () => {
                                     </div>
 
                                     {canManagePerformance ? (
-                                        <div className="d-flex justify-content-end mt-3 gap-2">
+                                        <div className="statistics-manage-actions mt-3">
                                             <button 
-                                                className="btn btn-outline-primary rounded-pill px-4 fw-bold" 
+                                                className="btn statistics-manage-btn statistics-manage-btn-secondary" 
                                                 onClick={handleGenerateInsights}
                                                 disabled={isGenerating || !filters.departmentId || filters.departmentId === 'ALL'}
                                             >
@@ -1263,7 +1491,7 @@ const StatisticsPage = () => {
                                                     <><i className="bi bi-magic me-2"></i>🚀 Đồng bộ & Phân tích Insights</>
                                                 )}
                                             </button>
-                                            <button className="btn btn-primary rounded-pill px-4 fw-bold" onClick={handleUpsertOkr}>
+                                            <button className="btn statistics-manage-btn statistics-manage-btn-primary" onClick={handleUpsertOkr}>
                                                 <i className="bi bi-plus-circle me-2"></i>Cập nhật OKR quý này
                                             </button>
                                         </div>
@@ -1320,8 +1548,8 @@ const StatisticsPage = () => {
                                                                             )}
                                                                             {canManagePerformance && isObj && keyResult.id && (
                                                                                 <div className="mt-2 d-flex justify-content-end">
-                                                                                    <button className="btn btn-sm btn-link text-decoration-none p-0 fw-bold" style={{ fontSize: '0.75rem' }} onClick={() => handleUpdateKeyResult(objective, keyResult)}>
-                                                                                        Cập nhật →
+                                                                                    <button className="btn btn-sm statistics-inline-action" onClick={() => handleUpdateKeyResult(objective, keyResult)}>
+                                                                                        Cap nhat ket qua
                                                                                     </button>
                                                                                 </div>
                                                                             )}
@@ -1378,7 +1606,7 @@ const StatisticsPage = () => {
                                                                 </div>
                                                                 <div>
                                                                     <span className="workflow-meta-label">Phòng ban</span>
-                                                                    <div className="workflow-meta-value fw-bold">{review.departmentName || '---'}</div>
+                                                                    <div className="workflow-meta-value fw-bold">{formatDepartmentName(review.departmentName || review.title || '---')}</div>
                                                                 </div>
                                                             </div>
 
@@ -1398,7 +1626,7 @@ const StatisticsPage = () => {
 
                                                             {canManagePerformance ? (
                                                                 <div className="mt-3 pt-3 border-top d-flex justify-content-end">
-                                                                    <button className="btn btn-sm btn-outline-primary rounded-pill px-4" onClick={() => handleUpdateReviewSummary(review)}>
+                                                                    <button className="btn btn-sm statistics-inline-action" onClick={() => handleUpdateReviewSummary(review)}>
                                                                         Chỉnh sửa báo cáo
                                                                     </button>
                                                                 </div>
@@ -1415,6 +1643,302 @@ const StatisticsPage = () => {
                     </div>
                 </div>
             </div>
+
+            {activeModal ? (
+                <div
+                    className="statistics-modal-overlay"
+                    role="presentation"
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) {
+                            closeActiveModal();
+                        }
+                    }}
+                >
+                    {activeModal === 'okr' ? (
+                        <div className="statistics-modal statistics-modal-wide" role="dialog" aria-modal="true" aria-labelledby="statistics-okr-modal-title" onClick={(event) => event.stopPropagation()}>
+                            <form onSubmit={submitOkrModal} className="statistics-modal-shell">
+                                <div className="statistics-modal-header">
+                                    <div>
+                                        <span className="statistics-modal-kicker">Cap nhat OKR</span>
+                                        <h2 id="statistics-okr-modal-title" className="statistics-modal-title">Tao moi hoac cap nhat OKR cho {formatQuarterLabel(filters.quarter)}</h2>
+                                        <p className="statistics-modal-copy">Nhap muc tieu va ket qua then chot ngay tren dashboard de dong bo du lieu quy hien tai ma khong roi khoi man hinh.</p>
+                                    </div>
+                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Dong form">
+                                        <i className="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+
+                                <div className="statistics-modal-body">
+                                    <div className="statistics-modal-meta-card">
+                                        <div>
+                                            <span className="workflow-meta-label">Pham vi hien tai</span>
+                                            <div className="workflow-meta-value fw-bold">{selectedDepartmentName}</div>
+                                        </div>
+                                        <div>
+                                            <span className="workflow-meta-label">Quy du lieu</span>
+                                            <div className="workflow-meta-value fw-bold">{formatQuarterLabel(filters.quarter)}</div>
+                                        </div>
+                                    </div>
+
+                                    {isAdmin && filters.departmentId === 'ALL' ? (
+                                        <div className="statistics-modal-field">
+                                            <label className="statistics-modal-label" htmlFor="statistics-okr-department">Phong ban</label>
+                                            <select
+                                                id="statistics-okr-department"
+                                                className={`form-select modern-input ${okrModal.errors.departmentId ? 'is-invalid' : ''}`}
+                                                value={okrModal.departmentId}
+                                                onChange={(event) => handleOkrFieldChange('departmentId', event.target.value)}
+                                            >
+                                                <option value="">Chon phong ban can cap nhat</option>
+                                                {departments.map((department) => (
+                                                    <option key={department.id} value={department.id}>{formatDepartmentName(department.name)}</option>
+                                                ))}
+                                            </select>
+                                            {okrModal.errors.departmentId ? <div className="statistics-modal-error">{okrModal.errors.departmentId}</div> : null}
+                                        </div>
+                                    ) : (
+                                        <div className="statistics-modal-field">
+                                            <span className="statistics-modal-label">Don vi ap dung</span>
+                                            <div className="statistics-modal-static">{modalDepartmentName || selectedDepartmentName}</div>
+                                        </div>
+                                    )}
+
+                                    <div className="statistics-modal-field">
+                                        <label className="statistics-modal-label" htmlFor="statistics-okr-objective">Muc tieu quy</label>
+                                        <input
+                                            id="statistics-okr-objective"
+                                            type="text"
+                                            className={`form-control modern-input ${okrModal.errors.objective ? 'is-invalid' : ''}`}
+                                            placeholder="Vi du: Nang cao chat luong giao hang du an"
+                                            value={okrModal.objective}
+                                            onChange={(event) => handleOkrFieldChange('objective', event.target.value)}
+                                        />
+                                        {okrModal.errors.objective ? <div className="statistics-modal-error">{okrModal.errors.objective}</div> : null}
+                                    </div>
+
+                                    <div className="statistics-modal-section-head">
+                                        <div>
+                                            <h3 className="statistics-modal-section-title">Danh sach ket qua then chot</h3>
+                                            <p className="statistics-modal-section-copy">Bo sung nhieu KR, dieu chinh muc tieu va gia tri hien tai ngay trong cung mot form.</p>
+                                        </div>
+                                        <button type="button" className="btn statistics-mini-action" onClick={handleAddOkrKeyResult}>
+                                            <i className="bi bi-plus-lg me-1"></i>Them KR
+                                        </button>
+                                    </div>
+
+                                    <div className="statistics-kr-list">
+                                        {okrModal.keyResults.map((item, index) => {
+                                            const rowErrors = Array.isArray(okrModal.errors.keyResults) ? (okrModal.errors.keyResults[index] || {}) : {};
+
+                                            return (
+                                                <div key={`okr-key-result-${index}`} className="statistics-kr-card">
+                                                    <div className="statistics-kr-card-head">
+                                                        <span className="statistics-kr-index">KR {index + 1}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="btn statistics-kr-remove"
+                                                            onClick={() => handleRemoveOkrKeyResult(index)}
+                                                            disabled={okrModal.keyResults.length === 1}
+                                                        >
+                                                            <i className="bi bi-trash3 me-1"></i>Xoa
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="statistics-modal-field">
+                                                        <label className="statistics-modal-label" htmlFor={`statistics-okr-name-${index}`}>Ten ket qua then chot</label>
+                                                        <input
+                                                            id={`statistics-okr-name-${index}`}
+                                                            type="text"
+                                                            className={`form-control modern-input ${rowErrors.name ? 'is-invalid' : ''}`}
+                                                            placeholder="Vi du: Giam bug Critical ve duoi 5 bug"
+                                                            value={item.name}
+                                                            onChange={(event) => handleOkrKeyResultChange(index, 'name', event.target.value)}
+                                                        />
+                                                        {rowErrors.name ? <div className="statistics-modal-error">{rowErrors.name}</div> : null}
+                                                    </div>
+
+                                                    <div className="statistics-modal-grid">
+                                                        <div className="statistics-modal-field">
+                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-target-${index}`}>Muc tieu</label>
+                                                            <input
+                                                                id={`statistics-okr-target-${index}`}
+                                                                type="number"
+                                                                step="any"
+                                                                min="0"
+                                                                className={`form-control modern-input ${rowErrors.targetValue ? 'is-invalid' : ''}`}
+                                                                placeholder="100"
+                                                                value={item.targetValue}
+                                                                onChange={(event) => handleOkrKeyResultChange(index, 'targetValue', event.target.value)}
+                                                            />
+                                                            {rowErrors.targetValue ? <div className="statistics-modal-error">{rowErrors.targetValue}</div> : null}
+                                                        </div>
+                                                        <div className="statistics-modal-field">
+                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-current-${index}`}>Hien tai</label>
+                                                            <input
+                                                                id={`statistics-okr-current-${index}`}
+                                                                type="number"
+                                                                step="any"
+                                                                min="0"
+                                                                className={`form-control modern-input ${rowErrors.currentValue ? 'is-invalid' : ''}`}
+                                                                placeholder="0"
+                                                                value={item.currentValue}
+                                                                onChange={(event) => handleOkrKeyResultChange(index, 'currentValue', event.target.value)}
+                                                            />
+                                                            {rowErrors.currentValue ? <div className="statistics-modal-error">{rowErrors.currentValue}</div> : null}
+                                                        </div>
+                                                        <div className="statistics-modal-field">
+                                                            <label className="statistics-modal-label" htmlFor={`statistics-okr-unit-${index}`}>Don vi</label>
+                                                            <input
+                                                                id={`statistics-okr-unit-${index}`}
+                                                                type="text"
+                                                                className="form-control modern-input"
+                                                                placeholder="%, bug, task..."
+                                                                value={item.unit}
+                                                                onChange={(event) => handleOkrKeyResultChange(index, 'unit', event.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {typeof okrModal.errors.keyResults === 'string' ? <div className="statistics-modal-error">{okrModal.errors.keyResults}</div> : null}
+                                    {okrModal.submitError ? <div className="workflow-error mb-0">{okrModal.submitError}</div> : null}
+                                </div>
+
+                                <div className="statistics-modal-footer">
+                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Dong</button>
+                                    <button type="submit" className="btn statistics-modal-btn statistics-modal-btn-primary" disabled={okrModal.submitting}>
+                                        {okrModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Dang luu OKR...</> : 'Luu OKR quy nay'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : null}
+
+                    {activeModal === 'keyResult' ? (
+                        <div className="statistics-modal" role="dialog" aria-modal="true" aria-labelledby="statistics-kr-modal-title" onClick={(event) => event.stopPropagation()}>
+                            <form onSubmit={submitKeyResultModal} className="statistics-modal-shell">
+                                <div className="statistics-modal-header">
+                                    <div>
+                                        <span className="statistics-modal-kicker">Cap nhat ket qua then chot</span>
+                                        <h2 id="statistics-kr-modal-title" className="statistics-modal-title">Dieu chinh gia tri thuc hien</h2>
+                                        <p className="statistics-modal-copy">Cap nhat tien do KR ngay trong trang KPI/OKR va giu nguyen luong dong bo du lieu hien tai.</p>
+                                    </div>
+                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Dong form">
+                                        <i className="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+
+                                <div className="statistics-modal-body">
+                                    <div className="statistics-modal-meta-card">
+                                        <div>
+                                            <span className="workflow-meta-label">Muc tieu</span>
+                                            <div className="workflow-meta-value fw-bold">{keyResultModal.objectiveTitle}</div>
+                                        </div>
+                                        <div>
+                                            <span className="workflow-meta-label">Phong ban</span>
+                                            <div className="workflow-meta-value fw-bold">{keyResultModal.departmentName}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="statistics-modal-field">
+                                        <span className="statistics-modal-label">Ket qua then chot</span>
+                                        <div className="statistics-modal-static">{keyResultModal.keyResultName}</div>
+                                    </div>
+
+                                    <div className="statistics-modal-grid statistics-modal-grid-compact">
+                                        <div className="statistics-modal-field">
+                                            <span className="statistics-modal-label">Muc tieu</span>
+                                            <div className="statistics-modal-static">{toDisplayValue(keyResultModal.targetValue)} {keyResultModal.unit}</div>
+                                        </div>
+                                        <div className="statistics-modal-field">
+                                            <label className="statistics-modal-label" htmlFor="statistics-key-result-value">Gia tri hien tai</label>
+                                            <input
+                                                id="statistics-key-result-value"
+                                                type="number"
+                                                step="any"
+                                                className={`form-control modern-input ${keyResultModal.errors.currentValue ? 'is-invalid' : ''}`}
+                                                placeholder="Nhap gia tri moi"
+                                                value={keyResultModal.currentValue}
+                                                onChange={(event) => handleKeyResultValueChange(event.target.value)}
+                                            />
+                                            {keyResultModal.errors.currentValue ? <div className="statistics-modal-error">{keyResultModal.errors.currentValue}</div> : null}
+                                        </div>
+                                    </div>
+
+                                    {keyResultModal.submitError ? <div className="workflow-error mb-0">{keyResultModal.submitError}</div> : null}
+                                </div>
+
+                                <div className="statistics-modal-footer">
+                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Dong</button>
+                                    <button type="submit" className="btn statistics-modal-btn statistics-modal-btn-primary" disabled={keyResultModal.submitting}>
+                                        {keyResultModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Dang cap nhat...</> : 'Luu gia tri moi'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : null}
+
+                    {activeModal === 'review' ? (
+                        <div className="statistics-modal" role="dialog" aria-modal="true" aria-labelledby="statistics-review-modal-title" onClick={(event) => event.stopPropagation()}>
+                            <form onSubmit={submitReviewSummaryModal} className="statistics-modal-shell">
+                                <div className="statistics-modal-header">
+                                    <div>
+                                        <span className="statistics-modal-kicker">Tong ket quy</span>
+                                        <h2 id="statistics-review-modal-title" className="statistics-modal-title">Cap nhat tong ket quy</h2>
+                                        <p className="statistics-modal-copy">Hoan thien nhan xet tong quan, diem nhan va huong hanh dong tiep theo cho don vi dang duoc theo doi.</p>
+                                    </div>
+                                    <button type="button" className="statistics-modal-dismiss" onClick={closeActiveModal} aria-label="Dong form">
+                                        <i className="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+
+                                <div className="statistics-modal-body">
+                                    <div className="statistics-modal-meta-card">
+                                        <div>
+                                            <span className="workflow-meta-label">Don vi</span>
+                                            <div className="workflow-meta-value fw-bold">{reviewModal.departmentName}</div>
+                                        </div>
+                                        <div>
+                                            <span className="workflow-meta-label">Quy du lieu</span>
+                                            <div className="workflow-meta-value fw-bold">{formatQuarterLabel(filters.quarter)}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="statistics-modal-field">
+                                        <span className="statistics-modal-label">Bao cao</span>
+                                        <div className="statistics-modal-static">{reviewModal.reviewTitle}</div>
+                                    </div>
+
+                                    <div className="statistics-modal-field">
+                                        <label className="statistics-modal-label" htmlFor="statistics-review-summary">Noi dung tong ket</label>
+                                        <textarea
+                                            id="statistics-review-summary"
+                                            rows="6"
+                                            className={`form-control modern-input statistics-modal-textarea ${reviewModal.errors.summary ? 'is-invalid' : ''}`}
+                                            placeholder="Tom tat ket qua dat duoc, rui ro can xu ly va buoc tiep theo cua quy nay..."
+                                            value={reviewModal.summary}
+                                            onChange={(event) => handleReviewSummaryChange(event.target.value)}
+                                        />
+                                        {reviewModal.errors.summary ? <div className="statistics-modal-error">{reviewModal.errors.summary}</div> : null}
+                                    </div>
+
+                                    {reviewModal.submitError ? <div className="workflow-error mb-0">{reviewModal.submitError}</div> : null}
+                                </div>
+
+                                <div className="statistics-modal-footer">
+                                    <button type="button" className="btn statistics-modal-btn statistics-modal-btn-secondary" onClick={closeActiveModal}>Dong</button>
+                                    <button type="submit" className="btn statistics-modal-btn statistics-modal-btn-primary" disabled={reviewModal.submitting}>
+                                        {reviewModal.submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Dang cap nhat...</> : 'Luu tong ket quy'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
         </div>
     );
 };

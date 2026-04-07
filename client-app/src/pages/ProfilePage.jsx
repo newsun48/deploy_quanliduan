@@ -23,9 +23,20 @@ const ProfilePage = () => {
         }
         try {
             const userObj = JSON.parse(userJson);
-            // eslint-disable-next-line
-            setCurrentUser(userObj);
-            setIsLoading(false);
+            // Fetch latest user data from API to get current active status
+            api.get('/api/users/me')
+                .then(response => {
+                    setCurrentUser(response.data);
+                    // Update localStorage with latest user data
+                    localStorage.setItem('user', JSON.stringify(response.data));
+                    setIsLoading(false);
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                    // Fallback to localStorage data if API fails
+                    setCurrentUser(userObj);
+                    setIsLoading(false);
+                });
         } catch (e) {
             console.error(e);
             navigate('/');
@@ -353,8 +364,8 @@ const ProfilePage = () => {
                                             <div>
                                                 <label className="form-label fw-bold text-dark">Trạng Thái</label>
                                                 <p className="form-control-plaintext">
-                                                    <span className={`badge ${currentUser.isActive ? 'bg-success' : 'bg-warning'}`}>
-                                                        {currentUser.isActive ? '✅ Hoạt động' : '⏸️ Bị khóa'}
+                                                    <span className={`badge ${currentUser.active ? 'bg-success' : 'bg-warning'}`}>
+                                                        {currentUser.active ? '✅ Hoạt động' : '⏸️ Bị khóa'}
                                                     </span>
                                                 </p>
                                             </div>

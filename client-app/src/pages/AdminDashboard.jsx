@@ -123,6 +123,11 @@ const AdminDashboard = () => {
     const [showDeptPersonnelModal, setShowDeptPersonnelModal] = useState(false);
     const [selectedDeptForPersonnel, setSelectedDeptForPersonnel] = useState(null);
 
+    // 🔥 Modal xem & quản lý thành viên hiện tại của dự án
+    const [showProjectMembersModal, setShowProjectMembersModal] = useState(false);
+    const [projectForMembersView, setProjectForMembersView] = useState(null);
+    const [membersToRemove, setMembersToRemove] = useState([]);
+
     const fetchData = useCallback(async () => {
         try {
             const [usersRes, deptsRes, projectsRes, deletedRes] = await Promise.all([
@@ -341,12 +346,88 @@ const AdminDashboard = () => {
         setEditRole(user.role);
     };
 
+    const getEligibleHandoffManagers = (user) => {
+        const departmentId = user?.department?.id;
+        if (!departmentId) return [];
+
+        return users.filter((candidate) => (
+            candidate.id !== user.id
+            && candidate.department?.id === departmentId
+            && candidate.role === 'MANAGER'
+            && isApprovedUser(candidate)
+            && isUserActive(candidate)
+        ));
+    };
+
+    const collectManagerHandoffPayload = async (user) => {
+        const currentDepartment = departments.find((department) => department.id === user?.department?.id);
+        const isCurrentDepartmentManager = Boolean(currentDepartment?.manager?.id && currentDepartment.manager.id === user?.id);
+        const isLeavingManagedDepartment = isCurrentDepartmentManager
+            && (editRole !== 'MANAGER' || (editDeptId && editDeptId !== currentDepartment.id));
+
+        if (!isLeavingManagedDepartment) {
+            return {};
+        }
+
+        const candidates = getEligibleHandoffManagers(user);
+        if (candidates.length === 0) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Chưa thể downgrade manager',
+                text: `Phòng ${formatDeptName(currentDepartment?.name || user.department?.name || '')} chưa có MANAGER thay thế đang hoạt động. Hãy bổ nhiệm hoặc chuyển giao manager trước.`,
+            });
+            return null;
+        }
+
+        const { value: handoffValues } = await Swal.fire({
+            title: 'Chuyển giao manager trước khi hạ quyền',
+            html: `
+                <div class="text-start">
+                    <div class="alert alert-warning small mb-3">
+                        Department này vẫn phải có manager phụ trách trước khi hạ quyền hoặc chuyển phòng trưởng phòng hiện tại.
+                    </div>
+                    <label class="form-label fw-bold small text-muted">Người nhận bàn giao <span class="text-danger">*</span></label>
+                    <select id="swal-handoff-manager" class="form-select mb-3">
+                        <option value="">-- Chọn MANAGER thay thế --</option>
+                        ${candidates.map((candidate) => `<option value="${candidate.id}">${candidate.fullName} - ${candidate.email}</option>`).join('')}
+                    </select>
+                    <label class="form-label fw-bold small text-muted">Ghi chú bàn giao</label>
+                    <textarea id="swal-handoff-note" class="form-control" rows="3" placeholder="Ví dụ: Bàn giao toàn bộ dự án mở và task đang theo dõi trong quý này"></textarea>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Xác nhận chuyển giao',
+            cancelButtonText: 'Hủy',
+            focusConfirm: false,
+            preConfirm: () => {
+                const handoffManagerId = document.getElementById('swal-handoff-manager').value;
+                const handoffNote = document.getElementById('swal-handoff-note').value.trim();
+
+                if (!handoffManagerId) {
+                    Swal.showValidationMessage('Vui lòng chọn MANAGER nhận bàn giao trước khi downgrade.');
+                    return false;
+                }
+
+                return { handoffManagerId, handoffNote };
+            }
+        });
+
+        return handoffValues || null;
+    };
+
     const handleSaveEdit = async () => {
         try {
+            const editingUser = users.find((user) => user.id === editingUserId);
+            if (!editingUser) return;
+
+            const handoffPayload = await collectManagerHandoffPayload(editingUser);
+            if (handoffPayload === null) return;
+
             await userAPI.updateUser(editingUserId, {
                 email: editEmail,
                 deptId: editDeptId,
-                role: editRole
+                role: editRole,
+                ...handoffPayload
             });
             alert('Cập nhật thành công!');
             fetchData();
@@ -362,7 +443,7 @@ const AdminDashboard = () => {
         setEditingUserId(null);
     };
 
-    const isUserActive = (user) => user?.isActive !== false && user?.active !== false;
+    const isUserActive = (user) => user?.active !== false;
 
     const filteredUsers = useMemo(() => {
         const normalizedKeyword = searchTerm.trim().toLowerCase();
@@ -822,6 +903,41 @@ const AdminDashboard = () => {
             fetchData();
         } catch (err) {
             console.error("❌ Lỗi thêm member:", err);
+            const errorMessage = err.response?.data?.message || err.response?.data || err.message || "Thất bại";
+            alert("Lỗi: " + errorMessage);
+        }
+    };
+
+    // 🔥 Mở modal xem & quản lý thành viên hiện tại
+    const handleOpenProjectMembersModal = (project) => {
+        setProjectForMembersView(project);
+        setMembersToRemove([]);
+        setShowProjectMembersModal(true);
+    };
+
+    // 🔥 Xóa thành viên ra khỏi dự án
+    const handleRemoveMembers = async () => {
+        if (membersToRemove.length === 0) {
+            alert("Vui lòng chọn ít nhất một nhân viên để xóa!");
+            return;
+        }
+
+        const confirmMessage = `Bạn chắc chắn muốn xóa ${membersToRemove.length} nhân viên ra khỏi dự án "${projectForMembersView.name}"?\n\nNhân viên bị xóa sẽ mất quyền truy cập dự án này.`;
+        
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            await api.delete(`/projects/${projectForMembersView.id}/remove-members`, {
+                data: membersToRemove
+            });
+            alert(`✅ Đã xóa ${membersToRemove.length} nhân viên thành công!`);
+            setShowProjectMembersModal(false);
+            setMembersToRemove([]);
+            fetchData();
+        } catch (err) {
+            console.error("❌ Lỗi xóa member:", err);
             const errorMessage = err.response?.data?.message || err.response?.data || err.message || "Thất bại";
             alert("Lỗi: " + errorMessage);
         }
@@ -1787,9 +1903,14 @@ const AdminDashboard = () => {
                                                                                         {p.deadline ? new Date(p.deadline).toLocaleDateString('vi-VN') : '--'}
                                                                                     </span>
                                                                                 </div>
-                                                                                <div className="text-muted small" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleOpenMemberModal(p); }} title="Thêm/Xem Nhân Viên">
-                                                                                    <i className="bi bi-people-fill text-primary me-1"></i> <span className="fw-bold text-dark">{p.members?.length || 0}</span>
-                                                                                    <i className="bi bi-person-plus-fill ms-1 text-success"></i>
+                                                                                <div className="d-flex gap-3 justify-content-between align-items-center">
+                                                                                    <div className="text-muted small" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleOpenProjectMembersModal(p); }} title="Xem & Quản lý thành viên">
+                                                                                        <i className="bi bi-people-fill text-primary me-1"></i> <span className="fw-bold text-dark">{p.members?.length || 0}</span>
+                                                                                        <i className="bi bi-eye-fill ms-1 text-info"></i>
+                                                                                    </div>
+                                                                                    <button className="btn btn-sm btn-outline-success p-1" style={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); handleOpenMemberModal(p); }} title="Thêm nhân viên">
+                                                                                        <i className="bi bi-person-plus-fill"></i>
+                                                                                    </button>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -1829,10 +1950,15 @@ const AdminDashboard = () => {
                                                                                     </span>
                                                                                 </td>
                                                                                 <td>
-                                                                                    <span className="badge bg-light text-dark border px-2 py-1" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleOpenMemberModal(p); }} title="Thêm/Xem Nhân Viên">
-                                                                                        <i className="bi bi-people-fill text-primary me-1"></i>{p.members?.length || 0}
-                                                                                        <i className="bi bi-person-plus-fill ms-2 text-success"></i>
-                                                                                    </span>
+                                                                                    <div className="d-flex gap-2 align-items-center">
+                                                                                        <span className="badge bg-light text-dark border px-2 py-1" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleOpenProjectMembersModal(p); }} title="Xem & Quản lý thành viên">
+                                                                                            <i className="bi bi-people-fill text-primary me-1"></i>{p.members?.length || 0}
+                                                                                            <i className="bi bi-eye-fill ms-1 text-info"></i>
+                                                                                        </span>
+                                                                                        <button className="btn btn-sm btn-outline-success p-1" style={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); handleOpenMemberModal(p); }} title="Thêm nhân viên">
+                                                                                            <i className="bi bi-person-plus-fill"></i>
+                                                                                        </button>
+                                                                                    </div>
                                                                                 </td>
                                                                                 <td className="text-end pe-4">
                                                                                     {p.documentLink && (
@@ -2098,6 +2224,90 @@ const AdminDashboard = () => {
                                         <div className="text-center py-5 text-muted">
                                             <i className="bi bi-people-fill fs-1 d-block mb-3 opacity-25 text-primary"></i>
                                             Tất cả nhân viên hệ thống đều đã tham gia dự án này.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 🔥 Modal xem & quản lý thành viên hiện tại */}
+                    {showProjectMembersModal && projectForMembersView && (
+                        <div className="modal-backdrop-custom">
+                            <div className="card shadow-lg border-0" style={{ width: 550, borderRadius: '1rem', overflow: 'hidden' }}>
+                                <div className="card-header bg-info p-4 border-0 text-white d-flex flex-column position-relative">
+                                    <button className="btn-close btn-close-white position-absolute top-0 end-0 m-3" onClick={() => setShowProjectMembersModal(false)}></button>
+                                    <h5 className="fw-bold mb-1">Danh sách thành viên</h5>
+                                    <span className="text-white text-opacity-75 small">Dự án: {projectForMembersView.name}</span>
+                                </div>
+                                <div className="card-body p-0">
+                                    {projectForMembersView.members && projectForMembersView.members.length > 0 ? (
+                                        <div className="d-flex flex-column h-100">
+                                            <div className="list-group list-group-flush custom-scrollbar" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                                {projectForMembersView.members.map(m => (
+                                                    <div
+                                                        key={m.id}
+                                                        className={`list-group-item p-3 border-0 border-bottom d-flex align-items-center justify-content-between ${
+                                                            membersToRemove.includes(m.id) ? 'bg-danger bg-opacity-10' : ''
+                                                        }`}
+                                                    >
+                                                        <div className="d-flex align-items-center flex-grow-1 min-w-0">
+                                                            <div className="flex-shrink-0 me-3">
+                                                                {m.avatarUrl ? (
+                                                                    <img src={m.avatarUrl} alt={m.fullName} className="rounded-circle shadow-sm border border-2 border-white" style={{ width: 48, height: 48, objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <div className="bg-info bg-opacity-25 text-info rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm border border-2 border-white" style={{ width: 48, height: 48, fontSize: '1.2rem' }}>
+                                                                        {m.fullName.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="fw-bold text-dark text-truncate mb-1">{m.fullName}</div>
+                                                                <div className="text-muted small text-truncate d-flex align-items-center mb-1">
+                                                                    <i className="bi bi-envelope me-1"></i> {m.email}
+                                                                </div>
+                                                                <div className="d-flex gap-2">
+                                                                    {!m.active && (
+                                                                        <span className="badge bg-warning text-dark" style={{ fontSize: '0.65rem' }}>
+                                                                            <i className="bi bi-exclamation-triangle-fill me-1"></i>Tài khoản bị khóa
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="ms-3 ps-3 border-start border-2" style={{ borderColor: membersToRemove.includes(m.id) ? '#dc3545' : '#e9ecef' }}>
+                                                            <button
+                                                                className={`btn btn-sm ${membersToRemove.includes(m.id) ? 'btn-danger' : 'btn-outline-danger'}`}
+                                                                onClick={() => {
+                                                                    if (membersToRemove.includes(m.id)) {
+                                                                        setMembersToRemove(membersToRemove.filter(id => id !== m.id));
+                                                                    } else {
+                                                                        setMembersToRemove([...membersToRemove, m.id]);
+                                                                    }
+                                                                }}
+                                                                title={membersToRemove.includes(m.id) ? "Bỏ chọn" : "Xóa khỏi dự án"}
+                                                            >
+                                                                <i className="bi bi-trash-fill"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {membersToRemove.length > 0 && (
+                                                <div className="p-3 border-top bg-danger bg-opacity-10">
+                                                    <button 
+                                                        className="btn btn-danger w-100 py-2 fs-6 fw-bold shadow-sm rounded-pill"
+                                                        onClick={handleRemoveMembers}
+                                                    >
+                                                        <i className="bi bi-trash-fill me-2"></i> Xóa {membersToRemove.length} thành viên
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-5 text-muted">
+                                            <i className="bi bi-people-fill fs-1 d-block mb-3 opacity-25 text-info"></i>
+                                            Dự án này chưa có thành viên nào.
                                         </div>
                                     )}
                                 </div>

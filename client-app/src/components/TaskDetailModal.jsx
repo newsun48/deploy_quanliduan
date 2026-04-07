@@ -73,6 +73,13 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
     const isManager = currentUser?.role === 'MANAGER';
     const canManageTask = isManager && currentTask?.project?.status !== 'CLOSED';
     const todayDate = useMemo(() => getTodayDateInputValue(), []);
+    
+    // 🔥 Kiểm tra xem assignee có còn trong dự án không
+    const isAssigneeStillInProject = useMemo(() => {
+        if (!currentTask?.assignee?.id) return false;
+        return assigneeCandidates.some(m => m.id === currentTask.assignee.id);
+    }, [assigneeCandidates, currentTask?.assignee]);
+    
     const assigneeOptions = useMemo(() => {
         const seen = new Set();
         const options = [];
@@ -282,6 +289,20 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
     const handleTaskEditSubmit = async (e) => {
         e.preventDefault();
 
+        // 🔥 Validate required fields
+        if (!taskEditForm.title.trim()) {
+            alert('Vui lòng nhập tiêu đề công việc!');
+            return;
+        }
+        if (!taskEditForm.deadline) {
+            alert('Vui lòng chọn hạn chót!');
+            return;
+        }
+        if (!taskEditForm.assigneeId) {
+            alert('Vui lòng chọn người thực hiện!');
+            return;
+        }
+
         try {
             setSavingTask(true);
             await taskAPI.update(task.id, {
@@ -292,6 +313,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                 assigneeId: taskEditForm.assigneeId,
             });
             setIsEditingTask(false);
+            alert('✅ Cập nhật công việc thành công!');
             await refreshTaskDetail(true);
         } catch (err) {
             alert('Lỗi cập nhật công việc: ' + (err.response?.data || err.message));
@@ -457,7 +479,31 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
 
                             <div className="task-info-item">
                                 <label>Người thực hiện</label>
-                                <p>{currentTask.assignee?.fullName || '--'} {currentTask.assignee?.email ? `(${currentTask.assignee.email})` : ''}</p>
+                                <div className="d-flex align-items-center gap-2">
+                                    <div>
+                                        <p>{currentTask.assignee?.fullName || '--'} {currentTask.assignee?.email ? `(${currentTask.assignee.email})` : ''}</p>
+                                        {/* 🔥 Cảnh báo khi assignee bị xóa khỏi dự án */}
+                                        {currentTask.assignee && !isAssigneeStillInProject && (
+                                            <div className="alert alert-warning alert-sm py-2 px-3 mb-0" style={{ fontSize: '0.875rem' }}>
+                                                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                                <strong>Nhân viên này đã bị xóa khỏi dự án!</strong>
+                                                <br/>
+                                                Vui lòng bàn giao công việc cho người khác.
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* 🔥 Nút edit nhanh khi assignee bị xóa */}
+                                    {canManageTask && !isAssigneeStillInProject && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-warning whitespace-nowrap"
+                                            onClick={() => setIsEditingTask(true)}
+                                            title="Chỉnh sửa người thực hiện"
+                                        >
+                                            <i className="bi bi-pencil-square me-1"></i>Bàn giao
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="task-info-item">

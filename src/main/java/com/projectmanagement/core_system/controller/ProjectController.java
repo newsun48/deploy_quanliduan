@@ -72,6 +72,30 @@ public class ProjectController {
         }
     }
 
+    // 2c. Bỏ thành viên ra khỏi dự án (🔥 MỚI)
+    @DeleteMapping("/{projectId}/remove-member/{userId}")
+    public ResponseEntity<?> removeMember(@PathVariable String projectId, @PathVariable String userId, Authentication authentication) {
+        try {
+            return ResponseEntity.ok(projectService.removeMember(projectId, userId, authentication.getName()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // 2d. Bỏ NHIỀU thành viên ra khỏi dự án (🔥 MỚI)
+    @DeleteMapping("/{projectId}/remove-members")
+    public ResponseEntity<?> removeMembers(@PathVariable String projectId, @RequestBody List<String> userIds, Authentication authentication) {
+        try {
+            return ResponseEntity.ok(projectService.removeMembers(projectId, userIds, authentication.getName()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // 3. Lấy tất cả
     @GetMapping
     public ResponseEntity<?> getAll(Authentication authentication) {

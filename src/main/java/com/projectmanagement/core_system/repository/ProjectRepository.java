@@ -1,8 +1,10 @@
 package com.projectmanagement.core_system.repository;
 
 import com.projectmanagement.core_system.model.Project;
+import com.projectmanagement.core_system.enums.ProjectStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -22,6 +24,7 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
     List<Project> findByIsDeletedFalse();
     List<Project> findByIsDeletedFalseAndDepartment_Id(String departmentId);
     List<Project> findByIsDeletedFalseAndNameContainingIgnoreCase(String name);
+    boolean existsByDepartment_IdAndIsDeletedFalseAndStatusIn(String departmentId, Collection<ProjectStatus> statuses);
     
     // Deleted projects support
     List<Project> findByIsDeletedTrue();

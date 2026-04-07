@@ -146,6 +146,75 @@ public class ProjectService {
         return saved;
     }
 
+    // 2c. Bỏ thành viên ra khỏi dự án
+    public Project removeMember(String projectId, String userId, String actorEmail) {
+        Project project = getMutableProject(projectId);
+        User actor = ensureProjectManagerOrAdmin(project, actorEmail);
+
+        User userToRemove = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại!"));
+
+        // Kiểm tra xem nhân viên có trong dự án không
+        boolean exists = project.getMembers().removeIf(m -> m.getId().equals(userId));
+        if (!exists) {
+            throw new RuntimeException("Nhân viên này không có trong dự án!");
+        }
+
+        Project saved = projectRepository.save(project);
+
+        // Gửi thông báo
+        String message = "Bạn đã bị xóa khỏi dự án: " + project.getName() + 
+                         (userToRemove.isActive() ? "" : " (tài khoản bị khóa)");
+        notificationService.createNotification(userToRemove, actor, null, message, "PROJECT_REMOVED");
+
+        // Broadcast real-time update to the department topic
+        String projectDeptId = (project.getDepartment() != null) ? project.getDepartment().getId() : null;
+        if (projectDeptId != null) {
+            notificationService.sendRealTimeUpdate("/topic/department/" + projectDeptId + "/update", "REFRESH_PROJECTS");
+        }
+
+        return saved;
+    }
+
+    // 2d. Bỏ NHIỀU thành viên ra khỏi dự án
+    public Project removeMembers(String projectId, List<String> userIds, String actorEmail) {
+        Project project = getMutableProject(projectId);
+        User actor = ensureProjectManagerOrAdmin(project, actorEmail);
+
+        List<User> removedMembers = new ArrayList<>();
+
+        for (String userId : userIds) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Nhân viên " + userId + " không tồn tại!"));
+
+            boolean removed = project.getMembers().removeIf(m -> m.getId().equals(userId));
+            if (removed) {
+                removedMembers.add(user);
+            }
+        }
+
+        if (removedMembers.isEmpty()) {
+            throw new RuntimeException("Không tìm thấy nhân viên nào để xóa!");
+        }
+
+        Project saved = projectRepository.save(project);
+
+        // Gửi thông báo cho các nhân viên bị xóa
+        for (User removedMember : removedMembers) {
+            String message = "Bạn đã bị xóa khỏi dự án: " + project.getName() + 
+                             (removedMember.isActive() ? "" : " (tài khoản bị khóa)");
+            notificationService.createNotification(removedMember, actor, null, message, "PROJECT_REMOVED");
+        }
+
+        // Broadcast real-time update
+        String projectDeptId = (project.getDepartment() != null) ? project.getDepartment().getId() : null;
+        if (projectDeptId != null) {
+            notificationService.sendRealTimeUpdate("/topic/department/" + projectDeptId + "/update", "REFRESH_PROJECTS");
+        }
+
+        return saved;
+    }
+
     // 3. Lấy tất cả
     public List<Project> getAllProjects(String actorEmail) {
         User actor = requireActiveActor(actorEmail);

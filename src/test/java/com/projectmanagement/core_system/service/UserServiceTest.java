@@ -2,15 +2,20 @@ package com.projectmanagement.core_system.service;
 
 import com.projectmanagement.core_system.enums.ApprovalStatus;
 import com.projectmanagement.core_system.enums.ERole;
+import com.projectmanagement.core_system.enums.ProjectStatus;
+import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.ApproveUserRequest;
+import com.projectmanagement.core_system.model.Department;
 import com.projectmanagement.core_system.model.GoogleAuthenticatedUser;
 import com.projectmanagement.core_system.model.GoogleLoginResult;
+import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.RejectUserRequest;
 import com.projectmanagement.core_system.model.SignupRequest;
 import com.projectmanagement.core_system.model.UpdateUserRequest;
 import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
+import com.projectmanagement.core_system.repository.ProjectRepository;
 import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,6 +47,9 @@ class UserServiceTest {
 
     @Mock
     private DepartmentRepository departmentRepository;
+
+    @Mock
+    private ProjectRepository projectRepository;
 
     @Mock
     private TaskRepository taskRepository;
@@ -64,7 +73,8 @@ class UserServiceTest {
     void updateUserStatus_rejectsDeactivatingAdminTarget() {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User targetAdmin = buildUser("admin-target", "other-admin@example.com", ERole.ADMIN, true);
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest();
+        request.setActive(false);
 
         when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
         when(userRepository.findById("admin-target")).thenReturn(Optional.of(targetAdmin));
@@ -79,7 +89,8 @@ class UserServiceTest {
     void updateUserStatus_allowsLockingNonAdminUser() {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User employee = buildUser("employee-1", "employee@example.com", ERole.EMPLOYEE, true);
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest();
+        request.setActive(false);
 
         when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
         when(userRepository.findById("employee-1")).thenReturn(Optional.of(employee));
@@ -96,7 +107,8 @@ class UserServiceTest {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User pendingUser = buildUser("pending-1", "pending@example.com", null, false);
         pendingUser.setApprovalStatus(ApprovalStatus.PENDING);
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(true);
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest();
+        request.setActive(true);
 
         when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
         when(userRepository.findById("pending-1")).thenReturn(Optional.of(pendingUser));
@@ -283,6 +295,101 @@ class UserServiceTest {
     }
 
     @Test
+    void updateEmployee_blocksManagerDowngradeWithoutExplicitHandoff() {
+        User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
+        Department department = buildDepartment("dept-1", "Engineering");
+        User manager = buildUser("manager-1", "manager@example.com", ERole.MANAGER, true);
+        manager.setDepartment(department);
+        department.setManager(manager);
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setRole(ERole.EMPLOYEE);
+
+        when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
+        when(userRepository.findById("manager-1")).thenReturn(Optional.of(manager));
+        when(projectRepository.existsByDepartment_IdAndIsDeletedFalseAndStatusIn(any(), any())).thenReturn(false);
+        when(projectRepository.findByIsDeletedFalseAndDepartment_Id("dept-1")).thenReturn(java.util.List.of());
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> userService.updateEmployee("manager-1", request, "admin@example.com"));
+
+        assertEquals("Không thể thay đổi vai trò hoặc phòng ban của trưởng phòng khi chưa chuyển giao manager trước.", error.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+        verify(departmentRepository, never()).save(any(Department.class));
+    }
+
+    @Test
+    void updateEmployee_blocksManagerDowngradeWithOpenWorkAndInvalidSuccessor() {
+        User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
+        Department department = buildDepartment("dept-1", "Engineering");
+        User manager = buildUser("manager-1", "manager@example.com", ERole.MANAGER, true);
+        User employeeSuccessor = buildUser("employee-2", "employee2@example.com", ERole.EMPLOYEE, true);
+        manager.setDepartment(department);
+        employeeSuccessor.setDepartment(department);
+        department.setManager(manager);
+
+        Project openProject = new Project();
+        openProject.setId("project-1");
+        openProject.setDepartment(department);
+        openProject.setStatus(ProjectStatus.OPEN);
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setRole(ERole.EMPLOYEE);
+        request.setHandoffManagerId("employee-2");
+
+        when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
+        when(userRepository.findById("manager-1")).thenReturn(Optional.of(manager));
+        when(userRepository.findById("employee-2")).thenReturn(Optional.of(employeeSuccessor));
+        when(projectRepository.existsByDepartment_IdAndIsDeletedFalseAndStatusIn(any(), any())).thenReturn(true);
+        when(projectRepository.findByIsDeletedFalseAndDepartment_Id("dept-1")).thenReturn(java.util.List.of(openProject));
+        when(taskRepository.existsByProjectInAndStatusIn(any(), any())).thenReturn(true);
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> userService.updateEmployee("manager-1", request, "admin@example.com"));
+
+        assertEquals("Người nhận bàn giao phải là MANAGER. Vui lòng bổ nhiệm người thay thế trước khi downgrade.", error.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+        verify(departmentRepository, never()).save(any(Department.class));
+    }
+
+    @Test
+    void updateEmployee_downgradesManagerAfterExplicitHandoff() {
+        User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
+        Department department = buildDepartment("dept-1", "Engineering");
+        User currentManager = buildUser("manager-1", "manager@example.com", ERole.MANAGER, true);
+        User successorManager = buildUser("manager-2", "successor@example.com", ERole.MANAGER, true);
+        currentManager.setDepartment(department);
+        successorManager.setDepartment(department);
+        department.setManager(currentManager);
+
+        Project openProject = new Project();
+        openProject.setId("project-1");
+        openProject.setDepartment(department);
+        openProject.setStatus(ProjectStatus.OPEN);
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setRole(ERole.EMPLOYEE);
+        request.setHandoffManagerId("manager-2");
+        request.setHandoffNote("Ban giao van hanh quy 2");
+
+        when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
+        when(userRepository.findById("manager-1")).thenReturn(Optional.of(currentManager));
+        when(userRepository.findById("manager-2")).thenReturn(Optional.of(successorManager));
+        when(projectRepository.existsByDepartment_IdAndIsDeletedFalseAndStatusIn(any(), any())).thenReturn(true);
+        when(projectRepository.findByIsDeletedFalseAndDepartment_Id("dept-1")).thenReturn(java.util.List.of(openProject));
+        when(taskRepository.existsByProjectInAndStatusIn(any(), any())).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(departmentRepository.save(any(Department.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User updatedUser = userService.updateEmployee("manager-1", request, "admin@example.com");
+
+        assertEquals(ERole.EMPLOYEE, updatedUser.getRole());
+        assertEquals(successorManager, department.getManager());
+        verify(departmentRepository).save(department);
+        verify(userActivityService).record(any(User.class), any(User.class), any(String.class), any(String.class), any(Map.class));
+    }
+
+    @Test
     void approvePendingUser_setsRoleApprovedAndActive() {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User pendingUser = buildUser("pending-1", "pending@example.com", null, false);
@@ -430,5 +537,12 @@ class UserServiceTest {
         user.setApprovalStatus(ApprovalStatus.APPROVED);
         user.setFullName(email);
         return user;
+    }
+
+    private Department buildDepartment(String id, String name) {
+        Department department = new Department();
+        department.setId(id);
+        department.setName(name);
+        return department;
     }
 }

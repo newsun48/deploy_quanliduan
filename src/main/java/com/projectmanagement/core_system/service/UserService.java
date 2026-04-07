@@ -1,25 +1,31 @@
 package com.projectmanagement.core_system.service;
 
 import com.projectmanagement.core_system.enums.ApprovalStatus;
+import com.projectmanagement.core_system.enums.ProjectStatus;
 import com.projectmanagement.core_system.model.Department;
 import com.projectmanagement.core_system.model.ApproveUserRequest;
 import com.projectmanagement.core_system.model.GoogleAuthenticatedUser;
 import com.projectmanagement.core_system.model.GoogleLoginResult;
+import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.RejectUserRequest;
 import com.projectmanagement.core_system.model.SignupRequest;
 import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
+import com.projectmanagement.core_system.repository.ProjectRepository;
 import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.Map;
 import java.util.UUID;
@@ -51,7 +57,17 @@ public class UserService {
     private DepartmentRepository departmentRepository;
 
     @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
     private TaskRepository taskRepository;
+
+    private static final EnumSet<ProjectStatus> OPEN_PROJECT_STATUSES = EnumSet.of(ProjectStatus.DRAFT, ProjectStatus.OPEN);
+    private static final EnumSet<com.projectmanagement.core_system.enums.TaskStatus> OPEN_TASK_STATUSES = EnumSet.of(
+            com.projectmanagement.core_system.enums.TaskStatus.TO_DO,
+            com.projectmanagement.core_system.enums.TaskStatus.IN_PROGRESS,
+            com.projectmanagement.core_system.enums.TaskStatus.REVIEW
+    );
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -653,12 +669,43 @@ public class UserService {
     }
 
     // 11. Admin update employee info (email, department, role)
+    @Transactional
     public User updateEmployee(String userId, UpdateUserRequest request, String adminEmail) {
+        if (request == null) {
+            throw new RuntimeException("Thiếu dữ liệu cập nhật người dùng!");
+        }
+
         User admin = requireAdminActor(adminEmail);
         User user = getUserById(userId);
 
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
             throw new RuntimeException("Không được phép chỉnh sửa thông tin của Quản trị viên (ADMIN)!");
+        }
+
+        String oldEmail = user.getEmail();
+        Department oldDepartment = user.getDepartment();
+        com.projectmanagement.core_system.enums.ERole oldRole = user.getRole();
+
+        Department requestedDepartment = oldDepartment;
+        String requestedDeptId = StringUtils.hasText(request.getDeptId()) ? request.getDeptId().trim() : null;
+        if (requestedDeptId != null) {
+            requestedDepartment = departmentRepository.findById(requestedDeptId)
+                    .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
+        }
+
+        ERole requestedRole = request.getRole() != null ? request.getRole() : oldRole;
+        boolean roleChanged = request.getRole() != null && oldRole != request.getRole();
+        boolean deptChanged = requestedDeptId != null
+                && (oldDepartment == null || !oldDepartment.getId().equals(requestedDeptId));
+        boolean relinquishingManagedDepartment = isRelinquishingManagedDepartment(user, oldDepartment, requestedRole, deptChanged);
+
+        User handoffManager = null;
+        DepartmentWorkSummary workSummary = DepartmentWorkSummary.empty();
+        if (relinquishingManagedDepartment) {
+            workSummary = inspectDepartmentWorkload(oldDepartment);
+            handoffManager = resolveHandoffManager(request, oldDepartment, user.getId(), workSummary);
+            oldDepartment.setManager(handoffManager);
+            departmentRepository.save(oldDepartment);
         }
 
         // Optional fields only
@@ -670,14 +717,8 @@ public class UserService {
             user.setEmail(normalizedEmail);
         }
 
-        Department oldDepartment = user.getDepartment();
-        com.projectmanagement.core_system.enums.ERole oldRole = user.getRole();
-        String oldEmail = user.getEmail();
-
-        if (request.getDeptId() != null && !request.getDeptId().isEmpty()) {
-            Department dept = departmentRepository.findById(request.getDeptId())
-                    .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
-            user.setDepartment(dept);
+        if (requestedDeptId != null) {
+            user.setDepartment(requestedDepartment);
         }
 
         if (request.getRole() != null) {
@@ -690,22 +731,6 @@ public class UserService {
         user = userRepository.save(user);
 
         // Bidirectional Manager Sync
-        boolean roleChanged = request.getRole() != null && oldRole != request.getRole();
-        boolean deptChanged = request.getDeptId() != null && !request.getDeptId().isEmpty() && 
-                              (oldDepartment == null || !oldDepartment.getId().equals(request.getDeptId()));
-
-        // 1. If user was a MANAGER and either their role changed OR they moved to a different department,
-        // we must remove them as manager from their OLD department.
-        if (oldRole == com.projectmanagement.core_system.enums.ERole.MANAGER && (roleChanged || deptChanged)) {
-            if (oldDepartment != null && oldDepartment.getManager() != null 
-                && oldDepartment.getManager().getId().equals(user.getId())) {
-                oldDepartment.setManager(null);
-                departmentRepository.save(oldDepartment);
-            }
-        }
-
-        // 2. If user is NOW a MANAGER and their role changed OR they moved to a new department,
-        // we must assign them as manager to their NEW department.
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.MANAGER && (roleChanged || deptChanged)) {
             if (user.getDepartment() != null) {
                 Department currentDept = user.getDepartment();
@@ -714,18 +739,93 @@ public class UserService {
             }
         }
 
-        userActivityService.record(admin, user, "USER_UPDATED",
-                admin.getFullName() + " đã cập nhật thông tin của " + user.getFullName(),
-                Map.of(
-                        "oldEmail", oldEmail,
-                        "newEmail", user.getEmail(),
-                        "oldRole", oldRole != null ? oldRole.name() : "",
-                        "newRole", roleNameOrEmpty(user),
-                        "oldDepartmentId", oldDepartment != null ? oldDepartment.getId() : "",
-                        "newDepartmentId", user.getDepartment() != null ? user.getDepartment().getId() : ""
-                ));
+        Map<String, Object> auditMetadata = new HashMap<>();
+        auditMetadata.put("oldEmail", oldEmail);
+        auditMetadata.put("newEmail", user.getEmail());
+        auditMetadata.put("oldRole", oldRole != null ? oldRole.name() : "");
+        auditMetadata.put("newRole", roleNameOrEmpty(user));
+        auditMetadata.put("oldDepartmentId", oldDepartment != null ? oldDepartment.getId() : "");
+        auditMetadata.put("newDepartmentId", user.getDepartment() != null ? user.getDepartment().getId() : "");
+        auditMetadata.put("handoffManagerId", handoffManager != null ? handoffManager.getId() : "");
+        auditMetadata.put("handoffNote", StringUtils.hasText(request.getHandoffNote()) ? request.getHandoffNote().trim() : "");
+        auditMetadata.put("hadOpenProjects", workSummary.hasOpenProjects());
+        auditMetadata.put("hadOpenTasks", workSummary.hasOpenTasks());
+
+        String activityType = relinquishingManagedDepartment ? "MANAGER_HANDOFF_COMPLETED" : "USER_UPDATED";
+        String activityMessage = relinquishingManagedDepartment
+                ? admin.getFullName() + " đã chuyển giao quyền quản lý của " + user.getFullName()
+                : admin.getFullName() + " đã cập nhật thông tin của " + user.getFullName();
+
+        userActivityService.record(admin, user, activityType, activityMessage, auditMetadata);
 
         return user;
+    }
+
+    private boolean isRelinquishingManagedDepartment(User user,
+                                                     Department oldDepartment,
+                                                     ERole requestedRole,
+                                                     boolean deptChanged) {
+        if (oldDepartment == null || oldDepartment.getManager() == null) {
+            return false;
+        }
+
+        if (!user.getId().equals(oldDepartment.getManager().getId())) {
+            return false;
+        }
+
+        return requestedRole != ERole.MANAGER || deptChanged;
+    }
+
+    private DepartmentWorkSummary inspectDepartmentWorkload(Department department) {
+        if (department == null || !StringUtils.hasText(department.getId())) {
+            return DepartmentWorkSummary.empty();
+        }
+
+        boolean hasOpenProjects = projectRepository.existsByDepartment_IdAndIsDeletedFalseAndStatusIn(department.getId(), OPEN_PROJECT_STATUSES);
+        List<Project> departmentProjects = projectRepository.findByIsDeletedFalseAndDepartment_Id(department.getId());
+        boolean hasOpenTasks = !departmentProjects.isEmpty()
+                && taskRepository.existsByProjectInAndStatusIn(departmentProjects, OPEN_TASK_STATUSES);
+
+        return new DepartmentWorkSummary(hasOpenProjects, hasOpenTasks);
+    }
+
+    private User resolveHandoffManager(UpdateUserRequest request,
+                                       Department oldDepartment,
+                                       String currentManagerId,
+                                       DepartmentWorkSummary workSummary) {
+        String handoffManagerId = request != null && StringUtils.hasText(request.getHandoffManagerId())
+                ? request.getHandoffManagerId().trim()
+                : null;
+
+        String requirementMessage = workSummary.hasOpenProjects() || workSummary.hasOpenTasks()
+                ? "Không thể hạ quyền trưởng phòng khi phòng ban vẫn còn dự án hoặc công việc đang mở. Vui lòng chuyển giao manager trước."
+                : "Không thể thay đổi vai trò hoặc phòng ban của trưởng phòng khi chưa chuyển giao manager trước.";
+
+        if (!StringUtils.hasText(handoffManagerId)) {
+            throw new RuntimeException(requirementMessage);
+        }
+
+        User successor = getUserById(handoffManagerId);
+        if (successor.getId().equals(currentManagerId)) {
+            throw new RuntimeException("Người nhận bàn giao phải khác trưởng phòng hiện tại!");
+        }
+        if (successor.getRole() != ERole.MANAGER) {
+            throw new RuntimeException("Người nhận bàn giao phải là MANAGER. Vui lòng bổ nhiệm người thay thế trước khi downgrade.");
+        }
+        if (successor.getApprovalStatus() != ApprovalStatus.APPROVED || !successor.isActive()) {
+            throw new RuntimeException("Người nhận bàn giao phải là tài khoản MANAGER đang hoạt động!");
+        }
+        if (successor.getDepartment() == null || !oldDepartment.getId().equals(successor.getDepartment().getId())) {
+            throw new RuntimeException("Người nhận bàn giao phải thuộc cùng phòng ban với trưởng phòng hiện tại!");
+        }
+
+        return successor;
+    }
+
+    private record DepartmentWorkSummary(boolean hasOpenProjects, boolean hasOpenTasks) {
+        private static DepartmentWorkSummary empty() {
+            return new DepartmentWorkSummary(false, false);
+        }
     }
 
     public User updateUserStatus(String userId, UpdateUserStatusRequest request, String adminEmail) {
