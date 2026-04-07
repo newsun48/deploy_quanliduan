@@ -22,6 +22,10 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
+        if (user.isDeleted()) {
+            throw new UsernameNotFoundException("Tài khoản này không còn tồn tại trên hệ thống!");
+        }
+
         if (user.getApprovalStatus() == ApprovalStatus.PENDING) {
             throw new DisabledException("Tài khoản đang chờ phê duyệt!");
         }

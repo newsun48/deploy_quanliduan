@@ -51,6 +51,7 @@ public class User {
 
     private Boolean googleEmailVerified;
     
+    private boolean isDeleted = false;
     private String avatarUrl;
 
     public String getId() {
@@ -163,5 +164,13 @@ public class User {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        isDeleted = deleted;
     }
 }

@@ -202,16 +202,16 @@ const ProjectGantt = ({ tasks, onTaskUpdate }) => {
                 <div className="p-3 bg-light-subtle border-top">
                     <div className="d-flex gap-4 justify-content-center">
                         <div className="d-flex align-items-center gap-2 small fw-bold">
-                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#be123c" }}></span> Critical
+                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#be123c" }}></span> Khẩn cấp
                         </div>
                         <div className="d-flex align-items-center gap-2 small fw-bold">
-                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#ef4444" }}></span> High
+                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#ef4444" }}></span> Cao
                         </div>
                         <div className="d-flex align-items-center gap-2 small fw-bold">
-                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#f59e0b" }}></span> Medium
+                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#f59e0b" }}></span> Trung bình
                         </div>
                         <div className="d-flex align-items-center gap-2 small fw-bold">
-                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#3b82f6" }}></span> Low
+                            <span className="rounded-circle" style={{ width: 10, height: 10, background: "#3b82f6" }}></span> Thấp
                         </div>
                     </div>
                 </div>

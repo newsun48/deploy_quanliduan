@@ -51,6 +51,13 @@ public class TaskController {
         return taskService.getTasksByProject(projectId, authenticatedUserHelper.requireActorEmail(authentication));
     }
 
+    @GetMapping("/department/{departmentId}")
+    public List<Task> getTasksByDepartment(
+            @PathVariable String departmentId,
+            Authentication authentication) {
+        return taskService.getTasksByDepartment(departmentId, authenticatedUserHelper.requireActorEmail(authentication));
+    }
+
     // 3. Lấy Task của Tôi (Nhân viên xem)
     @GetMapping("/my-tasks/{userId}")
     public List<Task> getMyTasks(
@@ -65,6 +72,15 @@ public class TaskController {
             Authentication authentication) {
         try {
             return ResponseEntity.ok(taskService.getTaskDetail(taskId, authenticatedUserHelper.requireActorEmail(authentication)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/stats/workload")
+    public ResponseEntity<?> getResourceWorkload(Authentication authentication) {
+        try {
+            return ResponseEntity.ok(taskService.getResourceWorkloadList(authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -86,6 +102,20 @@ public class TaskController {
             return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent, submissionLink, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi cập nhật: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/{taskId}/timeline")
+    public ResponseEntity<?> updateTaskTimeline(
+            @PathVariable String taskId,
+            @RequestBody Map<String, String> dates,
+            Authentication authentication) {
+        try {
+            java.time.LocalDate start = dates.get("startDate") != null ? java.time.LocalDate.parse(dates.get("startDate")) : null;
+            java.time.LocalDate deadline = dates.get("deadline") != null ? java.time.LocalDate.parse(dates.get("deadline")) : null;
+            return ResponseEntity.ok(taskService.updateTimeline(taskId, start, deadline, authenticatedUserHelper.requireActorEmail(authentication)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi cập nhật dòng thời gian: " + e.getMessage());
         }
     }
 
@@ -227,6 +257,7 @@ public class TaskController {
         Task task = new Task();
         task.setTitle(request.getTitle() != null ? request.getTitle().trim() : null);
         task.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        task.setStartDate(request.getStartDate());
         task.setDeadline(request.getDeadline());
         task.setPriority(request.getPriority());
         return task;

@@ -13,6 +13,7 @@ import com.projectmanagement.core_system.model.TaskActivity;
 import com.projectmanagement.core_system.model.TaskUpdateRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.model.Department;
+import com.projectmanagement.core_system.model.ResourceWorkloadDTO;
 import com.projectmanagement.core_system.repository.CommentRepository;
 import com.projectmanagement.core_system.repository.NotificationRepository;
 import com.projectmanagement.core_system.repository.ProjectRepository;
@@ -227,6 +228,74 @@ public class TaskService {
                 Map.of("taskId", savedTask.getId(), "projectId", savedTask.getProject().getId()));
 
         return savedTask;
+    }
+
+    public Task updateTimeline(String taskId, LocalDate startDate, LocalDate deadline, String actorEmail) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
+        User actor = requireActiveUser(actorEmail);
+        ensureManagerCanManageTask(task, actorEmail);
+
+        if (task.getProject().getStatus() == ProjectStatus.CLOSED) {
+            throw new RuntimeException("KHÔNG THỂ CẬP NHẬT: Dự án này đã bị đóng!");
+        }
+
+        if (startDate != null && deadline != null && startDate.isAfter(deadline)) {
+            throw new RuntimeException("LỖI: Ngày bắt đầu không thể sau ngày kết thúc!");
+        }
+
+        if (deadline != null) {
+            validateTaskDeadline(deadline);
+            if (task.getProject().getDeadline() != null && deadline.isAfter(task.getProject().getDeadline())) {
+                throw new RuntimeException("LỖI: Deadline Task vượt quá Deadline dự án!");
+            }
+        }
+
+        task.setStartDate(startDate);
+        task.setDeadline(deadline);
+
+        Task savedTask = taskRepository.save(task);
+        taskActivityService.record(savedTask, actor, "TASK_TIMELINE_UPDATED",
+                actor.getFullName() + " đã cập nhật dòng thời gian cho task '" + savedTask.getTitle() + "'",
+                Map.of("taskId", savedTask.getId(), "startDate", String.valueOf(startDate), "deadline", String.valueOf(deadline)));
+
+        return savedTask;
+    }
+
+    public List<ResourceWorkloadDTO> getResourceWorkloadList(String actorEmail) {
+        User actor = requireActiveUser(actorEmail);
+
+        List<User> targetUsers;
+        if (actor.getRole() == ERole.ADMIN) {
+            targetUsers = userRepository.findAll();
+        } else if (actor.getRole() == ERole.MANAGER && actor.getDepartment() != null) {
+            targetUsers = userRepository.findByDepartment_Id(actor.getDepartment().getId());
+        } else {
+            throw new AccessDeniedException("Bạn không có quyền xem thống kê phân bổ nhân sự!");
+        }
+
+        List<Task> allActiveTasks = taskRepository.findAll().stream()
+                .filter(t -> t.getAssignee() != null)
+                .filter(t -> t.getStatus() != TaskStatus.DONE)
+                .collect(Collectors.toList());
+
+        LocalDate now = LocalDate.now();
+
+        return targetUsers.stream().map(user -> {
+            List<Task> userTasks = allActiveTasks.stream()
+                    .filter(t -> t.getAssignee().getId().equals(user.getId()))
+                    .collect(Collectors.toList());
+
+            long openCount = userTasks.size();
+            long overdueCount = userTasks.stream()
+                    .filter(t -> t.getDeadline() != null && t.getDeadline().isBefore(now))
+                    .count();
+
+            return new ResourceWorkloadDTO(user.getId(), user.getFullName(), openCount, overdueCount);
+        })
+        .filter(dto -> dto.getOpenTasks() > 0)
+        .sorted(Comparator.comparingLong(ResourceWorkloadDTO::getOpenTasks).reversed())
+        .collect(Collectors.toList());
     }
 
     public void deleteTask(String taskId, String managerEmail) {
@@ -500,7 +569,30 @@ public class TaskService {
         return taskRepository.findByProject_Id(projectId);
     }
 
-    // 4. Lấy task của cá nhân
+    // 4. Lấy task theo phòng ban
+    public List<Task> getTasksByDepartment(String departmentId, String actorEmail) {
+        User actor = requireActiveUser(actorEmail);
+        ensureCanAccessDepartmentTasks(actor, departmentId);
+
+        if (!StringUtils.hasText(departmentId) || "all".equalsIgnoreCase(departmentId)) {
+            return taskRepository.findAll();
+        }
+
+        return taskRepository.findAll().stream()
+                .filter(t -> t.getProject() != null && t.getProject().getDepartment() != null && departmentId.equals(t.getProject().getDepartment().getId()))
+                .collect(Collectors.toList());
+    }
+
+    private void ensureCanAccessDepartmentTasks(User actor, String departmentId) {
+        if (actor.getRole() == ERole.ADMIN) return;
+        if (actor.getRole() == ERole.MANAGER) {
+            String managedDeptId = actor.getDepartment() != null ? actor.getDepartment().getId() : null;
+            if (departmentId != null && departmentId.equals(managedDeptId)) return;
+        }
+        throw new AccessDeniedException("Bạn không có quyền xem danh sách task của phòng ban này!");
+    }
+
+    // 5. Lấy task của cá nhân
     public List<Task> getMyTasks(String userId, String actorEmail) {
         User actor = requireActiveUser(actorEmail);
         if (StringUtils.hasText(userId) && !userId.equals(actor.getId()) && actor.getRole() != ERole.ADMIN) {
@@ -637,12 +729,20 @@ public class TaskService {
             return actingUser;
         }
 
-        User projectManager = getProjectManager(task.getProject());
-        if (!projectManager.getId().equals(actingUser.getId())) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa hoặc xóa công việc này!");
+        // Logic mới: MANAGER + Thuộc phòng ban = Có quyền
+        if (actingUser.getRole() == ERole.MANAGER && task.getProject() != null
+                && task.getProject().getDepartment() != null
+                && actingUser.getDepartment() != null
+                && task.getProject().getDepartment().getId().equals(actingUser.getDepartment().getId())) {
+            return actingUser;
         }
 
-        return actingUser;
+        User projectManager = getProjectManager(task.getProject());
+        if (projectManager != null && projectManager.getId().equals(actingUser.getId())) {
+            return actingUser;
+        }
+
+        throw new RuntimeException("Bạn không có quyền chỉnh sửa hoặc xóa công việc này!");
     }
 
     private User requireActiveUser(String email) {
@@ -665,10 +765,20 @@ public class TaskService {
             return;
         }
 
-        User projectManager = getProjectManager(project);
-        if (!projectManager.getId().equals(actor.getId())) {
-            throw new AccessDeniedException("Bạn không có quyền tạo công việc cho dự án này!");
+        // Logic mới: MANAGER + Thuộc phòng ban = Có quyền
+        if (actor.getRole() == ERole.MANAGER && project != null
+                && project.getDepartment() != null
+                && actor.getDepartment() != null
+                && project.getDepartment().getId().equals(actor.getDepartment().getId())) {
+            return;
         }
+
+        User projectManager = getProjectManager(project);
+        if (projectManager != null && projectManager.getId().equals(actor.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("Bạn không có quyền tạo công việc cho dự án này!");
     }
 
     private void ensureCanViewProject(User actor, Project project) {
@@ -676,8 +786,16 @@ public class TaskService {
             return;
         }
 
+        // Logic mới: MANAGER + Thuộc phòng ban = Có quyền xem
+        if (actor.getRole() == ERole.MANAGER && project != null
+                && project.getDepartment() != null
+                && actor.getDepartment() != null
+                && project.getDepartment().getId().equals(actor.getDepartment().getId())) {
+            return;
+        }
+
         User projectManager = getProjectManager(project);
-        if (projectManager.getId().equals(actor.getId())) {
+        if (projectManager != null && projectManager.getId().equals(actor.getId())) {
             return;
         }
 
@@ -709,8 +827,16 @@ public class TaskService {
             return;
         }
 
+        // Logic mới: MANAGER + Thuộc phòng ban = Có quyền cập nhật
+        if (actor.getRole() == ERole.MANAGER && task.getProject() != null
+                && task.getProject().getDepartment() != null
+                && actor.getDepartment() != null
+                && task.getProject().getDepartment().getId().equals(actor.getDepartment().getId())) {
+            return;
+        }
+
         User projectManager = getProjectManager(task.getProject());
-        if (projectManager.getId().equals(actor.getId())) {
+        if (projectManager != null && projectManager.getId().equals(actor.getId())) {
             return;
         }
 
@@ -775,10 +901,9 @@ public class TaskService {
     }
 
     private User getProjectManager(Project project) {
-        if (project == null || project.getDepartment() == null || project.getDepartment().getManager() == null) {
-            throw new RuntimeException("Dự án chưa có trưởng phòng quản lý!");
+        if (project == null || project.getDepartment() == null) {
+            return null;
         }
-
         return project.getDepartment().getManager();
     }
 }

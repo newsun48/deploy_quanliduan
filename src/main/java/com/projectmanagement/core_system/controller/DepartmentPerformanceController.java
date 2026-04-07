@@ -75,6 +75,21 @@ public class DepartmentPerformanceController {
         }
     }
 
+    @PostMapping("/generate-insights")
+    public ResponseEntity<?> generateInsights(
+            @RequestParam String departmentId,
+            @RequestParam Integer year,
+            @RequestParam Integer quarter,
+            Authentication authentication) {
+        try {
+            return ResponseEntity.ok(departmentPerformanceService.generateQuarterlyInsights(departmentId, year, quarter, authentication.getName()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/okrs/{departmentId}")
     public ResponseEntity<?> getDepartmentOkrs(
             @PathVariable String departmentId,

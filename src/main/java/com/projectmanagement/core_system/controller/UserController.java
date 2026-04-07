@@ -118,9 +118,13 @@ public class UserController {
 
     // 4. Xóa nhân viên
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id, Authentication authentication) {
+    public ResponseEntity<?> deleteUser(
+            @PathVariable String id,
+            @RequestParam(required = false) String successorId,
+            Authentication authentication
+    ) {
         try {
-            userService.deleteUser(id, authenticatedUserHelper.requireActorEmail(authentication));
+            userService.deleteUser(id, authenticatedUserHelper.requireActorEmail(authentication), successorId);
             return ResponseEntity.ok("Đã xóa nhân viên thành công!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

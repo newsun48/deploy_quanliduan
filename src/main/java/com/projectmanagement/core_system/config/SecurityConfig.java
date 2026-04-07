@@ -104,12 +104,12 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/*/reject").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/bulk-update-dept").hasRole("ADMIN")
                 .requestMatchers("/error").permitAll() // Quan trọng: Cho phép xem nội dung lỗi
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/files/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/files/**").authenticated()
                 .requestMatchers("/api/files/**").authenticated()
                 .requestMatchers("/ws/**").permitAll()       // WebSocket handshake
                 .requestMatchers("/uploads/**").denyAll()
                 .requestMatchers("/api/**").authenticated()
-                .anyRequest().permitAll()
+                .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {

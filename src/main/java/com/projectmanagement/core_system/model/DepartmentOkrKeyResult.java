@@ -7,6 +7,16 @@ public class DepartmentOkrKeyResult {
     private Double currentValue;
     private String unit;
 
+    public DepartmentOkrKeyResult() {}
+
+    public DepartmentOkrKeyResult(String id, String name, Double targetValue, Double currentValue, String unit) {
+        this.id = id;
+        this.name = name;
+        this.targetValue = targetValue;
+        this.currentValue = currentValue;
+        this.unit = unit;
+    }
+
     public String getId() {
         return id;
     }

@@ -81,6 +81,7 @@ export const authAPI = {
 
 export const adminActivityAPI = {
     getRecentActivities: (userId, limit = 50) => api.get('/admin/user-activities', { params: { userId, limit } }),
+    undoActivity: (activityId) => api.post(`/admin/user-activities/${activityId}/undo`),
 };
 
 // ========== USER API ==========
@@ -118,10 +119,10 @@ export const userAPI = {
     rejectUser: (userId, payload) => api.patch(`/users/${userId}/reject`, payload),
 
     // Khóa / mở khóa user
-    updateUserStatus: (userId, active) => api.patch(`/users/${userId}/status`, { active }),
+    updateUserStatus: (userId, active, successorId = null) => api.patch(`/users/${userId}/status`, { active, successorId }),
 
     // Xóa user
-    deleteUser: (userId) => api.delete(`/users/${userId}`),
+    deleteUser: (userId, successorId = null) => api.delete(`/users/${userId}`, { params: { successorId } }),
 };
 
 export const fileAPI = {

@@ -18,6 +18,8 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectService {
@@ -46,6 +48,11 @@ public class ProjectService {
 
         validateProjectDates(project.getStartDate(), project.getDeadline());
 
+        // 🔥 Kiểm tra trùng tên dự án
+        if (projectRepository.existsByNameIgnoreCaseAndIsDeletedFalse(project.getName().trim())) {
+            throw new RuntimeException("Tên dự án '" + project.getName() + "' đã tồn tại!");
+        }
+
         Department dept = departmentRepository.findById(departmentId)
                 .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
 
@@ -55,6 +62,21 @@ public class ProjectService {
         // Để MongoDB tự tạo ID
         project.setDepartment(dept);
         project.setCreatedBy(actor.getEmail());
+
+        // 🔥 Tự động thêm TẤT CẢ Quản lý của phòng ban này vào danh sách thành viên
+        List<User> deptUsers = userRepository.findByDepartment_Id(dept.getId());
+        if (project.getMembers() == null) {
+            project.setMembers(new ArrayList<>());
+        }
+        for (User u : deptUsers) {
+            if (u.getRole() == ERole.MANAGER) {
+                boolean alreadyMember = project.getMembers().stream()
+                        .anyMatch(m -> m.getId() != null && m.getId().equals(u.getId()));
+                if (!alreadyMember) {
+                    project.getMembers().add(u);
+                }
+            }
+        }
         
         // Nếu chưa có status thì set mặc định OPEN
         if (project.getStatus() == null) {
@@ -73,8 +95,12 @@ public class ProjectService {
         LocalDate effectiveDeadline = updatedInfo.getDeadline() != null ? updatedInfo.getDeadline() : project.getDeadline();
         validateProjectDatesForUpdate(project, updatedInfo, effectiveStartDate, effectiveDeadline);
 
-        if (StringUtils.hasText(updatedInfo.getName())) {
-            project.setName(updatedInfo.getName());
+        if (StringUtils.hasText(updatedInfo.getName()) && !updatedInfo.getName().trim().equalsIgnoreCase(project.getName())) {
+            // 🔥 Kiểm tra trùng tên khi đổi tên dự án
+            if (projectRepository.existsByNameIgnoreCaseAndIsDeletedFalse(updatedInfo.getName().trim())) {
+                throw new RuntimeException("Tên dự án '" + updatedInfo.getName() + "' đã tồn tại!");
+            }
+            project.setName(updatedInfo.getName().trim());
         }
         if (StringUtils.hasText(updatedInfo.getDescription())) {
             project.setDescription(updatedInfo.getDescription());
@@ -204,32 +230,23 @@ public class ProjectService {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách dự án của người dùng khác!");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-
-        // Lấy tất cả dự án chưa xóa
-        List<Project> allProjects = projectRepository.findByIsDeletedFalse();
+        // 1. Lấy tất cả dự án mà user là thành viên trực tiếp (Dùng repo tối ưu)
+        List<Project> memberProjects = projectRepository.findByMembers_IdAndIsDeletedFalse(userId);
         
-        // Lọc các dự án mà user có thể truy cập
-        return allProjects.stream()
-                .filter(project -> {
-                    // 1. User là thành viên dự án
-                    boolean isMember = project.getMembers().stream()
-                            .anyMatch(member -> member.getId().equals(userId));
-                    if (isMember) {
-                        return true;
-                    }
+        // 2. Nếu user là MANAGER, lấy thêm các dự án thuộc phòng ban của họ
+        if (actor.getRole() == ERole.MANAGER && actor.getDepartment() != null) {
+            List<Project> deptProjects = projectRepository.findByIsDeletedFalseAndDepartment_Id(actor.getDepartment().getId());
+            
+            // Gộp và loại trùng
+            Set<String> projectIds = memberProjects.stream().map(Project::getId).collect(Collectors.toSet());
+            for (Project p : deptProjects) {
+                if (!projectIds.contains(p.getId())) {
+                    memberProjects.add(p);
+                }
+            }
+        }
 
-                    // 2. User là trưởng phòng của phòng ban chứa dự án
-                    if (project.getDepartment() != null && 
-                        project.getDepartment().getManager() != null &&
-                        project.getDepartment().getManager().getId().equals(userId)) {
-                        return true;
-                    }
-
-                    return false;
-                })
-                .toList();
+        return memberProjects;
     }
 
     // Get deleted projects (Admin)
@@ -319,12 +336,23 @@ public class ProjectService {
             return actor;
         }
 
-        User manager = department != null ? department.getManager() : null;
-        if (actor.getRole() != ERole.MANAGER || manager == null || manager.getId() == null || !manager.getId().equals(actor.getId())) {
-            throw new AccessDeniedException("Bạn không có quyền quản lý dự án của phòng ban này!");
+        // Trường hợp 1: Có vai trò MANAGER và thuộc đúng phòng ban
+        if (actor.getRole() == ERole.MANAGER && department != null
+                && actor.getDepartment() != null
+                && StringUtils.hasText(actor.getDepartment().getId())
+                && actor.getDepartment().getId().equals(department.getId())) {
+            return actor;
         }
 
-        return actor;
+        // Trường hợp 2: Được gán đích danh là Trưởng phòng của phòng ban đó
+        User manager = (department != null) ? department.getManager() : null;
+        if (actor.getRole() == ERole.MANAGER && manager != null
+                && StringUtils.hasText(manager.getId())
+                && manager.getId().equals(actor.getId())) {
+            return actor;
+        }
+
+        throw new AccessDeniedException("Bạn không có quyền quản lý dự án của phòng ban này!");
     }
 
     private User ensureProjectManagerOrAdmin(Project project, String actorEmail) {

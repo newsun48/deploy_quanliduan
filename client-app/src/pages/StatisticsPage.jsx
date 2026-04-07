@@ -122,12 +122,12 @@ const normalizeKpiCards = (kpiItems, scopeLabel) => {
             note: `${toDisplayValue(summary.closedProjects)} dự án đã đóng.`,
         },
         {
-            label: 'Tiến độ task trung bình',
+            label: 'Tiến độ công việc trung bình',
             value: toDisplayValue(avgProgress, '%'),
-            note: `${toDisplayValue(summary.doneTasks)} / ${toDisplayValue(summary.totalTasks)} task đã hoàn tất.`,
+            note: `${toDisplayValue(summary.doneTasks)} / ${toDisplayValue(summary.totalTasks)} công việc đã hoàn tất.`,
         },
         {
-            label: 'Task quá hạn',
+            label: 'Công việc quá hạn',
             value: toDisplayValue(summary.overdueTasks),
             note: `Tỷ lệ hoàn thành trung bình ${toDisplayValue(avgCompletion, '%')}.`,
         },
@@ -164,7 +164,8 @@ const normalizeObjectives = (payload) => {
 const normalizeQuarterlyReviews = (payload) => {
     return extractItems(payload).map((item, index) => ({
         id: item.id || item.reviewId || item._id || `review-${index}`,
-        title: item.department?.name || item.departmentName || item.name || 'Quarterly review',
+        title: item.department?.name || item.departmentName || item.name || 'Đánh giá hàng quý',
+        departmentName: formatDepartmentName(item.department?.name || item.departmentName || ''),
         status: item.reviewSummary ? 'COMPLETED' : 'AT_RISK',
         score: extractItems(item.keyResults || []).length,
         summary: item.reviewSummary || '',
@@ -181,7 +182,7 @@ const StatisticsPage = () => {
     const currentUser = useMemo(() => parseStoredUser(), []);
     const isAdmin = currentUser?.role === 'ADMIN';
     const roleBasePath = isAdmin ? '/admin' : '/manager';
-    const roleLabel = isAdmin ? 'Administrator' : `Trưởng ${formatDepartmentName(currentUser?.department?.name || 'Phòng')}`;
+    const roleLabel = isAdmin ? 'Quản trị viên' : `Trưởng ${formatDepartmentName(currentUser?.department?.name || 'Phòng')}`;
     const brandLabel = isAdmin ? 'ADMIN PRO' : 'MANAGER PRO';
 
     const [stats, setStats] = useState(null);
@@ -210,6 +211,21 @@ const StatisticsPage = () => {
         rangeDays: 90,
         stalledDays: 7,
     });
+
+    const currentScopeLabel = useMemo(() => {
+        if (!filters.departmentId || filters.departmentId === 'ALL') {
+            return 'Toàn công ty';
+        }
+        const dept = departments.find(d => d.id === filters.departmentId);
+        if (dept) return formatDepartmentName(dept.name);
+
+        // Fallback for Manager role where departments might not be fully loaded/visible
+        if (!isAdmin && currentUser?.department?.id === filters.departmentId) {
+            return formatDepartmentName(currentUser.department.name);
+        }
+
+        return 'Phòng ban';
+    }, [filters.departmentId, departments, isAdmin, currentUser]);
 
     useEffect(() => {
         if (!currentUser) {
@@ -283,7 +299,7 @@ const StatisticsPage = () => {
 
     useEffect(() => {
         if (!currentUser) return;
-        
+
         const fetchWorkload = async () => {
             try {
                 setResourceWorkloadLoading(true);
@@ -451,7 +467,7 @@ const StatisticsPage = () => {
             if (!selectedId) return;
             finalDept = departments.find(d => d.id === selectedId);
         }
-        
+
         const departmentId = finalDept?.id;
         const departmentName = formatDepartmentName(finalDept?.name || 'Phòng ban');
 
@@ -468,8 +484,8 @@ const StatisticsPage = () => {
         const { value: objective } = await Swal.fire({
             title: `🎯 Nhập mục tiêu cho ${departmentName}`,
             input: 'text',
-            inputLabel: isAdmin && filters.departmentId === 'ALL' 
-                ? `Đang cập nhật cho phòng ban mặc định: ${departmentName}` 
+            inputLabel: isAdmin && filters.departmentId === 'ALL'
+                ? `Đang cập nhật cho phòng ban mặc định: ${departmentName}`
                 : `Phạm vi: ${departmentName}`,
             inputPlaceholder: 'Ví dụ: Tăng chất lượng quản lý dự án',
             showCancelButton: true,
@@ -564,9 +580,9 @@ const StatisticsPage = () => {
         if (!stats) return [];
 
         return [
-            { name: 'To Do', value: stats.byStatus?.TO_DO || 0, color: COLORS_STATUS[0] },
-            { name: 'In Progress', value: stats.byStatus?.IN_PROGRESS || 0, color: COLORS_STATUS[1] },
-            { name: 'Done', value: stats.byStatus?.DONE || 0, color: COLORS_STATUS[2] },
+            { name: 'Cần làm', value: stats.byStatus?.TO_DO || 0, color: COLORS_STATUS[0] },
+            { name: 'Đang thực hiện', value: stats.byStatus?.IN_PROGRESS || 0, color: COLORS_STATUS[1] },
+            { name: 'Hoàn thành', value: stats.byStatus?.DONE || 0, color: COLORS_STATUS[2] },
         ];
     }, [stats]);
 
@@ -631,7 +647,7 @@ const StatisticsPage = () => {
             {
                 label: 'Lead time TB',
                 value: formatDurationDays(deliveryAnalytics.leadTime?.averageDays),
-                note: `${deliveryAnalytics.leadTime?.count || 0} task co du lieu hop le.`,
+                note: `${deliveryAnalytics.leadTime?.count || 0} công việc có dữ liệu hợp lệ.`,
             },
             {
                 label: 'Cycle time TB',
@@ -644,9 +660,9 @@ const StatisticsPage = () => {
                 note: `${deliveryAnalytics.overdueRate?.overdueOpenTasks || 0}/${deliveryAnalytics.overdueRate?.openTasks || 0} task đang mở bị trễ.`,
             },
             {
-                label: 'Task risk cao',
+                label: 'Công việc rủi ro cao',
                 value: highRiskCount,
-                note: `${bottleneck.stalledTasks || 0} task đang stalled.`,
+                note: `${bottleneck.stalledTasks || 0} công việc đang đình trệ.`,
             },
         ];
     }, [deliveryAnalytics]);
@@ -661,9 +677,9 @@ const StatisticsPage = () => {
     const bottleneckData = useMemo(() => {
         const statusCounts = deliveryAnalytics?.bottleneck?.statusCounts || {};
         return [
-            { name: 'To do', value: statusCounts.TO_DO || 0 },
-            { name: 'In progress', value: statusCounts.IN_PROGRESS || 0 },
-            { name: 'Review', value: statusCounts.REVIEW || 0 },
+            { name: 'Cần làm', value: statusCounts.TO_DO || 0 },
+            { name: 'Đang thực hiện', value: statusCounts.IN_PROGRESS || 0 },
+            { name: 'Đánh giá', value: statusCounts.REVIEW || 0 },
         ];
     }, [deliveryAnalytics]);
 
@@ -745,7 +761,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-primary-light text-primary">
                                                 <i className="bi bi-list-task"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Tổng số task</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Tổng số công việc</div>
                                             <div className="fs-1 fw-bold text-dark">{statsLoading ? '--' : (stats?.totalTasks || 0)}</div>
                                         </div>
                                     </div>
@@ -754,7 +770,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-secondary-light text-secondary">
                                                 <i className="bi bi-clock-history"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">To do</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Cần làm</div>
                                             <div className="fs-1 fw-bold text-secondary">{statsLoading ? '--' : (statusData[0]?.value || 0)}</div>
                                         </div>
                                     </div>
@@ -763,7 +779,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-primary-light text-primary statistics-summary-icon statistics-summary-icon-accent">
                                                 <i className="bi bi-play-fill"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">In progress</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Đang thực hiện</div>
                                             <div className="fs-1 fw-bold text-primary">{statsLoading ? '--' : (statusData[1]?.value || 0)}</div>
                                         </div>
                                     </div>
@@ -772,7 +788,7 @@ const StatisticsPage = () => {
                                             <div className="stat-icon bg-success-light text-success">
                                                 <i className="bi bi-check-all"></i>
                                             </div>
-                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Done</div>
+                                            <div className="text-muted mb-1 small fw-bold text-uppercase">Hoàn thành</div>
                                             <div className="fs-1 fw-bold text-success">{statsLoading ? '--' : (statusData[2]?.value || 0)}</div>
                                         </div>
                                     </div>
@@ -895,7 +911,7 @@ const StatisticsPage = () => {
                         )}
 
                         <div className="statistics-section-header">
-                            <i className="bi bi-activity"></i> Phân tích delivery
+                            <i className="bi bi-activity"></i> Phân tích vận hành (Delivery)
                         </div>
 
                         <div className="workflow-panel mb-4">
@@ -908,7 +924,7 @@ const StatisticsPage = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <span className="workflow-meta-label">Ngưỡng stalled</span>
+                                        <span className="workflow-meta-label">Ngưỡng đình trệ (Stalled)</span>
                                         <select className="form-select modern-input mt-2" value={deliveryFilters.stalledDays} onChange={(e) => setDeliveryFilters((prev) => ({ ...prev, stalledDays: Number(e.target.value) }))}>
                                             {STALLED_DAY_OPTIONS.map((value) => <option key={value} value={value}>{value} ngày</option>)}
                                         </select>
@@ -940,7 +956,7 @@ const StatisticsPage = () => {
                                 <div className="row g-4 mb-4">
                                     <div className="col-xl-7">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Burn-down trend</div>
+                                            <div className="modern-card-header">Biểu đồ Burn-down (Xu hướng hoàn thành)</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={320}>
                                                     <AreaChart data={burndownData}>
@@ -958,7 +974,7 @@ const StatisticsPage = () => {
                                     </div>
                                     <div className="col-xl-5">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Velocity theo tuần</div>
+                                            <div className="modern-card-header">Tốc độ (Velocity) theo tuần</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={320}>
                                                     <BarChart data={velocityData}>
@@ -977,9 +993,9 @@ const StatisticsPage = () => {
                                 <div className="row g-4 mb-4">
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Throughput theo tuần</div>
+                                            <div className="modern-card-header">Năng suất (Throughput) theo tuần</div>
                                             <div className="card-body p-4">
-                                                <ResponsiveContainer width="100%" height={300}>
+                                                ParametricLineChart                                                <ResponsiveContainer width="100%" height={300}>
                                                     <LineChart data={throughputWeekly}>
                                                         <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
                                                         <XAxis dataKey="bucket" tick={{ fontSize: 11 }} minTickGap={18} />
@@ -993,7 +1009,7 @@ const StatisticsPage = () => {
                                     </div>
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Throughput theo phòng ban</div>
+                                            <div className="modern-card-header">Năng suất (Throughput) theo phòng ban</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={300}>
                                                     <BarChart data={throughputByDepartment.length ? throughputByDepartment : [{ departmentName: 'Current', completed: 0 }]} layout="vertical">
@@ -1012,7 +1028,7 @@ const StatisticsPage = () => {
                                 <div className="row g-4 mb-4">
                                     <div className="col-xl-6">
                                         <div className="modern-card h-100 statistics-chart-card">
-                                            <div className="modern-card-header">Bottleneck summary</div>
+                                            <div className="modern-card-header">Tóm tắt các điểm nghẽn (Bottlenecks)</div>
                                             <div className="card-body p-4">
                                                 <ResponsiveContainer width="100%" height={260}>
                                                     <BarChart data={bottleneckData}>
@@ -1026,13 +1042,13 @@ const StatisticsPage = () => {
                                                 <div className="row g-3 mt-2">
                                                     <div className="col-6">
                                                         <div className="workflow-summary-card h-100">
-                                                            <span className="workflow-summary-label">Overdue open</span>
+                                                            <span className="workflow-summary-label">Quá hạn chưa xong</span>
                                                             <div className="workflow-summary-value">{deliveryAnalytics?.bottleneck?.overdueOpenTasks || 0}</div>
                                                         </div>
                                                     </div>
                                                     <div className="col-6">
                                                         <div className="workflow-summary-card h-100">
-                                                            <span className="workflow-summary-label">Stalled</span>
+                                                            <span className="workflow-summary-label">Đang đình trệ</span>
                                                             <div className="workflow-summary-value">{deliveryAnalytics?.bottleneck?.stalledTasks || 0}</div>
                                                         </div>
                                                     </div>
@@ -1052,7 +1068,7 @@ const StatisticsPage = () => {
                                                         <Tooltip />
                                                         <Legend />
                                                         <Bar dataKey="openTasks" fill="#1d6fa3" radius={[0, 10, 10, 0]} name="Đang mở" />
-                                                        <Bar dataKey="overdueOpenTasks" fill="#d05f45" radius={[0, 10, 10, 0]} name="Tre han" />
+                                                        <Bar dataKey="overdueOpenTasks" fill="#d05f45" radius={[0, 10, 10, 0]} name="Trễ hạn" />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -1064,7 +1080,7 @@ const StatisticsPage = () => {
                                     <div className="workflow-panel-header">
                                         <div className="d-flex justify-content-between align-items-center w-100">
                                             <div>
-                                                <h3 className="workflow-panel-title">🔥 Resource Load Heatmap</h3>
+                                                <h3 className="workflow-panel-title">🔥 Bản đồ nhiệt tải trọng (Resource Load Heatmap) - {currentScopeLabel}</h3>
                                                 <p className="workflow-panel-copy">Giám sát mức độ bận rộn và rủi ro quá tải của nhân sự trong thời gian thực.</p>
                                             </div>
                                             {resourceWorkloadLoading && <div className="spinner-border spinner-border-sm text-primary"></div>}
@@ -1075,22 +1091,60 @@ const StatisticsPage = () => {
                                     </div>
                                 </div>
 
+                                <div className="workflow-hero mb-4">
+                                    <div>
+                                        <span className="admin-section-kicker">Báo cáo chiến lược</span>
+                                        <h1 className="workflow-hero-title">{isAdmin ? 'Góc nhìn KPI / OKR toàn tổ chức' : 'Báo cáo KPI / OKR phòng ban'} cho {formatQuarterLabel(filters.quarter)}</h1>
+                                        <p className="workflow-hero-copy">
+                                            Theo dõi KPI, tiến độ OKR và kết quả quarterly review trong một màn hình, đồng bộ với luồng phê duyệt và vận hành dự án hiện có.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="workflow-panel mb-4">
+                                    <div className="workflow-panel-body">
+                                        <div className="workflow-filter-bar">
+                                            <div>
+                                                <span className="workflow-meta-label">Quý báo cáo</span>
+                                                <select className="form-select modern-input mt-2" value={filters.quarter} onChange={(e) => setFilters((prev) => ({ ...prev, quarter: e.target.value }))}>
+                                                    {quarterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                                </select>
+                                            </div>
+
+                                            {isAdmin ? (
+                                                <div>
+                                                    <span className="workflow-meta-label">Phạm vi đơn vị</span>
+                                                    <select className="form-select modern-input mt-2" value={filters.departmentId} onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}>
+                                                        <option value="ALL">Toàn công ty</option>
+                                                        {departments.map((department) => <option key={department.id} value={department.id}>{formatDepartmentName(department.name)}</option>)}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <span className="workflow-meta-label">Phòng ban</span>
+                                                    <div className="workflow-meta-value mt-2">{formatDepartmentName(currentUser.department?.name || '--')}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="workflow-panel mb-4">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Performance heatmap</h3>
-                                            <p className="workflow-panel-copy">Số task hoàn tất theo nhân sự và ngày trong tuần trong khoảng dữ liệu đã chọn.</p>
+                                            <h3 className="workflow-panel-title">Bản đồ nhiệt hiệu suất (Performance heatmap) - {currentScopeLabel}</h3>
+                                            <p className="workflow-panel-copy">Số công việc hoàn tất theo nhân sự và ngày trong tuần trong khoảng dữ liệu đã chọn.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
                                         {heatmapRows.length === 0 ? (
-                                                    <div className="workflow-empty">Chưa có dữ liệu heatmap trong khoảng đã chọn.</div>
+                                            <div className="workflow-empty">Chưa có dữ liệu heatmap trong khoảng đã chọn.</div>
                                         ) : (
                                             <div className="table-responsive">
                                                 <table className="table align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th>Nhan su</th>
+                                                            <th>Nhân sự</th>
                                                             {heatmapRows[0].cells.map((cell) => <th key={cell.key} className="text-center">{cell.label}</th>)}
                                                         </tr>
                                                     </thead>
@@ -1117,23 +1171,23 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel mb-5">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Deadline risk radar</h3>
-                                            <p className="workflow-panel-copy">Danh sach task co nguy co tre han cao nhat, su dung rule-based scoring tu tien do, deadline, priority va tai hien tai.</p>
+                                            <h3 className="workflow-panel-title">Theo dõi rủi ro hạn chót (Deadline risk radar) - {currentScopeLabel}</h3>
+                                            <p className="workflow-panel-copy">Danh sách công việc có nguy cơ trễ hạn cao nhất, sử dụng rules-based scoring từ tiến độ, hạn chót và độ ưu tiên.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
                                         {deadlineRiskList.length === 0 ? (
-                                                    <div className="workflow-empty">Không có task mở nào trong phạm vi đã chọn.</div>
+                                            <div className="workflow-empty">Không có task mở nào trong phạm vi đã chọn.</div>
                                         ) : (
                                             <div className="table-responsive">
                                                 <table className="table align-middle">
                                                     <thead>
                                                         <tr>
-                                                            <th>Task</th>
-                                                            <th>Assignee</th>
-                                                            <th>Status</th>
-                                                            <th>Risk</th>
-                                                            <th>Deadline</th>
+                                                            <th>Công việc</th>
+                                                            <th>Người thực hiện</th>
+                                                            <th>Trạng thái</th>
+                                                            <th>Rủi ro</th>
+                                                            <th>Hạn chót</th>
                                                             <th>Lý do</th>
                                                         </tr>
                                                     </thead>
@@ -1153,7 +1207,7 @@ const StatisticsPage = () => {
                                                                     </td>
                                                                     <td>{item.deadline || '--'}</td>
                                                                     <td>
-                                                                    <div className="small text-muted">{Array.isArray(item.reasons) && item.reasons.length ? item.reasons.slice(0, 2).join(' ') : 'Không có cảnh báo.'}</div>
+                                                                        <div className="small text-muted">{Array.isArray(item.reasons) && item.reasons.length ? item.reasons.slice(0, 2).join(' ') : 'Không có cảnh báo.'}</div>
                                                                     </td>
                                                                 </tr>
                                                             );
@@ -1168,8 +1222,8 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel mb-5">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">📅 Project Gantt Timeline</h3>
-                                            <p className="workflow-panel-copy">Trực quan hóa lộ trình công việc theo thời gian. Kéo thả các thanh để thay đổi deadline và ngày bắt đầu.</p>
+                                            <h3 className="workflow-panel-title">📅 Lộ trình dự án (Project Gantt Timeline) - {currentScopeLabel}</h3>
+                                            <p className="workflow-panel-copy">Trực quan hóa lộ trình công việc theo thời gian. Kéo thả các thanh để thay đổi hạn chót và ngày bắt đầu.</p>
                                         </div>
                                     </div>
                                     <div className="workflow-panel-body">
@@ -1179,56 +1233,18 @@ const StatisticsPage = () => {
                                                 <div className="mt-2 text-muted">Đang chuẩn bị dữ liệu Gantt...</div>
                                             </div>
                                         ) : (
-                                            <ProjectGantt 
-                                                tasks={scopedTasks} 
+                                            <ProjectGantt
+                                                tasks={scopedTasks}
                                                 onTaskUpdate={() => {
                                                     // Refresh delivery stats when timeline changes
-                                                    setDeliveryFilters(prev => ({...prev}));
-                                                }} 
+                                                    setDeliveryFilters(prev => ({ ...prev }));
+                                                }}
                                             />
                                         )}
                                     </div>
                                 </div>
                             </>
                         ) : null}
-
-                        <div className="workflow-hero mb-4">
-                            <div>
-                                <span className="admin-section-kicker">Báo cáo chiến lược</span>
-                                <h1 className="workflow-hero-title">{isAdmin ? 'Góc nhìn KPI / OKR toàn tổ chức' : 'Báo cáo KPI / OKR phòng ban'} cho {formatQuarterLabel(filters.quarter)}</h1>
-                                <p className="workflow-hero-copy">
-                                    Theo dõi KPI, tiến độ OKR và kết quả quarterly review trong một màn hình, đồng bộ với luồng phê duyệt và vận hành dự án hiện có.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="workflow-panel mb-4">
-                            <div className="workflow-panel-body">
-                                <div className="workflow-filter-bar">
-                                    <div>
-                                        <span className="workflow-meta-label">Quý báo cáo</span>
-                                        <select className="form-select modern-input mt-2" value={filters.quarter} onChange={(e) => setFilters((prev) => ({ ...prev, quarter: e.target.value }))}>
-                                            {quarterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                        </select>
-                                    </div>
-
-                                    {isAdmin ? (
-                                        <div>
-                                            <span className="workflow-meta-label">Phạm vi đơn vị</span>
-                                            <select className="form-select modern-input mt-2" value={filters.departmentId} onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}>
-                                                <option value="ALL">Toàn công ty</option>
-                                                {departments.map((department) => <option key={department.id} value={department.id}>{formatDepartmentName(department.name)}</option>)}
-                                            </select>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <span className="workflow-meta-label">Phòng ban</span>
-                                            <div className="workflow-meta-value mt-2">{formatDepartmentName(currentUser.department?.name || '--')}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
 
                         <div className="statistics-section-header">
                             <i className="bi bi-bullseye"></i> KPI / OKR / Quarterly review
@@ -1237,7 +1253,7 @@ const StatisticsPage = () => {
                         {insightsError ? <div className="workflow-error mb-4">{insightsError}</div> : null}
 
                         {insightsLoading ? (
-                                    <div className="workflow-empty">Đang tải báo cáo KPI / OKR / quarterly review...</div>
+                            <div className="workflow-empty">Đang tải báo cáo KPI / OKR / quarterly review...</div>
                         ) : (
                             <div className="workflow-shell">
                                 <div className="workflow-summary-grid">
@@ -1247,27 +1263,27 @@ const StatisticsPage = () => {
                                             <div className="workflow-summary-value">{card.value}</div>
                                             <div className="workflow-summary-note">{card.note}</div>
                                         </div>
-                                        ))}
-                                    </div>
+                                    ))}
+                                </div>
 
-                                    {canManagePerformance ? (
-                                        <div className="d-flex justify-content-end mt-3 gap-2">
-                                            <button 
-                                                className="btn btn-outline-primary rounded-pill px-4 fw-bold" 
-                                                onClick={handleGenerateInsights}
-                                                disabled={isGenerating || !filters.departmentId || filters.departmentId === 'ALL'}
-                                            >
-                                                {isGenerating ? (
-                                                    <><span className="spinner-border spinner-border-sm me-2"></span>Đang phân tích...</>
-                                                ) : (
-                                                    <><i className="bi bi-magic me-2"></i>🚀 Đồng bộ & Phân tích Insights</>
-                                                )}
-                                            </button>
-                                            <button className="btn btn-primary rounded-pill px-4 fw-bold" onClick={handleUpsertOkr}>
-                                                <i className="bi bi-plus-circle me-2"></i>Cập nhật OKR quý này
-                                            </button>
-                                        </div>
-                                    ) : null}
+                                {canManagePerformance ? (
+                                    <div className="d-flex justify-content-end mt-3 gap-2">
+                                        <button
+                                            className="btn btn-outline-primary rounded-pill px-4 fw-bold"
+                                            onClick={handleGenerateInsights}
+                                            disabled={isGenerating || !filters.departmentId || filters.departmentId === 'ALL'}
+                                        >
+                                            {isGenerating ? (
+                                                <><span className="spinner-border spinner-border-sm me-2"></span>Đang phân tích...</>
+                                            ) : (
+                                                <><i className="bi bi-magic me-2"></i>🚀 Đồng bộ & Phân tích Insights</>
+                                            )}
+                                        </button>
+                                        <button className="btn btn-primary rounded-pill px-4 fw-bold" onClick={handleUpsertOkr}>
+                                            <i className="bi bi-plus-circle me-2"></i>Cập nhật OKR quý này
+                                        </button>
+                                    </div>
+                                ) : null}
 
                                 <div className="workflow-panel">
                                     <div className="workflow-panel-header">
@@ -1288,7 +1304,7 @@ const StatisticsPage = () => {
                                                                 <h4 className="workflow-objective-title">{objective.title}</h4>
                                                                 <p className="workflow-objective-copy">{objective.description || 'Không có mô tả chi tiết.'}</p>
                                                                 <div className="workflow-meta-value mt-2">
-                                                                    <span className="badge bg-light text-dark border rounded-pill px-3 py-1">Owner: {objective.owner}</span>
+                                                                    <span className="badge bg-light text-dark border rounded-pill px-3 py-1">Chủ trì: {objective.owner}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="circular-progress-container ms-3">
@@ -1299,14 +1315,14 @@ const StatisticsPage = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {objective.keyResults.length > 0 ? (
                                                             <div className="mt-4">
-                                                                <h6 className="text-uppercase small fw-bold text-muted mb-3" style={{ letterSpacing: '0.05em' }}>Key Results</h6>
+                                                                <h6 className="text-uppercase small fw-bold text-muted mb-3" style={{ letterSpacing: '0.05em' }}>Kết quả then chốt (Key Results)</h6>
                                                                 {objective.keyResults.slice(0, 4).map((keyResult, index) => {
                                                                     const isObj = typeof keyResult !== 'string';
                                                                     const krPercentage = isObj && keyResult.targetValue ? Math.min(100, Math.round((keyResult.currentValue / keyResult.targetValue) * 100)) : 0;
-                                                                    
+
                                                                     return (
                                                                         <div key={`${objective.id}-kr-${index}`} className="kr-item">
                                                                             <div className="kr-title-row">
@@ -1340,7 +1356,7 @@ const StatisticsPage = () => {
                                 <div className="workflow-panel">
                                     <div className="workflow-panel-header">
                                         <div>
-                                            <h3 className="workflow-panel-title">Quarterly reviews</h3>
+                                            <h3 className="workflow-panel-title">Đánh giá hàng quý (Quarterly reviews)</h3>
                                             <p className="workflow-panel-copy">Tổng hợp kết quả review, tình trạng sức khỏe và các hành động tiếp theo cho từng đơn vị hoặc mục tiêu.</p>
                                         </div>
                                     </div>
@@ -1365,7 +1381,7 @@ const StatisticsPage = () => {
                                                                     {review.score}
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             <div className="workflow-review-copy py-2 px-3 bg-light rounded-3 mb-3 border-start border-4 border-primary">
                                                                 <i className="bi bi-quote me-2 opacity-50"></i>
                                                                 {review.summary || 'Không có tóm tắt cho đợt review này.'}

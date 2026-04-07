@@ -29,6 +29,7 @@ public class Task {
     private String title;
     private String description;
     private LocalDate deadline;
+    private LocalDate startDate;
     private Priority priority;
     
     private TaskStatus status = TaskStatus.TO_DO;

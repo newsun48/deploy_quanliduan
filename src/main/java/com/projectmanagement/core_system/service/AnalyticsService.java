@@ -496,16 +496,16 @@ public class AnalyticsService {
 
                 if (dtd < 0) {
                     score += 45;
-                    reasons.add("Task is overdue.");
+                    reasons.add("Công việc đã quá hạn.");
                 } else if (dtd <= 1) {
                     score += 25;
-                    reasons.add("Deadline is within 1 day.");
+                    reasons.add("Hạn chót trong vòng 1 ngày.");
                 } else if (dtd <= 3) {
                     score += 18;
-                    reasons.add("Deadline is within 3 days.");
+                    reasons.add("Hạn chót trong vòng 3 ngày.");
                 } else if (dtd <= 7) {
                     score += 10;
-                    reasons.add("Deadline is within 7 days.");
+                    reasons.add("Hạn chót trong vòng 7 ngày.");
                 }
             }
 
@@ -584,15 +584,15 @@ public class AnalyticsService {
         double gap = expectedCompletion - completion;
 
         if (gap > 40d) {
-            reasons.add("Progress is significantly behind expected timeline.");
+            reasons.add("Tiến độ trễ đáng kể so với lộ trình dự kiến.");
             return 18;
         }
         if (gap > 20d) {
-            reasons.add("Progress is behind expected timeline.");
+            reasons.add("Tiến độ trễ so với lộ trình dự kiến.");
             return 12;
         }
         if (gap > 10d) {
-            reasons.add("Progress is slightly behind expected timeline.");
+            reasons.add("Tiến độ trễ nhẹ so với lộ trình dự kiến.");
             return 6;
         }
         return 0;
@@ -604,15 +604,15 @@ public class AnalyticsService {
         }
 
         if (priority == Priority.CRITICAL) {
-            reasons.add("Task priority is CRITICAL.");
+            reasons.add("Độ ưu tiên công việc: KHẨN CẤP.");
             return 10;
         }
         if (priority == Priority.HIGH) {
-            reasons.add("Task priority is HIGH.");
+            reasons.add("Độ ưu tiên công việc: CAO.");
             return 7;
         }
         if (priority == Priority.MEDIUM) {
-            reasons.add("Task priority is MEDIUM.");
+            reasons.add("Độ ưu tiên công việc: TRUNG BÌNH.");
             return 3;
         }
         return 0;
@@ -625,15 +625,15 @@ public class AnalyticsService {
 
         int load = openLoadByAssignee.getOrDefault(task.getAssignee().getId(), 0);
         if (load >= 10) {
-            reasons.add("Assignee has very high open workload.");
+            reasons.add("Người thực hiện có khối lượng công việc đang mở rất cao.");
             return 12;
         }
         if (load >= 6) {
-            reasons.add("Assignee has high open workload.");
+            reasons.add("Người thực hiện có khối lượng công việc đang mở cao.");
             return 8;
         }
         if (load >= 3) {
-            reasons.add("Assignee has moderate open workload.");
+            reasons.add("Người thực hiện có khối lượng công việc đang mở ở mức trung bình.");
             return 4;
         }
         return 0;
@@ -646,15 +646,15 @@ public class AnalyticsService {
 
         long daysToProjectDeadline = ChronoUnit.DAYS.between(today, project.getDeadline());
         if (daysToProjectDeadline < 0) {
-            reasons.add("Project deadline has already passed.");
+            reasons.add("Hạn chót của dự án đã trôi qua.");
             return 12;
         }
         if (daysToProjectDeadline <= 3) {
-            reasons.add("Project deadline is within 3 days.");
+            reasons.add("Hạn chót dự án trong vòng 3 ngày tới.");
             return 10;
         }
         if (daysToProjectDeadline <= 7) {
-            reasons.add("Project deadline is within 7 days.");
+            reasons.add("Hạn chót dự án trong vòng 7 ngày tới.");
             return 6;
         }
         return 0;
@@ -859,13 +859,21 @@ public class AnalyticsService {
             throw new AccessDeniedException("Trưởng phòng chưa được gán phòng ban!");
         }
 
-        Department managedDepartment = departmentRepository.findById(managerDepartmentId)
-                .orElseThrow(() -> new AccessDeniedException("Phòng ban quản lý không tồn tại!"));
+        // Kiểm tra xem Manager có thuộc đúng phòng ban này không
+        if (actor.getDepartment() != null
+                && StringUtils.hasText(actor.getDepartment().getId())
+                && actor.getDepartment().getId().equals(managerDepartmentId)) {
+            // Có quyền truy cập vì thuộc phòng ban này
+        } else {
+            // Kiểm tra thêm trường manager trong Department (Fallback phòng hờ)
+            Department managedDepartment = departmentRepository.findById(managerDepartmentId)
+                    .orElseThrow(() -> new AccessDeniedException("Phòng ban quản lý không tồn tại!"));
 
-        if (managedDepartment.getManager() == null
-                || !StringUtils.hasText(managedDepartment.getManager().getId())
-                || !managedDepartment.getManager().getId().equals(actor.getId())) {
-            throw new AccessDeniedException("Bạn không phải trưởng phòng quản lý chính thức của phòng ban này!");
+            if (managedDepartment.getManager() == null
+                    || !StringUtils.hasText(managedDepartment.getManager().getId())
+                    || !managedDepartment.getManager().getId().equals(actor.getId())) {
+                throw new AccessDeniedException("Bạn không phải trưởng phòng quản lý chính thức hoặc không thuộc phòng ban này!");
+            }
         }
 
         if (StringUtils.hasText(requestedDepartmentId) && !managerDepartmentId.equals(requestedDepartmentId)) {

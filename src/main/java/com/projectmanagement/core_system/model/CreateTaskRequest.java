@@ -10,6 +10,7 @@ public class CreateTaskRequest {
     private String title;
     private String description;
     private LocalDate deadline;
+    private LocalDate startDate;
     private Priority priority;
 
     public String getTitle() {
@@ -34,6 +35,14 @@ public class CreateTaskRequest {
 
     public void setDeadline(LocalDate deadline) {
         this.deadline = deadline;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
     }
 
     public Priority getPriority() {

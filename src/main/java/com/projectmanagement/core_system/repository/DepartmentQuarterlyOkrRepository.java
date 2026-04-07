@@ -9,7 +9,11 @@ import java.util.Optional;
 
 @Repository
 public interface DepartmentQuarterlyOkrRepository extends MongoRepository<DepartmentQuarterlyOkr, String> {
-    Optional<DepartmentQuarterlyOkr> findByDepartment_IdAndYearAndQuarter(String departmentId, Integer year, Integer quarter);
+    Optional<DepartmentQuarterlyOkr> findByDepartment_IdAndYearAndQuarter(String departmentId, Integer year,
+            Integer quarter);
+
     List<DepartmentQuarterlyOkr> findByDepartment_IdOrderByYearDescQuarterDesc(String departmentId);
-    List<DepartmentQuarterlyOkr> findByDepartment_IdAndYearAndQuarterOrderByYearDescQuarterDesc(String departmentId, Integer year, Integer quarter);
+
+    List<DepartmentQuarterlyOkr> findByDepartment_IdAndYearAndQuarterOrderByYearDescQuarterDesc(String departmentId,
+            Integer year, Integer quarter);
 }

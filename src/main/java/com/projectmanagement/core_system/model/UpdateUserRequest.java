@@ -14,6 +14,7 @@ public class UpdateUserRequest {
     private String email;
     private String deptId;
     private ERole role;
+    private String successorId;
 
     public String getEmail() {
         return email;
@@ -37,6 +38,14 @@ public class UpdateUserRequest {
 
     public void setRole(ERole role) {
         this.role = role;
+    }
+
+    public String getSuccessorId() {
+        return successorId;
+    }
+
+    public void setSuccessorId(String successorId) {
+        this.successorId = successorId;
     }
 }
 

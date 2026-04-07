@@ -13,4 +13,7 @@ public interface DepartmentRepository extends MongoRepository<Department, String
     // 🔥 MỚI: Kiểm tra trùng tên KHÔNG phân biệt hoa thường
     // (Ví dụ: Đã có "IT" thì không cho tạo "it" hay "It" nữa)
     boolean existsByNameIgnoreCase(String name);
+
+    // Tìm phòng ban theo ID của Trưởng phòng
+    java.util.Optional<com.projectmanagement.core_system.model.Department> findByManager_Id(String managerId);
 }

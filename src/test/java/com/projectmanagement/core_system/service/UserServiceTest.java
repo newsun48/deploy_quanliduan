@@ -64,7 +64,7 @@ class UserServiceTest {
     void updateUserStatus_rejectsDeactivatingAdminTarget() {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User targetAdmin = buildUser("admin-target", "other-admin@example.com", ERole.ADMIN, true);
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false, null);
 
         when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
         when(userRepository.findById("admin-target")).thenReturn(Optional.of(targetAdmin));
@@ -79,7 +79,7 @@ class UserServiceTest {
     void updateUserStatus_allowsLockingNonAdminUser() {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User employee = buildUser("employee-1", "employee@example.com", ERole.EMPLOYEE, true);
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false, null);
 
         when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
         when(userRepository.findById("employee-1")).thenReturn(Optional.of(employee));
@@ -96,7 +96,7 @@ class UserServiceTest {
         User actorAdmin = buildUser("admin-actor", "admin@example.com", ERole.ADMIN, true);
         User pendingUser = buildUser("pending-1", "pending@example.com", null, false);
         pendingUser.setApprovalStatus(ApprovalStatus.PENDING);
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(true);
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest(true, null);
 
         when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(actorAdmin));
         when(userRepository.findById("pending-1")).thenReturn(Optional.of(pendingUser));

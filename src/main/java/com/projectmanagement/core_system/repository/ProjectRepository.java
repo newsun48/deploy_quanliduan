@@ -22,6 +22,9 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
     List<Project> findByIsDeletedFalse();
     List<Project> findByIsDeletedFalseAndDepartment_Id(String departmentId);
     List<Project> findByIsDeletedFalseAndNameContainingIgnoreCase(String name);
+    boolean existsByNameIgnoreCaseAndIsDeletedFalse(String name);
+    boolean existsByDepartment_IdAndStatusAndIsDeletedFalse(String departmentId, com.projectmanagement.core_system.enums.ProjectStatus status);
+    List<Project> findByMembers_IdAndIsDeletedFalse(String userId);
     
     // Deleted projects support
     List<Project> findByIsDeletedTrue();

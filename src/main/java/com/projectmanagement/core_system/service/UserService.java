@@ -10,8 +10,11 @@ import com.projectmanagement.core_system.model.SignupRequest;
 import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
+import com.projectmanagement.core_system.repository.ProjectRepository;
 import com.projectmanagement.core_system.repository.TaskRepository;
+import com.projectmanagement.core_system.repository.UserActivityRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
+import com.projectmanagement.core_system.model.UserActivity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,6 +55,12 @@ public class UserService {
 
     @Autowired
     private TaskRepository taskRepository;
+
+    @Autowired
+    private ProjectRepository projectRepository;
+    
+    @Autowired
+    private UserActivityRepository userActivityRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -152,7 +161,7 @@ public class UserService {
 
     // 2. Lấy tất cả
     public List<User> getAllUsers() { 
-        return userRepository.findAll(); 
+        return userRepository.findAllByIsDeletedFalse(); 
     }
 
     public User signupPendingUser(SignupRequest request) {
@@ -172,8 +181,8 @@ public class UserService {
         String normalizedEmail = normalizeEmail(request.getEmail());
         String normalizedFullName = request.getFullName().trim();
 
-        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-            throw new RuntimeException("Email '" + normalizedEmail + "' đã tồn tại trong hệ thống!");
+        if (userRepository.existsByEmailIgnoreCaseAndIsDeletedFalse(normalizedEmail)) {
+            throw new RuntimeException("Email '" + normalizedEmail + "' đã tồn tại trong hệ thống (đang hoạt động)!");
         }
 
         User user = new User();
@@ -326,22 +335,58 @@ public class UserService {
 
     // 3. Xóa User
     public void deleteUser(String userId) {
-        deleteUser(userId, null);
+        deleteUser(userId, null, null);
     }
 
     public void deleteUser(String userId, String actorEmail) {
+        deleteUser(userId, actorEmail, null);
+    }
+
+    public void deleteUser(String userId, String actorEmail, String successorId) {
         User actor = requireAdminActor(actorEmail);
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User không tồn tại!"));
+        
         if (user.getRole() == com.projectmanagement.core_system.enums.ERole.ADMIN) {
             throw new RuntimeException("Không được phép xóa tài khoản Quản trị viên (ADMIN)!");
         }
+
+        // CASE: Nếu là Trưởng phòng, yêu cầu bàn giao trước khi xóa
+        Department managedDept = departmentRepository.findByManager_Id(user.getId()).orElse(null);
+        if (managedDept != null) {
+            if (!StringUtils.hasText(successorId)) {
+                boolean hasActiveProjects = projectRepository.existsByDepartment_IdAndStatusAndIsDeletedFalse(
+                        managedDept.getId(), com.projectmanagement.core_system.enums.ProjectStatus.OPEN);
+                
+                String errorMsg = "Người dùng này đang là Trưởng phòng của " + managedDept.getName();
+                if (hasActiveProjects) {
+                    errorMsg += " và đang quản lý các dự án đang hoạt động. Vui lòng chỉ định người kế nhiệm trước khi xóa tài khoản!";
+                } else {
+                    errorMsg += ". Vui lòng chỉ định người kế nhiệm trước khi xóa tài khoản!";
+                }
+                throw new RuntimeException(errorMsg);
+            }
+
+            performManagerHandover(actor, user, managedDept, successorId);
+        }
+
         if (taskRepository.existsByAssignee_Id(userId)) {
             throw new RuntimeException("Không thể xóa nhân viên này vì vẫn còn công việc đang được giao!");
         }
+
+        String originalEmail = user.getEmail();
+        String deletedEmail = originalEmail + "#DELETED#" + System.currentTimeMillis();
+        
+        user.setDeleted(true);
+        user.setActive(false);
+        user.setEmail(deletedEmail);
+        userRepository.save(user);
+
         userActivityService.record(actor, user, "USER_DELETED",
                 (actor != null ? actor.getFullName() : "Hệ thống") + " đã xóa tài khoản của " + user.getFullName(),
-                Map.of("role", roleNameOrEmpty(user)));
-        userRepository.deleteById(userId);
+                Map.of(
+                    "role", roleNameOrEmpty(user), 
+                    "originalEmail", originalEmail
+                ));
     }
 
     // 4. Lấy theo ID
@@ -349,12 +394,11 @@ public class UserService {
         return userRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy User: " + id));
     }
 
-    // 5. 🔥 MỚI: Tìm kiếm User
     public List<User> searchUsers(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
-            return getAllUsers(); // Nếu từ khóa rỗng thì trả về tất cả
+            return getAllUsers();
         }
-        return userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(keyword, keyword);
+        return userRepository.searchActiveUsers(keyword, keyword);
     }
 
     // 6. 🔥 MỚI: Đổi mật khẩu
@@ -671,8 +715,32 @@ public class UserService {
         }
 
         Department oldDepartment = user.getDepartment();
-        com.projectmanagement.core_system.enums.ERole oldRole = user.getRole();
+        ERole oldRole = user.getRole();
         String oldEmail = user.getEmail();
+
+        // Kiểm tra xem User này có đang thực sự là Trưởng phòng của phòng ban nào không
+        Department managedDepartment = departmentRepository.findByManager_Id(user.getId()).orElse(null);
+        boolean roleChanged = request.getRole() != null && oldRole != request.getRole();
+        boolean deptChanged = request.getDeptId() != null && !request.getDeptId().isEmpty() && 
+                              (oldDepartment == null || !oldDepartment.getId().equals(request.getDeptId()));
+
+        // CASE: Người này đang là Trưởng phòng hiện tại và Admin muốn hạ cấp hoặc chuyển đi
+        if (managedDepartment != null && (roleChanged || deptChanged)) {
+            if (!StringUtils.hasText(request.getSuccessorId())) {
+                boolean hasActiveProjects = projectRepository.existsByDepartment_IdAndStatusAndIsDeletedFalse(
+                        managedDepartment.getId(), com.projectmanagement.core_system.enums.ProjectStatus.OPEN);
+                
+                String errorMsg = "Người dùng này đang là Trưởng phòng của " + managedDepartment.getName();
+                if (hasActiveProjects) {
+                    errorMsg += " và đang quản lý các dự án đang hoạt động. Vui lòng chỉ định người kế nhiệm trước khi thay đổi!";
+                } else {
+                    errorMsg += ". Vui lòng chỉ định người kế nhiệm trước khi thay đổi!";
+                }
+                throw new RuntimeException(errorMsg);
+            }
+
+            performManagerHandover(admin, user, managedDepartment, request.getSuccessorId());
+        }
 
         if (request.getDeptId() != null && !request.getDeptId().isEmpty()) {
             Department dept = departmentRepository.findById(request.getDeptId())
@@ -689,24 +757,8 @@ public class UserService {
 
         user = userRepository.save(user);
 
-        // Bidirectional Manager Sync
-        boolean roleChanged = request.getRole() != null && oldRole != request.getRole();
-        boolean deptChanged = request.getDeptId() != null && !request.getDeptId().isEmpty() && 
-                              (oldDepartment == null || !oldDepartment.getId().equals(request.getDeptId()));
-
-        // 1. If user was a MANAGER and either their role changed OR they moved to a different department,
-        // we must remove them as manager from their OLD department.
-        if (oldRole == com.projectmanagement.core_system.enums.ERole.MANAGER && (roleChanged || deptChanged)) {
-            if (oldDepartment != null && oldDepartment.getManager() != null 
-                && oldDepartment.getManager().getId().equals(user.getId())) {
-                oldDepartment.setManager(null);
-                departmentRepository.save(oldDepartment);
-            }
-        }
-
-        // 2. If user is NOW a MANAGER and their role changed OR they moved to a new department,
-        // we must assign them as manager to their NEW department.
-        if (user.getRole() == com.projectmanagement.core_system.enums.ERole.MANAGER && (roleChanged || deptChanged)) {
+        // Bi-directional sync cho trường hợp người mới được thăng chức trực tiếp lên Manager (Không qua bàn giao)
+        if (user.getRole() == ERole.MANAGER && (roleChanged || deptChanged)) {
             if (user.getDepartment() != null) {
                 Department currentDept = user.getDepartment();
                 currentDept.setManager(user);
@@ -751,11 +803,59 @@ public class UserService {
             return savedUser;
         }
 
+        // CASE: Khóa tài khoản (active: false)
+        if (Boolean.FALSE.equals(request.getActive())) {
+            Department managedDept = departmentRepository.findByManager_Id(user.getId()).orElse(null);
+            if (managedDept != null) {
+                if (!StringUtils.hasText(request.getSuccessorId())) {
+                    boolean hasActiveProjects = projectRepository.existsByDepartment_IdAndStatusAndIsDeletedFalse(
+                            managedDept.getId(), com.projectmanagement.core_system.enums.ProjectStatus.OPEN);
+                    
+                    String errorMsg = "Người dùng này đang là Trưởng phòng của " + managedDept.getName();
+                    if (hasActiveProjects) {
+                        errorMsg += " và đang quản lý các dự án đang hoạt động. Vui lòng chỉ định người kế nhiệm trước khi khóa tài khoản!";
+                    } else {
+                        errorMsg += ". Vui lòng chỉ định người kế nhiệm trước khi khóa tài khoản!";
+                    }
+                    throw new RuntimeException(errorMsg);
+                }
+
+                performManagerHandover(admin, user, managedDept, request.getSuccessorId());
+            }
+        }
+
         user.setActive(request.getActive());
         User savedUser = userRepository.save(user);
         userActivityService.record(admin, savedUser, request.getActive() ? "USER_UNLOCKED" : "USER_LOCKED",
                 admin.getFullName() + (request.getActive() ? " đã mở khóa tài khoản " : " đã khóa tài khoản ") + savedUser.getFullName());
         return savedUser;
+    }
+
+    private void performManagerHandover(User admin, User predecessor, Department managedDepartment, String successorId) {
+        if (!StringUtils.hasText(successorId)) return;
+
+        if (successorId.equals(predecessor.getId())) {
+            throw new RuntimeException("Người kế nhiệm không thể là chính người đang bị thay thế!");
+        }
+
+        User successor = userRepository.findById(successorId)
+                .orElseThrow(() -> new RuntimeException("Người kế nhiệm không tồn tại!"));
+
+        if (!successor.isActive() && !successor.getId().equals(predecessor.getId())) {
+            throw new RuntimeException("Người kế nhiệm đang bị khóa tài khoản!");
+        }
+
+        // Thực hiện bàn giao: Thăng chức người kế nhiệm
+        successor.setRole(ERole.MANAGER);
+        successor.setDepartment(managedDepartment);
+        userRepository.save(successor);
+
+        managedDepartment.setManager(successor);
+        departmentRepository.save(managedDepartment);
+
+        userActivityService.record(admin, successor, "PROMOTED_TO_MANAGER",
+                admin.getFullName() + " đã thăng chức " + successor.getFullName() + " làm Trưởng phòng thay thế cho " + predecessor.getFullName(),
+                Map.of("departmentId", managedDepartment.getId(), "predecessorId", predecessor.getId()));
     }
 
     // 🔥 6. MỚI: Cập nhật Avatar URL
@@ -885,5 +985,105 @@ public class UserService {
                 + "Ly do: " + reason + "\n\n"
                 + "Ban co the lien he quan tri vien de duoc huong dan them.";
         emailDeliveryService.sendEmail(user.getEmail(), "Tai khoan da bi tu choi phe duyet", message, null);
+    }
+
+    // 12. HOÀN TÁC HOẠT ĐỘNG
+    public void undoActivity(String activityId, String adminEmail) {
+        User admin = requireAdminActor(adminEmail);
+        UserActivity activity = userActivityRepository.findById(activityId)
+                .orElseThrow(() -> new RuntimeException("Hoạt động không tồn tại!"));
+        
+        String targetUserId = activity.getTargetUserId();
+        if (targetUserId == null) {
+            throw new RuntimeException("Hoạt động này không có đối tượng người dùng cụ thể để hoàn tác!");
+        }
+
+        User targetUser = userRepository.findById(targetUserId).orElse(null);
+        if (targetUser == null) {
+             throw new RuntimeException("Người dùng liên quan đến hoạt động này không còn tồn tại trong hệ thống!");
+        }
+
+        Map<String, Object> metadata = activity.getMetadata();
+
+        switch (activity.getType()) {
+            case "USER_LOCKED":
+                targetUser.setActive(true);
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Mở khóa tài khoản của " + targetUser.getFullName());
+                break;
+            case "USER_UNLOCKED":
+                targetUser.setActive(false);
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Khóa tài khoản của " + targetUser.getFullName());
+                break;
+            case "USER_APPROVED":
+                targetUser.setApprovalStatus(com.projectmanagement.core_system.enums.ApprovalStatus.PENDING);
+                targetUser.setActive(false);
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Đưa tài khoản " + targetUser.getFullName() + " về trạng thái Chờ duyệt");
+                break;
+            case "USER_REJECTED":
+                targetUser.setApprovalStatus(com.projectmanagement.core_system.enums.ApprovalStatus.PENDING);
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Đưa tài khoản " + targetUser.getFullName() + " về trạng thái Chờ duyệt");
+                break;
+            case "USER_UPDATED":
+                if (metadata.containsKey("oldEmail")) {
+                    String oldEmail = (String) metadata.get("oldEmail");
+                    if (StringUtils.hasText(oldEmail)) targetUser.setEmail(oldEmail);
+                }
+                if (metadata.containsKey("oldRole")) {
+                    String oldRole = (String) metadata.get("oldRole");
+                    if (StringUtils.hasText(oldRole)) {
+                        targetUser.setRole(com.projectmanagement.core_system.enums.ERole.valueOf(oldRole));
+                    }
+                }
+                if (metadata.containsKey("oldDepartmentId")) {
+                    String oldDeptId = (String) metadata.get("oldDepartmentId");
+                    if (StringUtils.hasText(oldDeptId)) {
+                        Department oldDept = departmentRepository.findById(oldDeptId).orElse(null);
+                        targetUser.setDepartment(oldDept);
+                    } else {
+                        targetUser.setDepartment(null);
+                    }
+                }
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Revert các cập nhật thông tin của " + targetUser.getFullName());
+                break;
+            case "PROMOTED_TO_MANAGER":
+                targetUser.setRole(ERole.EMPLOYEE);
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Hủy thăng chức Trưởng phòng của " + targetUser.getFullName());
+                break;
+            case "USER_DELETED":
+                String targetEmail = (String) metadata.get("originalEmail");
+                if (!StringUtils.hasText(targetEmail)) {
+                    // Dự phòng nếu không có metadata (cho dữ liệu cũ)
+                    targetEmail = activity.getTargetUserEmail();
+                    if (targetEmail != null && targetEmail.contains("#DELETED#")) {
+                        targetEmail = targetEmail.split("#DELETED#")[0];
+                    }
+                }
+
+                if (userRepository.existsByEmailIgnoreCaseAndIsDeletedFalse(targetEmail)) {
+                    throw new RuntimeException("Không thể hoàn tác: Email '" + targetEmail + "' hiện tại đã được sử dụng bởi một tài khoản khác!");
+                }
+
+                targetUser.setEmail(targetEmail);
+                targetUser.setDeleted(false);
+                targetUser.setActive(true);
+                userRepository.save(targetUser);
+                userActivityService.record(admin, targetUser, "ACTIVITY_UNDONE", 
+                    "Hoàn tác: Khôi phục tài khoản đã xóa của " + targetUser.getFullName());
+                break;
+            default:
+                throw new RuntimeException("Loại hoạt động này (" + activity.getType() + ") hiện không hỗ trợ hoàn tác tự động!");
+        }
     }
 }

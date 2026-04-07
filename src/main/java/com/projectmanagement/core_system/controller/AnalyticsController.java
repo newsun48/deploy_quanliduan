@@ -33,4 +33,19 @@ public class AnalyticsController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/workload")
+    public ResponseEntity<?> getWorkloadAnalytics(
+            Authentication authentication,
+            @RequestParam(required = false) String departmentId) {
+        try {
+            // Tận dụng dữ liệu từ getDeliveryAnalytics nhưng chỉ trả về workloadDistribution
+            java.util.Map<String, Object> allStats = analyticsService.getDeliveryAnalytics(authentication.getName(), departmentId, 30, 7);
+            return ResponseEntity.ok(allStats.get("workloadDistribution"));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

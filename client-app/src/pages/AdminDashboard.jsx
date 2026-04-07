@@ -167,25 +167,38 @@ const AdminDashboard = () => {
         fetchRequestWorkflowData();
     }, [fetchData, fetchRequestWorkflowData]);
 
-    useEffect(() => {
+    const fetchActivities = useCallback(async () => {
         if (activeTab !== 'activity') return;
-
-        const loadActivities = async () => {
-            try {
-                setActivityLoading(true);
-                setActivityError('');
-                const res = await adminActivityAPI.getRecentActivities(selectedActivityUserId || undefined, 80);
-                setActivityEntries(res.data || []);
-            } catch (err) {
-                const errorData = err.response?.data;
-                setActivityError(typeof errorData === 'string' ? errorData : (errorData?.message || err.message));
-            } finally {
-                setActivityLoading(false);
-            }
-        };
-
-        loadActivities();
+        try {
+            setActivityLoading(true);
+            setActivityError('');
+            const res = await adminActivityAPI.getRecentActivities(selectedActivityUserId || undefined, 80);
+            setActivityEntries(res.data || []);
+        } catch (err) {
+            const errorData = err.response?.data;
+            setActivityError(typeof errorData === 'string' ? errorData : (errorData?.message || err.message));
+        } finally {
+            setActivityLoading(false);
+        }
     }, [activeTab, selectedActivityUserId]);
+
+    useEffect(() => {
+        fetchActivities();
+    }, [fetchActivities]);
+
+    const handleUndoActivity = async (activityId) => {
+        if (!(await askConfirm('Bạn có chắc chắn muốn hoàn tác hoạt động này? Những thay đổi liên quan sẽ được khôi phục về trạng thái trước đó.'))) return;
+        
+        try {
+            await adminActivityAPI.undoActivity(activityId);
+            alert('Đã hoàn tác thành công!');
+            await Promise.all([fetchActivities(), fetchData()]);
+        } catch (err) {
+            const errorData = err.response?.data;
+            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+            alert('Lỗi khi hoàn tác: ' + message);
+        }
+    };
     const handleLogout = () => { localStorage.removeItem('user'); navigate('/'); };
 
     const handleSearchUser = (e) => {
@@ -315,15 +328,75 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteUser = async (id) => {
-        if (!(await askConfirm("Xóa nhân viên này?"))) return;
-        try {
-            await api.delete(`/users/${id}`);
-            fetchData();
-        } catch (err) {
-            console.error(err);
-            const errorData = err.response?.data;
-            const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message || 'Lỗi xóa!');
-            alert(message);
+        const user = users.find(u => u.id === id);
+        if (!user) return;
+
+        // Trường hợp là Trưởng phòng
+        const managedDept = departments.find(d => d.manager?.id === user.id);
+        
+        if (managedDept) {
+            const potentialSuccessors = users.filter(c => 
+                c.id !== user.id && 
+                c.department?.id === managedDept.id &&
+                isApprovedUser(c) && 
+                isUserActive(c)
+            );
+
+            const { value: successorId } = await Swal.fire({
+                title: 'Xóa tài khoản Trưởng phòng',
+                html: `
+                    <div class="text-start">
+                        <div class="alert alert-danger small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Bạn đang xóa tài khoản của Trưởng phòng <b>${formatDeptName(managedDept.name)}</b>. 
+                            Hành động này là vĩnh viễn. Bạn <b>bắt buộc</b> phải chọn người kế nhiệm.
+                        </div>
+                        <label class="form-label fw-bold small text-muted">Chọn người kế nhiệm <span class="text-danger">*</span></label>
+                        <select id="swal-delete-successor" class="form-select">
+                            <option value="">-- Chọn nhân viên thay thế --</option>
+                            ${potentialSuccessors.map(c => `<option value="${c.id}">${c.fullName} (${c.email})</option>`).join('')}
+                        </select>
+                        <div class="form-text mt-2 small">Quyền quản lý phòng ban sẽ được chuyển giao ngay lập tức cho người này.</div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Xóa vĩnh viễn & Bàn giao',
+                cancelButtonText: 'Hủy',
+                confirmButtonColor: '#dc3545',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const sid = document.getElementById('swal-delete-successor').value;
+                    if (!sid) {
+                        Swal.showValidationMessage('Vui lòng chọn người kế nhiệm!');
+                        return false;
+                    }
+                    return sid;
+                }
+            });
+
+            if (!successorId) return;
+
+            try {
+                await userAPI.deleteUser(id, successorId);
+                alert(`Đã xóa tài khoản của ${user.fullName} và bàn giao quyền quản lý thành công!`);
+                fetchData();
+            } catch (err) {
+                const errorData = err.response?.data;
+                const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+                alert('Lỗi: ' + message);
+            }
+        } else {
+            // Nhân viên thường
+            if (!(await askConfirm(`Xóa nhân viên ${user.fullName}? Hành động này là vĩnh viễn và không thể hoàn tác.`))) return;
+            try {
+                await userAPI.deleteUser(id);
+                alert('Đã xóa thành công!');
+                fetchData();
+            } catch (err) {
+                const errorData = err.response?.data;
+                const message = typeof errorData === 'string' ? errorData : (errorData?.message || err.message);
+                alert('Lỗi: ' + message);
+            }
         }
     };
 
@@ -331,6 +404,7 @@ const AdminDashboard = () => {
     const [editEmail, setEditEmail] = useState('');
     const [editDeptId, setEditDeptId] = useState('');
     const [editRole, setEditRole] = useState('');
+    const [editSuccessorId, setEditSuccessorId] = useState('');
 
     const handleEditUser = (id) => {
         const user = users.find(u => u.id === id);
@@ -339,6 +413,7 @@ const AdminDashboard = () => {
         setEditEmail(user.email);
         setEditDeptId(user.department?.id || '');
         setEditRole(user.role);
+        setEditSuccessorId('');
     };
 
     const handleSaveEdit = async () => {
@@ -346,7 +421,8 @@ const AdminDashboard = () => {
             await userAPI.updateUser(editingUserId, {
                 email: editEmail,
                 deptId: editDeptId,
-                role: editRole
+                role: editRole,
+                successorId: editSuccessorId
             });
             alert('Cập nhật thành công!');
             fetchData();
@@ -474,18 +550,14 @@ const AdminDashboard = () => {
         if (!isApprovedUser(user)) return;
 
         const willLock = isUserActive(user);
-        const confirmText = willLock
-            ? `Khóa tài khoản ${user.fullName}? Người này sẽ không thể đăng nhập.`
-            : `Mở khóa tài khoản ${user.fullName}?`;
-
-        if (!(await askConfirm(confirmText))) return;
+        const actionText = willLock ? 'Khóa' : 'Mở khóa';
+        
+        if (!(await askConfirm(`${actionText} tài khoản ${user.fullName}?`))) return;
 
         try {
             await userAPI.updateUserStatus(user.id, !willLock);
-            alert(willLock ? 'Đã khóa tài khoản!' : 'Đã mở khóa tài khoản!');
-            if (editingUserId === user.id) {
-                setEditingUserId(null);
-            }
+            alert(`Đã ${actionText.toLowerCase()} tài khoản!`);
+            if (editingUserId === user.id) setEditingUserId(null);
             await fetchData();
         } catch (err) {
             const errorData = err.response?.data;
@@ -1220,15 +1292,48 @@ const AdminDashboard = () => {
                                                                 </td>
                                                                 <td className="admin-user-column-role" data-label="Phân quyền">
                                                                     {isEditing ? (
-                                                                        <select
-                                                                            className="form-select form-select-sm modern-input admin-inline-input"
-                                                                            value={editRole}
-                                                                            onChange={(e) => setEditRole(e.target.value)}
-                                                                        >
-                                                                            <option value="EMPLOYEE">Nhân viên</option>
-                                                                            <option value="MANAGER">Trưởng phòng</option>
-                                                                            <option value="ADMIN">Quản trị viên</option>
-                                                                        </select>
+                                                                        <>
+                                                                            <select
+                                                                                className="form-select form-select-sm modern-input admin-inline-input"
+                                                                                value={editRole}
+                                                                                onChange={(e) => setEditRole(e.target.value)}
+                                                                            >
+                                                                                <option value="EMPLOYEE">Nhân viên</option>
+                                                                                <option value="MANAGER">Trưởng phòng</option>
+                                                                                <option value="ADMIN">Quản trị viên</option>
+                                                                            </select>
+                                                                            {u.role === 'MANAGER' && (editRole !== 'MANAGER' || (editDeptId !== (u.department?.id || ''))) && (
+                                                                                <div className="mt-2 animate-fade-in">
+                                                                                    <label className="text-danger small fw-bold d-block mb-1">
+                                                                                        <i className="bi bi-person-up me-1"></i>Chọn người kế nhiệm <span className="text-danger">*</span>
+                                                                                    </label>
+                                                                                    <select
+                                                                                        className="form-select form-select-sm border-danger-subtle modern-input"
+                                                                                        value={editSuccessorId}
+                                                                                        onChange={(e) => setEditSuccessorId(e.target.value)}
+                                                                                        required
+                                                                                    >
+                                                                                        <option value="">-- Chọn người thay thế --</option>
+                                                                                        {users
+                                                                                            .filter(candidate => 
+                                                                                                candidate.id !== u.id && 
+                                                                                                candidate.department?.id === u.department?.id &&
+                                                                                                isApprovedUser(candidate) &&
+                                                                                                isUserActive(candidate)
+                                                                                            )
+                                                                                            .map(candidate => (
+                                                                                                <option key={candidate.id} value={candidate.id}>
+                                                                                                    {candidate.fullName} ({candidate.email})
+                                                                                                </option>
+                                                                                            ))
+                                                                                        }
+                                                                                    </select>
+                                                                                    <div className="form-text text-danger" style={{ fontSize: '0.65rem' }}>
+                                                                                        Bắt buộc chọn người kế nhiệm để không gián đoạn quản lý phòng ban.
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </>
                                                                     ) : (
                                                                         <span className={`badge ${roleBadge.className} rounded-pill admin-role-badge`}>
                                                                             {roleBadge.text}
@@ -1541,7 +1646,18 @@ const AdminDashboard = () => {
                                                             </div>
                                                             <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">{entry.type}</span>
                                                         </div>
-                                                        <div className="small text-muted">{formatActivityTime(entry.createdAt)}</div>
+                                                        <div className="d-flex justify-content-between align-items-center">
+                                                            <div className="small text-muted">{formatActivityTime(entry.createdAt)}</div>
+                                                            {['USER_LOCKED', 'USER_UNLOCKED', 'USER_APPROVED', 'USER_REJECTED', 'USER_UPDATED', 'PROMOTED_TO_MANAGER', 'DEPARTMENT_TRANSFERRED', 'USER_DELETED'].includes(entry.type) && (
+                                                                <button
+                                                                    className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold animate-pulse-subtle shadow-sm"
+                                                                    style={{ fontSize: '0.75rem' }}
+                                                                    onClick={(e) => { e.stopPropagation(); handleUndoActivity(entry.id); }}
+                                                                >
+                                                                    <i className="bi bi-arrow-counterclockwise me-1"></i>Hoàn tác
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

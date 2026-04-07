@@ -85,21 +85,25 @@ public class DepartmentPerformanceService {
             if (project.getDepartment() == null || !StringUtils.hasText(project.getDepartment().getId())) {
                 continue;
             }
-            projectsByDepartment.computeIfAbsent(project.getDepartment().getId(), key -> new ArrayList<>()).add(project);
+            projectsByDepartment.computeIfAbsent(project.getDepartment().getId(), key -> new ArrayList<>())
+                    .add(project);
         }
 
         Map<String, List<Task>> tasksByDepartment = new HashMap<>();
         for (Task task : tasks) {
-            if (task.getProject() == null || task.getProject().getDepartment() == null || !StringUtils.hasText(task.getProject().getDepartment().getId())) {
+            if (task.getProject() == null || task.getProject().getDepartment() == null
+                    || !StringUtils.hasText(task.getProject().getDepartment().getId())) {
                 continue;
             }
-            tasksByDepartment.computeIfAbsent(task.getProject().getDepartment().getId(), key -> new ArrayList<>()).add(task);
+            tasksByDepartment.computeIfAbsent(task.getProject().getDepartment().getId(), key -> new ArrayList<>())
+                    .add(task);
         }
 
         Map<String, List<TaskActivity>> taskActivitiesByDepartment = new HashMap<>();
         for (TaskActivity taskActivity : taskActivities) {
             Task activityTask = findTaskById(tasks, taskActivity.getTaskId());
-            if (activityTask == null || activityTask.getProject() == null || activityTask.getProject().getDepartment() == null) {
+            if (activityTask == null || activityTask.getProject() == null
+                    || activityTask.getProject().getDepartment() == null) {
                 continue;
             }
             String departmentId = activityTask.getProject().getDepartment().getId();
@@ -137,10 +141,13 @@ public class DepartmentPerformanceService {
             List<Task> departmentTasks = tasksByDepartment.getOrDefault(department.getId(), List.of());
 
             long activeUsers = departmentUsers.stream().filter(User::isActive).count();
-            long openProjects = departmentProjects.stream().filter(project -> project.getStatus() == ProjectStatus.OPEN).count();
-            long closedProjects = departmentProjects.stream().filter(project -> project.getStatus() == ProjectStatus.CLOSED).count();
+            long openProjects = departmentProjects.stream().filter(project -> project.getStatus() == ProjectStatus.OPEN)
+                    .count();
+            long closedProjects = departmentProjects.stream()
+                    .filter(project -> project.getStatus() == ProjectStatus.CLOSED).count();
             long todoTasks = departmentTasks.stream().filter(task -> task.getStatus() == TaskStatus.TO_DO).count();
-            long inProgressTasks = departmentTasks.stream().filter(task -> task.getStatus() == TaskStatus.IN_PROGRESS).count();
+            long inProgressTasks = departmentTasks.stream().filter(task -> task.getStatus() == TaskStatus.IN_PROGRESS)
+                    .count();
             long doneTasks = departmentTasks.stream().filter(task -> task.getStatus() == TaskStatus.DONE).count();
             long overdueTasks = departmentTasks.stream()
                     .filter(task -> task.getDeadline() != null)
@@ -170,8 +177,10 @@ public class DepartmentPerformanceService {
             departmentKpi.put("overdueTasks", overdueTasks);
             departmentKpi.put("completionRate", completionRate);
             departmentKpi.put("averageTaskProgress", avgTaskProgress);
-            departmentKpi.put("taskActivityCount", taskActivitiesByDepartment.getOrDefault(department.getId(), List.of()).size());
-            departmentKpi.put("userActivityCount", userActivitiesByDepartment.getOrDefault(department.getId(), List.of()).size());
+            departmentKpi.put("taskActivityCount",
+                    taskActivitiesByDepartment.getOrDefault(department.getId(), List.of()).size());
+            departmentKpi.put("userActivityCount",
+                    userActivitiesByDepartment.getOrDefault(department.getId(), List.of()).size());
             result.add(departmentKpi);
         }
 
@@ -211,15 +220,16 @@ public class DepartmentPerformanceService {
 
         DepartmentQuarterlyOkr saved = departmentQuarterlyOkrRepository.save(okr);
         userActivityService.record(actor, actor, "DEPARTMENT_OKR_UPSERTED",
-                actor.getFullName() + " đã cập nhật OKR quý " + saved.getQuarter() + "/" + saved.getYear() + " cho phòng ban " + department.getName(),
+                actor.getFullName() + " đã cập nhật OKR quý " + saved.getQuarter() + "/" + saved.getYear()
+                        + " cho phòng ban " + department.getName(),
                 Map.of(
                         "departmentId", department.getId(),
-                        "okrId", saved.getId()
-                ));
+                        "okrId", saved.getId()));
         return saved;
     }
 
-    public DepartmentQuarterlyOkr updateKeyResultProgress(String okrId, String keyResultId, UpdateOkrKeyResultRequest request, String actorEmail) {
+    public DepartmentQuarterlyOkr updateKeyResultProgress(String okrId, String keyResultId,
+            UpdateOkrKeyResultRequest request, String actorEmail) {
         User actor = requireActiveUser(actorEmail);
         DepartmentQuarterlyOkr okr = departmentQuarterlyOkrRepository.findById(okrId)
                 .orElseThrow(() -> new RuntimeException("OKR không tồn tại!"));
@@ -244,7 +254,8 @@ public class DepartmentPerformanceService {
         return saved;
     }
 
-    public DepartmentQuarterlyOkr updateReviewSummary(String okrId, UpdateOkrReviewSummaryRequest request, String actorEmail) {
+    public DepartmentQuarterlyOkr updateReviewSummary(String okrId, UpdateOkrReviewSummaryRequest request,
+            String actorEmail) {
         User actor = requireActiveUser(actorEmail);
         DepartmentQuarterlyOkr okr = departmentQuarterlyOkrRepository.findById(okrId)
                 .orElseThrow(() -> new RuntimeException("OKR không tồn tại!"));
@@ -259,13 +270,99 @@ public class DepartmentPerformanceService {
         return saved;
     }
 
-    public List<DepartmentQuarterlyOkr> getDepartmentOkrs(String departmentId, Integer year, Integer quarter, String actorEmail) {
+    public DepartmentQuarterlyOkr generateQuarterlyInsights(String departmentId, Integer year, Integer quarter,
+            String actorEmail) {
+        User actor = requireActiveUser(actorEmail);
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
+        ensureCanManageDepartment(actor, department);
+
+        // 1. Thu thập dữ liệu thực tế của phòng ban
+        List<Project> projects = projectRepository.findByIsDeletedFalse().stream()
+                .filter(p -> p.getDepartment() != null && departmentId.equals(p.getDepartment().getId()))
+                .toList();
+
+        List<Task> tasks = taskRepository.findAll().stream()
+                .filter(t -> t.getProject() != null && t.getProject().getDepartment() != null
+                        && departmentId.equals(t.getProject().getDepartment().getId()))
+                .toList();
+
+        long doneTasks = tasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
+        long totalTasks = tasks.size();
+        double completionRate = totalTasks == 0 ? 0 : (double) doneTasks * 100 / totalTasks;
+        long overdueTasks = tasks.stream()
+                .filter(t -> t.getDeadline() != null && t.getDeadline().isBefore(LocalDate.now())
+                        && t.getStatus() != TaskStatus.DONE)
+                .count();
+
+        // 2. Tạo hoặc lấy OKR hiện tại
+        DepartmentQuarterlyOkr okr = departmentQuarterlyOkrRepository
+                .findByDepartment_IdAndYearAndQuarter(departmentId, year, quarter)
+                .orElseGet(DepartmentQuarterlyOkr::new);
+
+        if (okr.getId() == null) {
+            okr.setCreatedAt(System.currentTimeMillis());
+            okr.setDepartment(department);
+            okr.setYear(year);
+            okr.setQuarter(quarter);
+        }
+
+        // 3. Tự động thiết lập Objective và Key Results
+        okr.setObjective("Nâng cao hiệu suất vận hành và hoàn thành danh mục dự án Quý " + quarter + "/" + year);
+
+        List<DepartmentOkrKeyResult> krs = new ArrayList<>();
+
+        // KR 1: Tỷ lệ hoàn thành task
+        krs.add(new DepartmentOkrKeyResult(UUID.randomUUID().toString(),
+                "Đạt tỷ lệ hoàn thành công việc tổng thể trên 85%", 85.0, completionRate, "%"));
+
+        // KR 2: Kiểm soát deadline
+        krs.add(new DepartmentOkrKeyResult(UUID.randomUUID().toString(), "Giảm số lượng task quá hạn xuống dưới 5", 5.0,
+                (double) overdueTasks, "tasks"));
+
+        // KR 3: Tiến độ dự án
+        long openProjects = projects.stream().filter(p -> p.getStatus() == ProjectStatus.OPEN).count();
+        krs.add(new DepartmentOkrKeyResult(UUID.randomUUID().toString(),
+                "Đẩy nhanh tiến độ " + openProjects + " dự án đang mở", (double) openProjects,
+                (double) projects.stream().filter(p -> p.getStatus() == ProjectStatus.CLOSED).count(), "projects"));
+
+        okr.setKeyResults(krs);
+
+        // 4. Viết Review Summary tự động (AI-Style)
+        StringBuilder summary = new StringBuilder();
+        summary.append("Dựa trên phân tích thực tế: ");
+        summary.append("Phòng ban ").append(department.getName()).append(" đang có ").append(totalTasks)
+                .append(" tasks. ");
+        summary.append("Hiệu suất hiện tại đạt ").append(String.format("%.1f", completionRate)).append("%, ");
+        if (overdueTasks > 0) {
+            summary.append("cần chú ý xử lý gấp ").append(overdueTasks)
+                    .append(" task đang quá hạn để đảm bảo uy tín deadline. ");
+        } else {
+            summary.append("đang kiểm soát deadline rất tốt với 0 task quá hạn. ");
+        }
+        summary.append("Mục tiêu trọng tâm tiếp theo là tập trung giải phóng ").append(openProjects)
+                .append(" dự án đang vận hành.");
+
+        okr.setReviewSummary(summary.toString());
+        okr.setUpdatedAt(System.currentTimeMillis());
+
+        DepartmentQuarterlyOkr saved = departmentQuarterlyOkrRepository.save(okr);
+        userActivityService.record(actor, actor, "DEPARTMENT_OKR_AUTO_GENERATED",
+                actor.getFullName() + " đã yêu cầu hệ thống phân tích & tự động tạo OKR Quý " + quarter,
+                Map.of("departmentId", departmentId, "okrId", saved.getId()));
+
+        return saved;
+    }
+
+    public List<DepartmentQuarterlyOkr> getDepartmentOkrs(String departmentId, Integer year, Integer quarter,
+            String actorEmail) {
         User actor = requireActiveUser(actorEmail);
         Department department = departmentRepository.findById(departmentId)
                 .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại!"));
         ensureCanViewDepartment(actor, department);
         if (year != null && quarter != null) {
-            return departmentQuarterlyOkrRepository.findByDepartment_IdAndYearAndQuarterOrderByYearDescQuarterDesc(departmentId, year, quarter);
+            return departmentQuarterlyOkrRepository
+                    .findByDepartment_IdAndYearAndQuarterOrderByYearDescQuarterDesc(departmentId, year, quarter);
         }
         return departmentQuarterlyOkrRepository.findByDepartment_IdOrderByYearDescQuarterDesc(departmentId);
     }
@@ -318,12 +415,23 @@ public class DepartmentPerformanceService {
             return;
         }
 
-        if (actor.getRole() != ERole.MANAGER
-                || department.getManager() == null
-                || !StringUtils.hasText(department.getManager().getId())
-                || !department.getManager().getId().equals(actor.getId())) {
-            throw new AccessDeniedException("Bạn không có quyền cập nhật OKR của phòng ban này!");
+        // Trường hợp 1: Người dùng là Manager được gán đích danh làm Trưởng phòng
+        if (actor.getRole() == ERole.MANAGER
+                && department.getManager() != null
+                && StringUtils.hasText(department.getManager().getId())
+                && department.getManager().getId().equals(actor.getId())) {
+            return;
         }
+
+        // Trường hợp 2: Người dùng có vai trò MANAGER và thuộc đúng phòng ban này
+        if (actor.getRole() == ERole.MANAGER
+                && actor.getDepartment() != null
+                && StringUtils.hasText(actor.getDepartment().getId())
+                && actor.getDepartment().getId().equals(department.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("Bạn không có quyền cập nhật OKR của phòng ban này!");
     }
 
     private void ensureCanViewDepartment(User actor, Department department) {
