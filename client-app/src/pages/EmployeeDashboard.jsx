@@ -368,6 +368,12 @@ const EmployeeDashboard = () => {
                         <i className={`bi bi-list-task top-menu-icon ${activeTab === 'TASKS' ? 'text-primary' : ''}`}></i> Công việc
                     </button>
                     <button 
+                        className={`top-menu-item ${activeTab === 'PROJECTS' ? 'active' : ''}`}
+                        onClick={() => handleTabChange('PROJECTS')}
+                    >
+                        <i className={`bi bi-folder-fill top-menu-icon ${activeTab === 'PROJECTS' ? 'text-primary' : ''}`}></i> Dự án
+                    </button>
+                    <button 
                         className={`top-menu-item ${activeTab === 'REQUESTS' ? 'active' : ''}`}
                         onClick={() => handleTabChange('REQUESTS')}
                     >
@@ -427,6 +433,7 @@ const EmployeeDashboard = () => {
                         <h4 className="page-title mb-0 fs-5">{activeTab === 'TASKS' ? 'Công việc cá nhân' : activeTab === 'REQUESTS' ? 'Yêu cầu nghiệp vụ' : 'Tin nhắn nội bộ'}</h4>
                         <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value={activeTab} onChange={(e) => handleTabChange(e.target.value)}>
                             <option value="TASKS">Công việc</option>
+                            <option value="PROJECTS">Dự án</option>
                             <option value="REQUESTS">Yêu cầu</option>
                             <option value="CHAT">Tin nhắn</option>
                         </select>
@@ -543,6 +550,46 @@ const EmployeeDashboard = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    ) : activeTab === 'PROJECTS' ? (
+                        <div className="animate-fade-in flex-grow-1">
+                             <div className="modern-card p-4" style={{ minHeight: 'calc(100vh - 210px)' }}>
+                                <div className="task-card-header mb-4 border-0 ps-0">
+                                    <h5 className="fw-bold text-dark mb-0"><i className="bi bi-folder2-open me-2 text-primary"></i>Dự án đang tham gia</h5>
+                                </div>
+                                <div className="row g-4">
+                                    {chatProjects.length > 0 ? chatProjects.map(p => (
+                                        <div key={p.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
+                                            <div className="modern-card p-4 transition h-100 border hover-border-primary" style={{ cursor: 'pointer' }} onClick={() => { setChatSelection({ type: 'PROJECT', data: p }); setActiveTab('CHAT'); }}>
+                                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                                    <span className={`badge rounded-pill px-3 py-2 ${p.priority === 'HIGH' ? 'bg-danger-light text-danger' : p.priority === 'MEDIUM' ? 'bg-warning-light text-warning' : 'bg-success-light text-success'}`}>
+                                                        {p.priority}
+                                                    </span>
+                                                    <small className="text-muted"><i className="bi bi-calendar-event me-1"></i>{p.deadline}</small>
+                                                </div>
+                                                <h6 className="fw-bold text-dark mb-2" style={{ fontSize: '1.1rem' }}>{p.name}</h6>
+                                                <p className="text-muted small mb-4 line-clamp-2" style={{ minHeight: '3rem' }}>{p.description}</p>
+                                                <div className="d-flex align-items-center justify-content-between border-top pt-3">
+                                                    <div className="d-flex align-items-center">
+                                                        <div className="bg-light rounded-circle text-center small fw-bold text-secondary me-1" style={{ width: 30, height: 30, lineHeight: '30px' }}>
+                                                            {(p.members || []).length}
+                                                        </div>
+                                                        <small className="text-muted">thành viên</small>
+                                                    </div>
+                                                    <i className="bi bi-arrow-right-short fs-4 text-primary"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="col-12 py-5 text-center text-muted">
+                                            <div className="rounded-circle bg-light p-4 d-inline-block mb-3">
+                                                <i className="bi bi-journal-x fs-1 opacity-25"></i>
+                                            </div>
+                                            <p className="fw-bold">Bạn hiện chưa tham gia dự án nào.</p>
+                                        </div>
+                                    )}
+                                </div>
+                             </div>
                         </div>
                     ) : activeTab === 'REQUESTS' ? (
                         <div className="workflow-shell animate-fade-in">
