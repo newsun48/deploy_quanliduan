@@ -37,6 +37,8 @@ public class Task {
     private List<ChecklistItem> checklistItems = new ArrayList<>();
     private List<AttachmentInfo> attachments = new ArrayList<>();
 
+    private String sourceTemplateTaskId;
+
     @DBRef
     @JsonIgnoreProperties({"department", "members"})
     private Project project;

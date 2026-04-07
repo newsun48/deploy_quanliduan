@@ -4,8 +4,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 // Import các trang bạn vừa tạo trong thư mục pages
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminDashboard from './pages/AdminDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
@@ -37,8 +35,6 @@ function App() {
                 {/* 1. Trang mặc định là trang Đăng nhập */}
                 <Route path="/" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                 {/* 2. Các trang nội bộ (Được bảo vệ bởi PrivateRoute) */}
                 <Route path="/admin" element={
@@ -67,6 +63,12 @@ function App() {
 
                 <Route path="/admin/statistics" element={
                     <PrivateRoute allowedRoles={['ADMIN']}>
+                        <StatisticsPage />
+                    </PrivateRoute>
+                } />
+
+                <Route path="/manager/statistics" element={
+                    <PrivateRoute allowedRoles={['MANAGER']}>
                         <StatisticsPage />
                     </PrivateRoute>
                 } />

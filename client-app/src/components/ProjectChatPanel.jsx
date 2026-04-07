@@ -119,7 +119,6 @@ const ProjectChatPanel = ({ project, currentUser }) => {
             }
 
             const payload = {
-                senderId: currentUser.id,
                 projectId: project.id,
                 content: newMessage || (file ? file.name : ''),
                 messageType,

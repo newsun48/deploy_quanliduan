@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import api, { adminActivityAPI, resolveAppUrl, userAPI } from '../api';
+import api, { adminActivityAPI, requestAPI, resolveAppUrl, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { askConfirm } from '../utils/confirm';
 import NotificationBell from '../components/NotificationBell';
 import Swal from 'sweetalert2';
+import '../components/EnterpriseWorkflow.css';
 import './AdminDashboard.css';
+import {
+    REQUEST_PRIORITY_OPTIONS,
+    REQUEST_TYPE_OPTIONS,
+    formatWorkflowDate,
+    formatWorkflowDateTime,
+    getRequestStatusMeta,
+    normalizeRequestItem,
+} from '../utils/enterpriseWorkflow';
 
 const getProjectTimeStatus = (p) => {
     if (p.status === 'CLOSED') return { text: 'Đã hoàn thành', color: 'bg-success text-white' };
@@ -89,6 +98,11 @@ const AdminDashboard = () => {
     const [activityLoading, setActivityLoading] = useState(false);
     const [activityError, setActivityError] = useState('');
     const [activityFilters, setActivityFilters] = useState({ keyword: '', type: 'ALL', period: 'ALL' });
+    const [escalatedRequests, setEscalatedRequests] = useState([]);
+    const [requestAuditTrail, setRequestAuditTrail] = useState([]);
+    const [requestWorkflowLoading, setRequestWorkflowLoading] = useState(false);
+    const [requestWorkflowError, setRequestWorkflowError] = useState('');
+    const [requestWorkflowFilter, setRequestWorkflowFilter] = useState('ALL');
 
     const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'EMPLOYEE', deptId: '' });
     const [avatarFile, setAvatarFile] = useState(null);
@@ -130,9 +144,28 @@ const AdminDashboard = () => {
         } catch (error) { console.error("Lỗi tải dữ liệu:", error); }
     }, [currentUser.email]);
 
+    const fetchRequestWorkflowData = useCallback(async () => {
+        try {
+            setRequestWorkflowLoading(true);
+            setRequestWorkflowError('');
+            const [queueRes, historyRes] = await Promise.all([
+                requestAPI.getApprovals(),
+                requestAPI.getHistory(),
+            ]);
+            setEscalatedRequests((queueRes.data || []).map(normalizeRequestItem));
+            setRequestAuditTrail((historyRes.data || []).map(normalizeRequestItem));
+        } catch (error) {
+            console.error('Lỗi tải workflow admin:', error);
+            setRequestWorkflowError(typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.message || error.message));
+        } finally {
+            setRequestWorkflowLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+        fetchRequestWorkflowData();
+    }, [fetchData, fetchRequestWorkflowData]);
 
     useEffect(() => {
         if (activeTab !== 'activity') return;
@@ -167,6 +200,33 @@ const AdminDashboard = () => {
     const handleResetActivityFilters = () => {
         setSelectedActivityUserId('');
         setActivityFilters({ keyword: '', type: 'ALL', period: 'ALL' });
+    };
+
+    const handleRequestWorkflowDecision = async (request, approved) => {
+        const result = await Swal.fire({
+            title: approved ? 'Phê duyệt yêu cầu cấp admin' : 'Từ chối yêu cầu cấp admin',
+            input: 'textarea',
+            inputLabel: 'Ghi chú điều phối',
+            inputPlaceholder: 'Thêm hướng xử lý để người gửi và manager có thể theo dõi...',
+            showCancelButton: true,
+            confirmButtonText: approved ? 'Phê duyệt' : 'Từ chối',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: approved ? '#1d6fa3' : '#dc3545',
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            await requestAPI.decide(request.id, {
+                approved,
+                comment: result.value || '',
+            });
+            await fetchRequestWorkflowData();
+            alert(`Đã cập nhật yêu cầu ${request.title}.`);
+        } catch (error) {
+            const message = typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.message || error.message);
+            alert(`Lỗi: ${message}`);
+        }
     };
 
     const formatActivityTime = (value) => {
@@ -369,6 +429,16 @@ const AdminDashboard = () => {
     const activityTypes = useMemo(() => {
         return Array.from(new Set(activityEntries.map((entry) => entry.type).filter(Boolean))).sort();
     }, [activityEntries]);
+    const filteredEscalatedRequests = useMemo(
+        () => escalatedRequests.filter((request) => requestWorkflowFilter === 'ALL' || request.status === requestWorkflowFilter),
+        [escalatedRequests, requestWorkflowFilter]
+    );
+    const requestWorkflowStats = useMemo(() => ({
+        escalated: escalatedRequests.length,
+        pending: escalatedRequests.filter((request) => request.status === 'PENDING').length,
+        approved: requestAuditTrail.filter((request) => request.status === 'APPROVED').length,
+        rejected: requestAuditTrail.filter((request) => request.status === 'REJECTED').length,
+    }), [escalatedRequests, requestAuditTrail]);
 
 const getAccessStatusConfig = (user) => {
     const approvalStatus = getApprovalStatus(user);
@@ -796,12 +866,15 @@ const getAccessStatusConfig = (user) => {
                     <button className={`top-menu-item ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
                         <i className="bi bi-folder-fill top-menu-icon" style={{ color: activeTab === 'projects' ? '#1d6fa3' : '#8aa2bc' }}></i> Dự Án
                     </button>
-                    <button className={`top-menu-item ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
-                        <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: activeTab === 'completed' ? '#1d6fa3' : '#8aa2bc' }}></i> Đã Hoàn Thành
-                    </button>
-                    <button className={`top-menu-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>
-                        <i className="bi bi-clock-history top-menu-icon" style={{ color: activeTab === 'activity' ? '#1d6fa3' : '#8aa2bc' }}></i> Hoạt động
-                    </button>
+                     <button className={`top-menu-item ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
+                         <i className="bi bi-check-circle-fill top-menu-icon" style={{ color: activeTab === 'completed' ? '#1d6fa3' : '#8aa2bc' }}></i> Đã Hoàn Thành
+                     </button>
+                     <button className={`top-menu-item ${activeTab === 'workflow' ? 'active' : ''}`} onClick={() => setActiveTab('workflow')}>
+                         <i className="bi bi-briefcase-fill top-menu-icon" style={{ color: activeTab === 'workflow' ? '#1d6fa3' : '#8aa2bc' }}></i> Workflow
+                     </button>
+                     <button className={`top-menu-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>
+                         <i className="bi bi-clock-history top-menu-icon" style={{ color: activeTab === 'activity' ? '#1d6fa3' : '#8aa2bc' }}></i> Hoạt động
+                     </button>
                     <button className={`top-menu-item`} onClick={() => navigate('/admin/statistics')}>
                         <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#8aa2bc' }}></i> Thống kê
                     </button>
@@ -856,11 +929,12 @@ const getAccessStatusConfig = (user) => {
             <div className="admin-main-wrapper">
                 <div className="p-4 p-md-5 animate-fade-in content-inner">
                     <div className="d-flex justify-content-between align-items-center mb-4 d-xl-none bg-white p-3 rounded-4 shadow-sm">
-                        <h4 className="page-title mb-0 fs-5">{activeTab === 'users' ? 'Quản lý Nhân sự' : activeTab === 'departments' ? 'Phòng Ban & Dự Án' : activeTab === 'completed' ? 'Dự án Hoàn thành' : activeTab === 'activity' ? 'Lịch sử hoạt động' : 'Thùng rác'}</h4>
+                        <h4 className="page-title mb-0 fs-5">{activeTab === 'users' ? 'Quản lý Nhân sự' : activeTab === 'departments' ? 'Phòng Ban & Dự Án' : activeTab === 'completed' ? 'Dự án Hoàn thành' : activeTab === 'workflow' ? 'Workflow phê duyệt' : activeTab === 'activity' ? 'Lịch sử hoạt động' : 'Thùng rác'}</h4>
                         <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value={activeTab} onChange={(e) => { if(e.target.value === 'stats') navigate('/admin/statistics'); else setActiveTab(e.target.value); }}>
                             <option value="users">Nhân sự</option>
                             <option value="departments">Phòng ban</option>
                             <option value="completed">Đã hoàn thành</option>
+                            <option value="workflow">Workflow</option>
                             <option value="activity">Hoạt động</option>
                             <option value="deleted">Thùng rác</option>
                             <option value="stats">Thống kê</option>
@@ -1186,6 +1260,174 @@ const getAccessStatusConfig = (user) => {
                             </div>
                         </div>
                     )}
+
+                {activeTab === 'workflow' && (
+                    <div className="workflow-shell">
+                        <div className="workflow-hero">
+                            <div>
+                                    <span className="admin-section-kicker">Điều phối phê duyệt toàn công ty</span>
+                                        <h2 className="workflow-hero-title">Tiếp nhận các yêu cầu đã leo thang và giám sát luồng phê duyệt nghiệp vụ ở cấp tổ chức</h2>
+                                <p className="workflow-hero-copy">
+                                    Admin xử lý các trường hợp cần quyết định vượt cấp phòng ban, đồng thời theo dõi lịch sử yêu cầu để đối chiếu với KPI, OKR và các đợt quarterly review.
+                                </p>
+                            </div>
+                            <button className="btn btn-white shadow-sm rounded-pill px-4 fw-bold statistics-back-btn" onClick={() => navigate('/admin/statistics')}>
+                                <i className="bi bi-bar-chart-fill me-2"></i>KPI / OKR
+                            </button>
+                        </div>
+
+                        <div className="workflow-summary-grid">
+                            <div className="workflow-summary-card">
+                                <span className="workflow-summary-label">Chờ admin xử lý</span>
+                                <div className="workflow-summary-value">{requestWorkflowStats.escalated}</div>
+                                <div className="workflow-summary-note">Yêu cầu hiện đang đến bước duyệt cấp admin</div>
+                            </div>
+                            <div className="workflow-summary-card">
+                                <span className="workflow-summary-label">Can quyet dinh</span>
+                                <div className="workflow-summary-value">{requestWorkflowStats.pending}</div>
+                                            <div className="workflow-summary-note">Chờ duyệt hoặc từ chối</div>
+                            </div>
+                            <div className="workflow-summary-card">
+                                            <span className="workflow-summary-label">Đã duyệt</span>
+                                <div className="workflow-summary-value">{requestWorkflowStats.approved}</div>
+                                            <div className="workflow-summary-note">Tổng số case đã thông qua</div>
+                            </div>
+                            <div className="workflow-summary-card">
+                                            <span className="workflow-summary-label">Từ chối</span>
+                                <div className="workflow-summary-value">{requestWorkflowStats.rejected}</div>
+                                <div className="workflow-summary-note">Case cần theo dõi lại với các đơn vị</div>
+                            </div>
+                        </div>
+
+                        <div className="workflow-layout">
+                            <div className="workflow-panel">
+                                <div className="workflow-panel-header">
+                                    <div>
+                                        <h3 className="workflow-panel-title">Inbox yêu cầu leo thang</h3>
+                                        <p className="workflow-panel-copy">Danh sách case mà manager đã đẩy lên cấp tổ chức để xin quyết định cuối cùng.</p>
+                                    </div>
+                                    <select className="form-select modern-input" style={{ maxWidth: '220px' }} value={requestWorkflowFilter} onChange={(e) => setRequestWorkflowFilter(e.target.value)}>
+                                                <option value="ALL">Tất cả trạng thái</option>
+                                                <option value="PENDING">Chờ duyệt</option>
+                                                <option value="APPROVED">Đã duyệt</option>
+                                                <option value="REJECTED">Từ chối</option>
+                                    </select>
+                                </div>
+                                <div className="workflow-panel-body">
+                                    {requestWorkflowError && <div className="workflow-error mb-3">{requestWorkflowError}</div>}
+                                    {requestWorkflowLoading ? (
+                                                <div className="workflow-empty">Đang tải yêu cầu leo thang...</div>
+                                    ) : filteredEscalatedRequests.length === 0 ? (
+                                                <div className="workflow-empty">Chưa có yêu cầu leo thang nào trong bộ lọc hiện tại.</div>
+                                    ) : (
+                                        <div className="workflow-list workflow-scroll-region">
+                                            {filteredEscalatedRequests.map((request) => {
+                                                const statusMeta = getRequestStatusMeta(request.status);
+                                                const requestTypeLabel = REQUEST_TYPE_OPTIONS.find((option) => option.value === request.type)?.label || request.type;
+                                                const requestPriority = REQUEST_PRIORITY_OPTIONS.find((option) => option.value === request.priority)?.label || request.priority;
+
+                                                return (
+                                                    <article key={request.id || `${request.title}-${request.createdAt}`} className="workflow-item">
+                                                        <div className="workflow-item-head">
+                                                            <div>
+                                                                <h4 className="workflow-item-title">{request.title}</h4>
+                                                                        <p className="workflow-item-copy">{request.summary || 'Không có mô tả bổ sung.'}</p>
+                                                            </div>
+                                                            <span className={`workflow-pill ${statusMeta.className}`}>{statusMeta.label}</span>
+                                                        </div>
+
+                                                        <div className="workflow-meta-grid">
+                                                            <div>
+                                                                        <span className="workflow-meta-label">Người gửi</span>
+                                                                <div className="workflow-meta-value">{request.requesterName} - {request.requesterEmail}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="workflow-meta-label">Đơn vị</span>
+                                                                <div className="workflow-meta-value">{request.departmentName}</div>
+                                                            </div>
+                                                            <div>
+                                                                        <span className="workflow-meta-label">Loại / Ưu tiên</span>
+                                                                <div className="workflow-meta-value">{requestTypeLabel} - {requestPriority}</div>
+                                                            </div>
+                                                            <div>
+                                                                        <span className="workflow-meta-label">Cập nhật</span>
+                                                                <div className="workflow-meta-value">{formatWorkflowDateTime(request.createdAt)}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {request.latestNote ? (
+                                                            <div className="mt-3">
+                                                                        <span className="workflow-meta-label">Lý do leo thang / ghi chú</span>
+                                                                <div className="workflow-meta-value">{request.latestNote}</div>
+                                                            </div>
+                                                        ) : null}
+
+                                                        <div className="workflow-inline-actions mt-3">
+                                                            <button className="btn btn-sm btn-success rounded-pill px-3 fw-bold" onClick={() => handleRequestWorkflowDecision(request, true)}>
+                                                                Duyệt
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" onClick={() => handleRequestWorkflowDecision(request, false)}>
+                                                                        Từ chối
+                                                            </button>
+                                                        </div>
+                                                    </article>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="workflow-panel">
+                                <div className="workflow-panel-header">
+                                    <div>
+                                                <h3 className="workflow-panel-title">Lịch sử yêu cầu tổ chức</h3>
+                                                <p className="workflow-panel-copy">Lịch sử gần đây để đối chiếu với thống kê, review quý và các quyết định cần thông báo lại cho đơn vị.</p>
+                                    </div>
+                                </div>
+                                <div className="workflow-panel-body">
+                                    {requestAuditTrail.length === 0 ? (
+                                                <div className="workflow-empty">Chưa có lịch sử workflow tổ chức.</div>
+                                    ) : (
+                                        <div className="workflow-list workflow-scroll-region">
+                                            {requestAuditTrail.slice(0, 10).map((request) => {
+                                                const statusMeta = getRequestStatusMeta(request.status);
+
+                                                return (
+                                                    <article key={request.id || `${request.title}-${request.createdAt}-audit`} className="workflow-item">
+                                                        <div className="workflow-item-head">
+                                                            <div>
+                                                                <h4 className="workflow-item-title">{request.title}</h4>
+                                                                <p className="workflow-item-copy">{request.requesterName} - {request.departmentName}</p>
+                                                            </div>
+                                                            <span className={`workflow-pill ${statusMeta.className}`}>{statusMeta.label}</span>
+                                                        </div>
+                                                        <div className="workflow-item-meta">
+                                                            <div>
+                                                                        <span className="workflow-meta-label">Cập nhật gần nhất</span>
+                                                                <div className="workflow-meta-value">{formatWorkflowDateTime(request.createdAt)}</div>
+                                                            </div>
+                                                            <div>
+                                                                        <span className="workflow-meta-label">Cập nhật gần nhất</span>
+                                                                <div className="workflow-meta-value">{formatWorkflowDateTime(request.resolvedAt || request.updatedAt || request.createdAt)}</div>
+                                                            </div>
+                                                        </div>
+                                                        {request.latestNote ? (
+                                                            <div className="mt-3">
+                                                                        <span className="workflow-meta-label">Ghi chú</span>
+                                                                <div className="workflow-meta-value">{request.latestNote}</div>
+                                                            </div>
+                                                        ) : null}
+                                                    </article>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {activeTab === 'activity' && (
                     <div className="row g-4">

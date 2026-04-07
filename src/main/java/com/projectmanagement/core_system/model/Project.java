@@ -46,6 +46,9 @@ public class Project {
 
     private String createdBy;
     private Long createdDate = System.currentTimeMillis();
+
+    private String sourceTemplateId;
+    private Integer sourceTemplateVersion;
     
     private boolean isDeleted = false;
     private LocalDate deletedAt;

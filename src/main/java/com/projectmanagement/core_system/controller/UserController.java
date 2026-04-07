@@ -1,16 +1,20 @@
 package com.projectmanagement.core_system.controller;
 
-import com.projectmanagement.core_system.config.JwtUtil;
+import com.projectmanagement.core_system.controller.support.AuthenticatedUserHelper;
 import com.projectmanagement.core_system.enums.ApprovalStatus;
+import com.projectmanagement.core_system.model.CreateUserRequest;
 import com.projectmanagement.core_system.model.ChangePasswordRequest;
 import com.projectmanagement.core_system.model.ApproveUserRequest;
 import com.projectmanagement.core_system.model.RejectUserRequest;
+import com.projectmanagement.core_system.model.UpdateAvatarRequest;
 import com.projectmanagement.core_system.model.UpdateUserStatusRequest;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.UserRepository;
 import com.projectmanagement.core_system.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,12 +36,12 @@ public class UserController {
     private UserRepository userRepository;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private AuthenticatedUserHelper authenticatedUserHelper;
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
         try {
-            return ResponseEntity.ok(getAuthenticatedUser(token));
+            return ResponseEntity.ok(authenticatedUserHelper.requireAuthenticatedUser(authentication));
         } catch (RuntimeException e) {
             if ("USER_NOT_FOUND".equals(e.getMessage())) {
                 return ResponseEntity.status(404).body("User không tồn tại!");
@@ -49,9 +53,9 @@ public class UserController {
     }
 
     @GetMapping("/my-department")
-    public ResponseEntity<?> getMyDepartmentUsers(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getMyDepartmentUsers(Authentication authentication) {
         try {
-            User currentUser = getAuthenticatedUser(token);
+            User currentUser = authenticatedUserHelper.requireAuthenticatedUser(authentication);
 
             if (currentUser.getDepartment() == null) {
                 return ResponseEntity.ok(List.of());
@@ -101,12 +105,12 @@ public class UserController {
     // 3. Tạo nhân viên mới
     @PostMapping
     public ResponseEntity<?> create(
-            @RequestBody User user,
+            @Valid @RequestBody CreateUserRequest request,
             @RequestParam(required = false) String deptId,
-            @RequestHeader("Authorization") String token
+            Authentication authentication
     ) {
         try {
-            return ResponseEntity.ok(userService.createUser(user, deptId, extractEmailSafely(token)));
+            return ResponseEntity.ok(userService.createUser(toUser(request), deptId, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -114,9 +118,9 @@ public class UserController {
 
     // 4. Xóa nhân viên
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable String id, @RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> deleteUser(@PathVariable String id, Authentication authentication) {
         try {
-            userService.deleteUser(id, extractEmailSafely(token));
+            userService.deleteUser(id, authenticatedUserHelper.requireActorEmail(authentication));
             return ResponseEntity.ok("Đã xóa nhân viên thành công!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -126,22 +130,14 @@ public class UserController {
     // 5. 🔥 API MỚI: Đổi mật khẩu
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
-            @RequestHeader("Authorization") String token,
-            @RequestBody ChangePasswordRequest request
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request
     ) {
         try {
-            // Extract email từ JWT token
-            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            Optional<User> userOpt = userRepository.findByEmailIgnoreCase(email);
+            User user = authenticatedUserHelper.requireAuthenticatedUser(authentication);
+            userService.changePassword(user.getId(), request.getOldPassword(), request.getNewPassword());
 
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.status(401).body("User không tồn tại!");
-            }
-
-            User user = userOpt.get();
-            User updatedUser = userService.changePassword(user.getId(), request.getOldPassword(), request.getNewPassword());
-
-            return ResponseEntity.ok("Đã đổi mật khẩu thành công!");
+            return ResponseEntity.ok("Đã đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -152,23 +148,18 @@ public class UserController {
     // 6. 🔥 API MỚI: Upload avatar
     @PostMapping("/upload-avatar")
     public ResponseEntity<?> uploadAvatar(
-            @RequestHeader("Authorization") String token,
+            Authentication authentication,
             @RequestParam(value = "avatar", required = false) MultipartFile avatarFile,
             @RequestParam(value = "avatarUrl", required = false) String avatarUrl
     ) {
         try {
-            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            Optional<User> userOpt = userRepository.findByEmailIgnoreCase(email);
-
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.status(401).body("User không tồn tại!");
-            }
+            User currentUser = authenticatedUserHelper.requireAuthenticatedUser(authentication);
 
             User user;
             if (avatarFile != null && !avatarFile.isEmpty()) {
-                user = userService.uploadAvatar(userOpt.get().getId(), avatarFile);
+                user = userService.uploadAvatar(currentUser.getId(), avatarFile);
             } else if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                user = userService.uploadAvatarFromUrl(userOpt.get().getId(), avatarUrl);
+                user = userService.uploadAvatarFromUrl(currentUser.getId(), avatarUrl);
             } else {
                 return ResponseEntity.badRequest().body("Vui lòng cung cấp file ảnh hoặc URL!");
             }
@@ -185,7 +176,7 @@ public class UserController {
     @PostMapping("/create-with-avatar")
     public ResponseEntity<?> createWithAvatar(
             @RequestParam(required = false) String deptId,
-            @RequestHeader("Authorization") String token,
+            Authentication authentication,
             @RequestParam("fullName") String fullName,
             @RequestParam("email") String email,
             @RequestParam("password") String password,
@@ -206,7 +197,7 @@ public class UserController {
                 user.setAvatarUrl(userService.downloadImageFromUrl(avatarUrl));
             }
             
-            return ResponseEntity.ok(userService.createUser(user, deptId, extractEmailSafely(token)));
+            return ResponseEntity.ok(userService.createUser(user, deptId, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -218,12 +209,11 @@ public class UserController {
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateUser(
             @PathVariable String id,
-            @RequestBody UpdateUserRequest request,
-            @RequestHeader("Authorization") String token
+            @Valid @RequestBody UpdateUserRequest request,
+            Authentication authentication
     ) {
         try {
-            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            return ResponseEntity.ok(userService.updateEmployee(id, request, email));
+            return ResponseEntity.ok(userService.updateEmployee(id, request, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -234,12 +224,11 @@ public class UserController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateUserStatus(
             @PathVariable String id,
-            @RequestHeader("Authorization") String token,
-            @RequestBody UpdateUserStatusRequest request
+            Authentication authentication,
+            @Valid @RequestBody UpdateUserStatusRequest request
     ) {
         try {
-            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            return ResponseEntity.ok(userService.updateUserStatus(id, request, email));
+            return ResponseEntity.ok(userService.updateUserStatus(id, request, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -250,12 +239,11 @@ public class UserController {
     @PatchMapping("/{id}/approve")
     public ResponseEntity<?> approveUser(
             @PathVariable String id,
-            @RequestHeader("Authorization") String token,
-            @RequestBody ApproveUserRequest request
+            Authentication authentication,
+            @Valid @RequestBody ApproveUserRequest request
     ) {
         try {
-            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            return ResponseEntity.ok(userService.approvePendingUser(id, request, email));
+            return ResponseEntity.ok(userService.approvePendingUser(id, request, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -266,12 +254,11 @@ public class UserController {
     @PatchMapping("/{id}/reject")
     public ResponseEntity<?> rejectUser(
             @PathVariable String id,
-            @RequestHeader("Authorization") String token,
-            @RequestBody RejectUserRequest request
+            Authentication authentication,
+            @Valid @RequestBody RejectUserRequest request
     ) {
         try {
-            String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            return ResponseEntity.ok(userService.rejectPendingUser(id, request, email));
+            return ResponseEntity.ok(userService.rejectPendingUser(id, request, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -284,9 +271,10 @@ public class UserController {
     public ResponseEntity<?> bulkUpdateDept(
             @RequestBody java.util.List<String> userIds,
             @RequestParam String deptId,
-            @RequestParam String adminEmail
+            Authentication authentication
     ) {
         try {
+            String adminEmail = authenticatedUserHelper.requireActorEmail(authentication);
             java.util.List<User> updatedUsers = new java.util.ArrayList<>();
             for (String userId : userIds) {
                 UpdateUserRequest request = new UpdateUserRequest();
@@ -305,14 +293,10 @@ public class UserController {
     @PutMapping("/{id}/avatar")
     public ResponseEntity<?> updateAvatar(
             @PathVariable String id,
-            @RequestHeader("Authorization") String token,
-            @RequestBody Map<String, String> request) {
+            Authentication authentication,
+            @Valid @RequestBody UpdateAvatarRequest request) {
         try {
-            String avatarUrl = request.get("avatarUrl");
-            if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("avatarUrl không được để trống!");
-            }
-            return ResponseEntity.ok(userService.updateAvatar(id, avatarUrl, extractEmailSafely(token)));
+            return ResponseEntity.ok(userService.updateAvatar(id, request.getAvatarUrl(), authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -320,17 +304,12 @@ public class UserController {
         }
     }
 
-    private String extractEmailSafely(String token) {
-        if (token == null || token.isBlank() || !token.startsWith("Bearer ")) {
-            return null;
-        }
-
-        return jwtUtil.extractEmail(token.replace("Bearer ", ""));
-    }
-
-    private User getAuthenticatedUser(String token) {
-        String email = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-        return userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+    private User toUser(CreateUserRequest request) {
+        User user = new User();
+        user.setFullName(request.getFullName() != null ? request.getFullName().trim() : null);
+        user.setEmail(request.getEmail() != null ? request.getEmail().trim() : null);
+        user.setPassword(request.getPassword());
+        user.setRole(request.getRole());
+        return user;
     }
 }

@@ -1,10 +1,12 @@
 package com.projectmanagement.core_system.service;
 
+import com.projectmanagement.core_system.enums.ERole;
 import com.projectmanagement.core_system.enums.ProjectStatus;
 import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.enums.Priority;
 import com.projectmanagement.core_system.model.AttachmentInfo;
 import com.projectmanagement.core_system.model.ChecklistItem;
+import com.projectmanagement.core_system.model.Comment;
 import com.projectmanagement.core_system.model.Project;
 import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.TaskActivity;
@@ -19,7 +21,9 @@ import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
 import com.projectmanagement.core_system.repository.DepartmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -77,6 +81,53 @@ public class TaskService {
 
         boolean isMember = project.getMembers().stream()
                 .anyMatch(member -> member.getId().equals(assigneeId));
+
+        if (!isMember) {
+            throw new RuntimeException("LỖI: Người này chưa tham gia dự án!");
+        }
+
+        validateTaskDeadline(task.getDeadline());
+
+        if (task.getDeadline() != null && project.getDeadline() != null && task.getDeadline().isAfter(project.getDeadline())) {
+            throw new RuntimeException("LỖI: Deadline Task vượt quá Deadline dự án!");
+        }
+
+        task.setProject(project);
+        task.setAssignee(assignee);
+        task.setStatus(TaskStatus.TO_DO);
+        task.setCompletionPercentage(0);
+        task.setChecklistItems(new ArrayList<>());
+        task.setAttachments(new ArrayList<>());
+
+        Task savedTask = taskRepository.save(task);
+        User manager = project.getDepartment() != null ? project.getDepartment().getManager() : null;
+        String message = "Bạn được giao công việc mới: " + savedTask.getTitle() + " từ dự án: " + project.getName();
+        notificationService.createNotification(assignee, manager != null ? manager : assignee, savedTask, message, "TASK_ASSIGNED");
+        taskActivityService.record(savedTask, manager != null ? manager : assignee, "TASK_CREATED",
+                "Đã tạo công việc '" + savedTask.getTitle() + "' và giao cho " + assignee.getFullName(),
+                Map.of("projectId", project.getId(), "assigneeId", assignee.getId()));
+        userActivityService.record(manager != null ? manager : assignee, assignee, "TASK_CREATED",
+                (manager != null ? manager.getFullName() : assignee.getFullName()) + " đã tạo task '" + savedTask.getTitle() + "'",
+                Map.of("taskId", savedTask.getId(), "projectId", project.getId()));
+
+        return savedTask;
+    }
+
+    public Task createTask(Task task, String projectId, String assigneeId, String actorEmail) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
+        User actor = requireActiveUser(actorEmail);
+        ensureCanCreateTask(actor, project);
+
+        if (project.getStatus() == ProjectStatus.CLOSED) {
+            throw new RuntimeException("Dự án đã đóng, không thể giao việc mới!");
+        }
+
+        User assignee = userRepository.findById(assigneeId)
+                .orElseThrow(() -> new RuntimeException("Người được gán không tồn tại!"));
+
+        boolean isMember = project.getMembers().stream()
+                .anyMatch(member -> member.getId().equals(assigneeId));
         
         if (!isMember) {
             throw new RuntimeException("LỖI: Người này chưa tham gia dự án!");
@@ -99,15 +150,13 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
 
-        // Thông báo cho nhân viên: Người giao là Manager của phòng ban chứa dự án
-        User manager = project.getDepartment() != null ? project.getDepartment().getManager() : null;
         String message = "Bạn được giao công việc mới: " + savedTask.getTitle() + " từ dự án: " + project.getName();
-        notificationService.createNotification(assignee, manager != null ? manager : assignee, savedTask, message, "TASK_ASSIGNED");
-        taskActivityService.record(savedTask, manager != null ? manager : assignee, "TASK_CREATED",
+        notificationService.createNotification(assignee, actor, savedTask, message, "TASK_ASSIGNED");
+        taskActivityService.record(savedTask, actor, "TASK_CREATED",
                 "Đã tạo công việc '" + savedTask.getTitle() + "' và giao cho " + assignee.getFullName(),
                 Map.of("projectId", project.getId(), "assigneeId", assignee.getId()));
-        userActivityService.record(manager != null ? manager : assignee, assignee, "TASK_CREATED",
-                (manager != null ? manager.getFullName() : assignee.getFullName()) + " đã tạo task '" + savedTask.getTitle() + "'",
+        userActivityService.record(actor, assignee, "TASK_CREATED",
+                actor.getFullName() + " đã tạo task '" + savedTask.getTitle() + "'",
                 Map.of("taskId", savedTask.getId(), "projectId", project.getId()));
 
         return savedTask;
@@ -216,7 +265,7 @@ public class TaskService {
         task.setStatus(effectiveStatus);
         task.setCompletionPercentage(percent);
         task.setSubmissionLink(submissionLink);
-        
+
         Task savedTask = taskRepository.save(task);
         taskActivityService.record(savedTask, task.getAssignee(), "TASK_STATUS_UPDATED",
                 task.getAssignee().getFullName() + " đã cập nhật trạng thái thành " + effectiveStatus + " (" + percent + "%)",
@@ -229,7 +278,6 @@ public class TaskService {
                 task.getAssignee().getFullName() + " đã cập nhật task '" + task.getTitle() + "' thành " + effectiveStatus,
                 Map.of("taskId", savedTask.getId(), "status", effectiveStatus.name(), "completionPercentage", percent));
 
-        // Thông báo cho quản lý nếu cần
         User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
         if (manager != null && !manager.getId().equals(task.getAssignee().getId())) {
             String message = task.getAssignee().getFullName() + " đã cập nhật tiến độ công việc '" + task.getTitle() + "' thành " + percent + "%.";
@@ -239,14 +287,58 @@ public class TaskService {
         return savedTask;
     }
 
-    public Task getTaskDetail(String taskId) {
-        return taskRepository.findById(taskId)
+    public Task updateStatus(String taskId, TaskStatus newStatus, int percent, String submissionLink, String actorEmail) {
+        Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
+        User actor = requireActiveUser(actorEmail);
+        ensureCanUpdateTaskStatus(task, actor);
+
+        if (task.getProject().getStatus() == ProjectStatus.CLOSED) {
+            throw new RuntimeException("KHÔNG THỂ CẬP NHẬT: Dự án này đã bị đóng!");
+        }
+
+        TaskStatus effectiveStatus = percent == 100 ? TaskStatus.DONE : newStatus;
+
+        validateTaskStatusUpdate(effectiveStatus, percent);
+
+        task.setStatus(effectiveStatus);
+        task.setCompletionPercentage(percent);
+        task.setSubmissionLink(submissionLink);
+        
+        Task savedTask = taskRepository.save(task);
+        taskActivityService.record(savedTask, actor, "TASK_STATUS_UPDATED",
+                actor.getFullName() + " đã cập nhật trạng thái thành " + effectiveStatus + " (" + percent + "%)",
+                Map.of(
+                        "status", effectiveStatus.name(),
+                        "completionPercentage", percent,
+                        "submissionLink", submissionLink == null ? "" : submissionLink
+                ));
+        userActivityService.record(actor, task.getAssignee(), "TASK_STATUS_UPDATED",
+                actor.getFullName() + " đã cập nhật task '" + task.getTitle() + "' thành " + effectiveStatus,
+                Map.of("taskId", savedTask.getId(), "status", effectiveStatus.name(), "completionPercentage", percent));
+
+        // Thông báo cho quản lý nếu cần
+        User manager = task.getProject().getDepartment() != null ? task.getProject().getDepartment().getManager() : null;
+        if (manager != null && !manager.getId().equals(actor.getId())) {
+            String message = actor.getFullName() + " đã cập nhật tiến độ công việc '" + task.getTitle() + "' thành " + percent + "%.";
+            notificationService.createNotification(manager, actor, savedTask, message, "TASK_UPDATED");
+        }
+
+        return savedTask;
     }
 
-    public ChecklistItem addChecklistItem(String taskId, String title, String actorId) {
-        Task task = getTaskDetail(taskId);
-        User actor = getActor(actorId, task.getAssignee());
+    public Task getTaskDetail(String taskId, String actorEmail) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task không tồn tại!"));
+        User actor = requireActiveUser(actorEmail);
+        ensureCanViewTask(actor, task);
+        return task;
+    }
+
+    public ChecklistItem addChecklistItem(String taskId, String title, String actorEmail) {
+        Task task = getTaskDetail(taskId, actorEmail);
+        User actor = requireActiveUser(actorEmail);
+        ensureCanCollaborateOnTask(actor, task);
 
         if (title == null || title.trim().isEmpty()) {
             throw new RuntimeException("Tên checklist không được để trống!");
@@ -272,9 +364,10 @@ public class TaskService {
         return item;
     }
 
-    public ChecklistItem updateChecklistItem(String taskId, String itemId, Map<String, Object> payload, String actorId) {
-        Task task = getTaskDetail(taskId);
-        User actor = getActor(actorId, task.getAssignee());
+    public ChecklistItem updateChecklistItem(String taskId, String itemId, Map<String, Object> payload, String actorEmail) {
+        Task task = getTaskDetail(taskId, actorEmail);
+        User actor = requireActiveUser(actorEmail);
+        ensureCanCollaborateOnTask(actor, task);
         ChecklistItem item = task.getChecklistItems().stream()
                 .filter(checklistItem -> checklistItem.getId().equals(itemId))
                 .findFirst()
@@ -317,9 +410,10 @@ public class TaskService {
         return item;
     }
 
-    public Task deleteChecklistItem(String taskId, String itemId, String actorId) {
-        Task task = getTaskDetail(taskId);
-        User actor = getActor(actorId, task.getAssignee());
+    public Task deleteChecklistItem(String taskId, String itemId, String actorEmail) {
+        Task task = getTaskDetail(taskId, actorEmail);
+        User actor = requireActiveUser(actorEmail);
+        ensureCanCollaborateOnTask(actor, task);
 
         ChecklistItem item = task.getChecklistItems().stream()
                 .filter(checklistItem -> checklistItem.getId().equals(itemId))
@@ -342,9 +436,10 @@ public class TaskService {
         return savedTask;
     }
 
-    public AttachmentInfo addTaskAttachment(String taskId, AttachmentInfo attachmentInfo, String actorId) {
-        Task task = getTaskDetail(taskId);
-        User actor = getActor(actorId, task.getAssignee());
+    public AttachmentInfo addTaskAttachment(String taskId, AttachmentInfo attachmentInfo, String actorEmail) {
+        Task task = getTaskDetail(taskId, actorEmail);
+        User actor = requireActiveUser(actorEmail);
+        ensureCanCollaborateOnTask(actor, task);
 
         if (attachmentInfo == null || attachmentInfo.getUrl() == null || attachmentInfo.getUrl().isBlank()) {
             throw new RuntimeException("File đính kèm không hợp lệ!");
@@ -369,9 +464,10 @@ public class TaskService {
         return attachment;
     }
 
-    public Task deleteTaskAttachment(String taskId, String attachmentId, String actorId) {
-        Task task = getTaskDetail(taskId);
-        User actor = getActor(actorId, task.getAssignee());
+    public Task deleteTaskAttachment(String taskId, String attachmentId, String actorEmail) {
+        Task task = getTaskDetail(taskId, actorEmail);
+        User actor = requireActiveUser(actorEmail);
+        ensureCanCollaborateOnTask(actor, task);
 
         AttachmentInfo attachment = task.getAttachments().stream()
                 .filter(item -> item.getId().equals(attachmentId))
@@ -390,23 +486,36 @@ public class TaskService {
         return savedTask;
     }
 
-    public List<TaskActivity> getTaskActivity(String taskId) {
-        getTaskDetail(taskId);
+    public List<TaskActivity> getTaskActivity(String taskId, String actorEmail) {
+        getTaskDetail(taskId, actorEmail);
         return taskActivityService.getTaskActivities(taskId);
     }
 
     // 3. Lấy task theo dự án
-    public List<Task> getTasksByProject(String projectId) {
+    public List<Task> getTasksByProject(String projectId, String actorEmail) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Dự án không tồn tại!"));
+        User actor = requireActiveUser(actorEmail);
+        ensureCanViewProject(actor, project);
         return taskRepository.findByProject_Id(projectId);
     }
 
     // 4. Lấy task của cá nhân
-    public List<Task> getMyTasks(String userId) {
-        return taskRepository.findByAssignee_Id(userId);
+    public List<Task> getMyTasks(String userId, String actorEmail) {
+        User actor = requireActiveUser(actorEmail);
+        if (StringUtils.hasText(userId) && !userId.equals(actor.getId()) && actor.getRole() != ERole.ADMIN) {
+            throw new AccessDeniedException("Bạn không có quyền xem task của người dùng khác!");
+        }
+
+        String effectiveUserId = StringUtils.hasText(userId) && actor.getRole() == ERole.ADMIN ? userId : actor.getId();
+        return taskRepository.findByAssignee_Id(effectiveUserId);
     }
 
     // 5. Thống kê Toàn diện cho Dashboard
-    public Map<String, Object> getTaskStatistics() {
+    public Map<String, Object> getTaskStatistics(String actorEmail) {
+        User actor = requireActiveUser(actorEmail);
+        ensureAdmin(actor);
+
         List<Task> allTasks = taskRepository.findAll();
         List<Project> allProjects = projectRepository.findAll();
         List<User> allUsers = userRepository.findAll();
@@ -473,12 +582,32 @@ public class TaskService {
         return results;
     }
 
-    private User getActor(String actorId, User fallbackUser) {
-        if (actorId == null || actorId.isBlank()) {
-            return fallbackUser;
+    public void ensureCanAccessAttachmentFile(String filename, String actorEmail) {
+        if (!StringUtils.hasText(filename)) {
+            throw new AccessDeniedException("Tên file không hợp lệ!");
         }
 
-        return userRepository.findById(actorId).orElse(fallbackUser);
+        User actor = requireActiveUser(actorEmail);
+        String normalizedApiUrl = "/api/files/" + filename.trim();
+        String normalizedLegacyUrl = "/uploads/" + filename.trim();
+
+        List<Task> tasksWithAttachment = taskRepository.findAll().stream()
+                .filter(task -> containsAttachmentUrl(task.getAttachments(), normalizedApiUrl, normalizedLegacyUrl))
+                .toList();
+
+        if (hasAccessibleTask(actor, tasksWithAttachment)) {
+            return;
+        }
+
+        List<Comment> commentsWithAttachment = commentRepository.findAll().stream()
+                .filter(comment -> containsAttachmentUrl(comment.getAttachments(), normalizedApiUrl, normalizedLegacyUrl))
+                .toList();
+
+        if (hasAccessibleCommentAttachment(actor, commentsWithAttachment)) {
+            return;
+        }
+
+        throw new AccessDeniedException("Bạn không có quyền truy cập file này!");
     }
 
     private void validateTaskDeadline(LocalDate deadline) {
@@ -502,12 +631,11 @@ public class TaskService {
     }
 
     private User ensureManagerCanManageTask(Task task, String managerEmail) {
-        if (managerEmail == null || managerEmail.isBlank()) {
-            throw new RuntimeException("Thiếu thông tin trưởng phòng thực hiện!");
-        }
+        User actingUser = requireActiveUser(managerEmail);
 
-        User actingUser = userRepository.findByEmailIgnoreCase(managerEmail.trim().toLowerCase())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người dùng thực hiện!"));
+        if (actingUser.getRole() == ERole.ADMIN) {
+            return actingUser;
+        }
 
         User projectManager = getProjectManager(task.getProject());
         if (!projectManager.getId().equals(actingUser.getId())) {
@@ -515,6 +643,135 @@ public class TaskService {
         }
 
         return actingUser;
+    }
+
+    private User requireActiveUser(String email) {
+        if (!StringUtils.hasText(email)) {
+            throw new AccessDeniedException("Thiếu thông tin người dùng thực hiện!");
+        }
+
+        User actor = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
+                .orElseThrow(() -> new AccessDeniedException("Người dùng thực hiện không tồn tại!"));
+
+        if (!actor.isActive()) {
+            throw new AccessDeniedException("Tài khoản của bạn đang bị khóa!");
+        }
+
+        return actor;
+    }
+
+    private void ensureCanCreateTask(User actor, Project project) {
+        if (actor.getRole() == ERole.ADMIN) {
+            return;
+        }
+
+        User projectManager = getProjectManager(project);
+        if (!projectManager.getId().equals(actor.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền tạo công việc cho dự án này!");
+        }
+    }
+
+    private void ensureCanViewProject(User actor, Project project) {
+        if (actor.getRole() == ERole.ADMIN) {
+            return;
+        }
+
+        User projectManager = getProjectManager(project);
+        if (projectManager.getId().equals(actor.getId())) {
+            return;
+        }
+
+        if (isProjectMember(project, actor.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("Bạn không có quyền truy cập dữ liệu của dự án này!");
+    }
+
+    private void ensureCanViewTask(User actor, Task task) {
+        if (task.getAssignee() != null && StringUtils.hasText(task.getAssignee().getId()) && task.getAssignee().getId().equals(actor.getId())) {
+            return;
+        }
+
+        ensureCanViewProject(actor, task.getProject());
+    }
+
+    private void ensureCanCollaborateOnTask(User actor, Task task) {
+        ensureCanViewTask(actor, task);
+    }
+
+    private void ensureCanUpdateTaskStatus(Task task, User actor) {
+        if (actor.getRole() == ERole.ADMIN) {
+            return;
+        }
+
+        if (task.getAssignee() != null && StringUtils.hasText(task.getAssignee().getId()) && task.getAssignee().getId().equals(actor.getId())) {
+            return;
+        }
+
+        User projectManager = getProjectManager(task.getProject());
+        if (projectManager.getId().equals(actor.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("Bạn không có quyền cập nhật trạng thái công việc này!");
+    }
+
+    private void ensureAdmin(User actor) {
+        if (actor.getRole() != ERole.ADMIN) {
+            throw new AccessDeniedException("Bạn không có quyền xem thống kê toàn hệ thống!");
+        }
+    }
+
+    private boolean containsAttachmentUrl(List<AttachmentInfo> attachments, String normalizedApiUrl, String normalizedLegacyUrl) {
+        if (attachments == null || attachments.isEmpty()) {
+            return false;
+        }
+
+        return attachments.stream()
+                .filter(attachment -> attachment != null && StringUtils.hasText(attachment.getUrl()))
+                .map(attachment -> attachment.getUrl().trim())
+                .anyMatch(url -> url.equals(normalizedApiUrl) || url.equals(normalizedLegacyUrl));
+    }
+
+    private boolean hasAccessibleTask(User actor, List<Task> tasks) {
+        for (Task task : tasks) {
+            try {
+                ensureCanViewTask(actor, task);
+                return true;
+            } catch (AccessDeniedException ignored) {
+                // Continue checking other matching tasks.
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasAccessibleCommentAttachment(User actor, List<Comment> comments) {
+        for (Comment comment : comments) {
+            if (comment == null || comment.getTask() == null) {
+                continue;
+            }
+
+            try {
+                ensureCanViewTask(actor, comment.getTask());
+                return true;
+            } catch (AccessDeniedException ignored) {
+                // Continue checking other matching comments.
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isProjectMember(Project project, String userId) {
+        if (project == null || project.getMembers() == null || !StringUtils.hasText(userId)) {
+            return false;
+        }
+
+        return project.getMembers().stream()
+                .filter(member -> member != null && StringUtils.hasText(member.getId()))
+                .anyMatch(member -> member.getId().equals(userId));
     }
 
     private User getProjectManager(Project project) {

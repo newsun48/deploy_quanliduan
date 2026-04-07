@@ -1,5 +1,7 @@
 package com.projectmanagement.core_system.config;
 
+import com.projectmanagement.core_system.model.User;
+import com.projectmanagement.core_system.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,15 +14,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.time.LocalDateTime;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -28,29 +30,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    private void logDebug(String message) {
-        try {
-            String timestamp = LocalDateTime.now().toString();
-            String logMsg = timestamp + " - " + message + "\n";
-            Files.write(Paths.get("auth_debug.txt"), logMsg.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        } catch (Exception e) {
-            // ignore
-        }
-    }
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        
-        logDebug("Incoming request: " + request.getMethod() + " " + request.getRequestURI());
 
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            logDebug("No Bearer token found in header");
-            response.setHeader("X-Debug-Auth", "No-Header");
             filterChain.doFilter(request, response);
             return;
         }
@@ -58,28 +49,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             jwt = authHeader.substring(7);
             userEmail = jwtUtil.extractEmail(jwt);
-            logDebug("Token found for user: " + userEmail);
-            response.setHeader("X-Debug-User", userEmail);
 
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
-                logDebug("UserDetails loaded for: " + userEmail);
 
-                if (jwtUtil.validateToken(jwt, userEmail) && userDetails.isEnabled()) {
+                User user = userRepository.findByEmailIgnoreCase(userEmail).orElse(null);
+
+                if (user != null && jwtUtil.validateToken(jwt, user) && userDetails.isEnabled()) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    logDebug("Authentication SET in SecurityContext for: " + userEmail + " with roles: " + userDetails.getAuthorities());
-                    response.setHeader("X-Debug-Auth", "Authenticated");
-                } else {
-                    logDebug("Token validation FAILED or user disabled");
-                    response.setHeader("X-Debug-Auth", "Invalid-Token-Or-Disabled");
                 }
             }
         } catch (Exception e) {
-            logDebug("ERROR in filter: " + e.getMessage());
-            response.setHeader("X-Debug-Auth", "Error-" + e.getMessage());
+            logger.warn("JWT authentication failed for request path={}", request.getRequestURI());
         }
 
         filterChain.doFilter(request, response);

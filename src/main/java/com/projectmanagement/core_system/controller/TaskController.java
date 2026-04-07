@@ -1,15 +1,18 @@
 package com.projectmanagement.core_system.controller;
 
+import com.projectmanagement.core_system.controller.support.AuthenticatedUserHelper;
 import com.projectmanagement.core_system.model.AttachmentInfo;
 import com.projectmanagement.core_system.model.ChecklistItem;
+import com.projectmanagement.core_system.model.CreateTaskRequest;
 import com.projectmanagement.core_system.enums.TaskStatus;
 import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.TaskActivity;
 import com.projectmanagement.core_system.model.TaskUpdateRequest;
-import com.projectmanagement.core_system.config.JwtUtil;
 import com.projectmanagement.core_system.service.TaskService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,16 +27,17 @@ public class TaskController {
     private TaskService taskService;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private AuthenticatedUserHelper authenticatedUserHelper;
 
     // 1. Tạo Task mới
     @PostMapping("/create")
     public ResponseEntity<?> createTask(
-            @RequestBody Task task,
+            @Valid @RequestBody CreateTaskRequest request,
             @RequestParam String projectId,
-            @RequestParam String assigneeId) {
+            @RequestParam String assigneeId,
+            Authentication authentication) {
         try {
-            return ResponseEntity.ok(taskService.createTask(task, projectId, assigneeId));
+            return ResponseEntity.ok(taskService.createTask(toTask(request), projectId, assigneeId, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -41,20 +45,26 @@ public class TaskController {
 
     // 2. Lấy Task theo Dự án (Manager xem)
     @GetMapping("/project/{projectId}")
-    public List<Task> getTasksByProject(@PathVariable String projectId) {
-        return taskService.getTasksByProject(projectId);
+    public List<Task> getTasksByProject(
+            @PathVariable String projectId,
+            Authentication authentication) {
+        return taskService.getTasksByProject(projectId, authenticatedUserHelper.requireActorEmail(authentication));
     }
 
     // 3. Lấy Task của Tôi (Nhân viên xem)
     @GetMapping("/my-tasks/{userId}")
-    public List<Task> getMyTasks(@PathVariable String userId) {
-        return taskService.getMyTasks(userId);
+    public List<Task> getMyTasks(
+            @PathVariable String userId,
+            Authentication authentication) {
+        return taskService.getMyTasks(userId, authenticatedUserHelper.requireActorEmail(authentication));
     }
 
     @GetMapping("/{taskId}")
-    public ResponseEntity<?> getTaskDetail(@PathVariable String taskId) {
+    public ResponseEntity<?> getTaskDetail(
+            @PathVariable String taskId,
+            Authentication authentication) {
         try {
-            return ResponseEntity.ok(taskService.getTaskDetail(taskId));
+            return ResponseEntity.ok(taskService.getTaskDetail(taskId, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -64,18 +74,16 @@ public class TaskController {
     @PutMapping("/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(
             @PathVariable String taskId,
+            Authentication authentication,
             @RequestBody Map<String, Object> payload // Nhận JSON { "status": "DONE", "percent": 100 }
     ) {
         try {
             String statusStr = (String) payload.get("status");
             int percent = Integer.parseInt(payload.get("percent").toString());
             String submissionLink = (String) payload.get("submissionLink");
-            
-            System.out.println("🔵 [DEBUG] Cập nhật TaskID: " + taskId + ", Status: " + statusStr + ", Percent: " + percent + ", Link: " + submissionLink);
-            
             TaskStatus newStatus = TaskStatus.valueOf(statusStr); // Chuyển chuỗi thành Enum
 
-            return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent, submissionLink));
+            return ResponseEntity.ok(taskService.updateStatus(taskId, newStatus, percent, submissionLink, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi cập nhật: " + e.getMessage());
         }
@@ -84,11 +92,10 @@ public class TaskController {
     @PutMapping("/{taskId}")
     public ResponseEntity<?> updateTaskByManager(
             @PathVariable String taskId,
-            @RequestHeader("Authorization") String token,
-            @RequestBody TaskUpdateRequest request) {
+            Authentication authentication,
+            @Valid @RequestBody TaskUpdateRequest request) {
         try {
-            String managerEmail = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            return ResponseEntity.ok(taskService.updateTask(taskId, request, managerEmail));
+            return ResponseEntity.ok(taskService.updateTask(taskId, request, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -97,10 +104,9 @@ public class TaskController {
     @DeleteMapping("/{taskId}")
     public ResponseEntity<?> deleteTaskByManager(
             @PathVariable String taskId,
-            @RequestHeader("Authorization") String token) {
+            Authentication authentication) {
         try {
-            String managerEmail = jwtUtil.extractEmail(token.replace("Bearer ", ""));
-            taskService.deleteTask(taskId, managerEmail);
+            taskService.deleteTask(taskId, authenticatedUserHelper.requireActorEmail(authentication));
             return ResponseEntity.ok("Xóa task thành công!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -109,17 +115,20 @@ public class TaskController {
 
     // 5. Thống kê Task (Dashboard Charts)
     @GetMapping("/statistics")
-    public Map<String, Object> getTaskStatistics() {
-        return taskService.getTaskStatistics();
+    public Map<String, Object> getTaskStatistics(Authentication authentication) {
+        return taskService.getTaskStatistics(authenticatedUserHelper.requireActorEmail(authentication));
     }
 
     @PostMapping("/{taskId}/checklist-items")
-    public ResponseEntity<?> addChecklistItem(@PathVariable String taskId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> addChecklistItem(
+            @PathVariable String taskId,
+            Authentication authentication,
+            @RequestBody Map<String, Object> payload) {
         try {
             ChecklistItem item = taskService.addChecklistItem(
                     taskId,
                     payload.get("title") != null ? payload.get("title").toString() : "",
-                    payload.get("actorId") != null ? payload.get("actorId").toString() : null
+                    authenticatedUserHelper.requireActorEmail(authentication)
             );
             return ResponseEntity.ok(item);
         } catch (RuntimeException e) {
@@ -131,13 +140,14 @@ public class TaskController {
     public ResponseEntity<?> updateChecklistItem(
             @PathVariable String taskId,
             @PathVariable String itemId,
+            Authentication authentication,
             @RequestBody Map<String, Object> payload) {
         try {
             ChecklistItem item = taskService.updateChecklistItem(
                     taskId,
                     itemId,
                     payload,
-                    payload.get("actorId") != null ? payload.get("actorId").toString() : null
+                    authenticatedUserHelper.requireActorEmail(authentication)
             );
             return ResponseEntity.ok(item);
         } catch (RuntimeException e) {
@@ -149,22 +159,26 @@ public class TaskController {
     public ResponseEntity<?> deleteChecklistItem(
             @PathVariable String taskId,
             @PathVariable String itemId,
+            Authentication authentication,
             @RequestParam(required = false) String actorId) {
         try {
-            return ResponseEntity.ok(taskService.deleteChecklistItem(taskId, itemId, actorId));
+            return ResponseEntity.ok(taskService.deleteChecklistItem(taskId, itemId, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @PostMapping("/{taskId}/attachments")
-    public ResponseEntity<?> addTaskAttachment(@PathVariable String taskId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> addTaskAttachment(
+            @PathVariable String taskId,
+            Authentication authentication,
+            @RequestBody Map<String, Object> payload) {
         try {
             AttachmentInfo attachment = parseAttachment(payload);
             AttachmentInfo savedAttachment = taskService.addTaskAttachment(
                     taskId,
                     attachment,
-                    payload.get("actorId") != null ? payload.get("actorId").toString() : null
+                    authenticatedUserHelper.requireActorEmail(authentication)
             );
             return ResponseEntity.ok(savedAttachment);
         } catch (RuntimeException e) {
@@ -176,18 +190,21 @@ public class TaskController {
     public ResponseEntity<?> deleteTaskAttachment(
             @PathVariable String taskId,
             @PathVariable String attachmentId,
+            Authentication authentication,
             @RequestParam(required = false) String actorId) {
         try {
-            return ResponseEntity.ok(taskService.deleteTaskAttachment(taskId, attachmentId, actorId));
+            return ResponseEntity.ok(taskService.deleteTaskAttachment(taskId, attachmentId, authenticatedUserHelper.requireActorEmail(authentication)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @GetMapping("/{taskId}/activity")
-    public ResponseEntity<?> getTaskActivity(@PathVariable String taskId) {
+    public ResponseEntity<?> getTaskActivity(
+            @PathVariable String taskId,
+            Authentication authentication) {
         try {
-            List<TaskActivity> activity = taskService.getTaskActivity(taskId);
+            List<TaskActivity> activity = taskService.getTaskActivity(taskId, authenticatedUserHelper.requireActorEmail(authentication));
             return ResponseEntity.ok(activity);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -204,5 +221,14 @@ public class TaskController {
         attachment.setUploadedByName(payload.get("uploadedByName") != null ? payload.get("uploadedByName").toString() : null);
         attachment.setUploadedAt(payload.get("uploadedAt") != null ? Long.parseLong(payload.get("uploadedAt").toString()) : 0L);
         return attachment;
+    }
+
+    private Task toTask(CreateTaskRequest request) {
+        Task task = new Task();
+        task.setTitle(request.getTitle() != null ? request.getTitle().trim() : null);
+        task.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        task.setDeadline(request.getDeadline());
+        task.setPriority(request.getPriority());
+        return task;
     }
 }

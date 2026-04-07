@@ -253,13 +253,6 @@ public class ProjectMessageService {
             }
         }
 
-        // 3. MANAGER role
-        User user = userRepository.findById(userId).orElse(null);
-        if (user != null && user.getRole() != null && "MANAGER".equals(user.getRole().name())) {
-            logger.info("✅ MANAGER ROLE");
-            return true;
-        }
-
         logger.warning("❌ DENIED: " + userId);
         return false;
     }

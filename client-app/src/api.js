@@ -4,7 +4,17 @@ export const resolveAppUrl = (value) => {
     if (!value) return '#';
 
     try {
-        return new URL(value, window.location.origin).toString();
+        const normalizedValue = value.startsWith('/uploads/')
+            ? `/api/files/${value.slice('/uploads/'.length)}`
+            : value;
+        const resolvedUrl = new URL(normalizedValue, window.location.origin);
+        const token = localStorage.getItem('token');
+
+        if (token && resolvedUrl.origin === window.location.origin && resolvedUrl.pathname.startsWith('/api/files/')) {
+            resolvedUrl.searchParams.set('token', token);
+        }
+
+        return resolvedUrl.toString();
     } catch {
         return value;
     }
@@ -21,37 +31,22 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        console.log('🔍 [Request Interceptor] URL:', config.url);
-        console.log('🔍 [Request Interceptor] Token in localStorage:', token ? 'EXISTS' : 'NULL');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('🔍 [Request Interceptor] Authorization header set:', config.headers.Authorization);
-        } else {
-            console.log('🔍 [Request Interceptor] No token found, skipping Authorization header');
         }
         return config;
     },
-    (error) => {
-        console.error('🔍 [Request Interceptor] Error:', error);
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
 // Interceptor để xử lý lỗi 401 (Unauthorized)
 api.interceptors.response.use(
-    (response) => {
-        console.log('✅ [Response Interceptor] Success:', response.config.url);
-        return response;
-    },
+    (response) => response,
     (error) => {
-        console.error('❌ [Response Interceptor] Error:', error.config?.url);
-        console.error('❌ [Response Interceptor] Status:', error.response?.status);
-        console.error('❌ [Response Interceptor] Headers:', error.response?.headers);
         const requestUrl = error.config?.url || '';
         const isPublicAuthRequest = requestUrl.startsWith('/auth/');
 
         if (error.response?.status === 401 && !isPublicAuthRequest) {
-            console.error("⛔ Unauthorized access - clearing localStorage and redirecting");
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/';
@@ -79,11 +74,9 @@ export const notificationAPI = {
 };
 
 export const authAPI = {
+    login: (email, password) => api.post('/auth/login', { email, password }),
     signup: (payload) => api.post('/auth/signup', payload),
     googleLogin: (credential) => api.post('/auth/google', { credential }),
-    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-    validateResetToken: (token) => api.get('/auth/reset-password/validate', { params: { token } }),
-    resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
 };
 
 export const adminActivityAPI = {
@@ -141,6 +134,33 @@ export const projectAPI = {
     getAccessibleProjects: (userId) => api.get(`/projects/accessible/${userId}`),
 };
 
+export const requestAPI = {
+    create: (payload) => api.post('/enterprise-requests', payload),
+    getMine: () => api.get('/enterprise-requests/mine'),
+    getApprovals: () => api.get('/enterprise-requests/approvals'),
+    getHistory: () => api.get('/enterprise-requests/history'),
+    getDetail: (requestId) => api.get(`/enterprise-requests/${requestId}`),
+    decide: (requestId, payload) => api.post(`/enterprise-requests/${requestId}/decision`, payload),
+};
+
+export const projectTemplateAPI = {
+    getAll: (params = {}) => api.get('/project-templates', { params }),
+    create: (payload) => api.post('/project-templates', payload),
+    instantiate: (templateId, payload) => api.post(`/project-templates/${templateId}/instantiate`, payload),
+};
+
+export const departmentInsightsAPI = {
+    getKpis: () => api.get('/department-performance/kpis'),
+    getOkrs: (departmentId, params = {}) => api.get(`/department-performance/okrs/${departmentId}`, { params }),
+    upsertOkr: (payload) => api.post('/department-performance/okrs', payload),
+    updateKeyResult: (okrId, keyResultId, payload) => api.patch(`/department-performance/okrs/${okrId}/key-results/${keyResultId}`, payload),
+    updateReviewSummary: (okrId, payload) => api.patch(`/department-performance/okrs/${okrId}/review-summary`, payload),
+};
+
+export const analyticsAPI = {
+    getDelivery: (params = {}) => api.get('/analytics/delivery', { params }),
+};
+
 export const taskAPI = {
     getDetail: (taskId) => api.get(`/tasks/${taskId}`),
     update: (taskId, payload) => api.put(`/tasks/${taskId}`, payload),
@@ -148,14 +168,14 @@ export const taskAPI = {
     getActivity: (taskId) => api.get(`/tasks/${taskId}/activity`),
     addChecklistItem: (taskId, payload) => api.post(`/tasks/${taskId}/checklist-items`, payload),
     updateChecklistItem: (taskId, itemId, payload) => api.put(`/tasks/${taskId}/checklist-items/${itemId}`, payload),
-    deleteChecklistItem: (taskId, itemId, actorId) => api.delete(`/tasks/${taskId}/checklist-items/${itemId}`, { params: { actorId } }),
+    deleteChecklistItem: (taskId, itemId) => api.delete(`/tasks/${taskId}/checklist-items/${itemId}`),
     addAttachment: (taskId, payload) => api.post(`/tasks/${taskId}/attachments`, payload),
-    deleteAttachment: (taskId, attachmentId, actorId) => api.delete(`/tasks/${taskId}/attachments/${attachmentId}`, { params: { actorId } }),
+    deleteAttachment: (taskId, attachmentId) => api.delete(`/tasks/${taskId}/attachments/${attachmentId}`),
 };
 
 export const commentAPI = {
     getTaskComments: (taskId) => api.get(`/comments/task/${taskId}`),
-    add: (taskId, userId, payload) => api.post(`/comments/add?taskId=${taskId}&userId=${userId}`, payload),
+    add: (taskId, _userId, payload) => api.post(`/comments/add?taskId=${taskId}`, payload),
     update: (commentId, payload) => api.put(`/comments/${commentId}`, payload),
     delete: (commentId) => api.delete(`/comments/${commentId}`),
 };

@@ -17,12 +17,16 @@ import org.springframework.security.config.Customizer;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -50,7 +54,7 @@ public class SecurityConfig {
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-        configuration.setExposedHeaders(Arrays.asList("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials", "X-Debug-Auth", "X-Debug-User"));
+        configuration.setExposedHeaders(Arrays.asList("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -87,10 +91,11 @@ public class SecurityConfig {
                     "/**/*.gif",
                     "/**/*.ico"
                 ).permitAll()
-                .requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/google", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/validate").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/signup", "/api/auth/google").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/me").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/my-department").authenticated()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/tasks/statistics").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users", "/api/users/search", "/api/users/fix-active").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users", "/api/users/create-with-avatar").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/users/*").hasRole("ADMIN")
@@ -99,27 +104,20 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/*/reject").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/users/bulk-update-dept").hasRole("ADMIN")
                 .requestMatchers("/error").permitAll() // Quan trọng: Cho phép xem nội dung lỗi
-                .requestMatchers("/api/files/**").permitAll() // Cho phép upload file (tạm thời để debug)
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/files/**").permitAll()
+                .requestMatchers("/api/files/**").authenticated()
                 .requestMatchers("/ws/**").permitAll()       // WebSocket handshake
-                .requestMatchers("/uploads/**").permitAll()   // Truy cập file uploads (ảnh/file)
+                .requestMatchers("/uploads/**").denyAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
-                    String msg = "❌ EntryPoint: 401 Unauthorized - URL: " + request.getRequestURI() + " - Reason: " + authException.getMessage();
-                    System.err.println(msg);
-                    java.nio.file.Files.write(java.nio.file.Paths.get("auth_debug.txt"), 
-                        (new java.util.Date().toString() + " - " + msg + "\n").getBytes(), 
-                        java.nio.file.StandardOpenOption.APPEND);
+                    logger.warn("Unauthorized request path={}", request.getRequestURI());
                     response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
-                    String msg = "❌ AccessDeniedHandler: 403 Forbidden - URL: " + request.getRequestURI() + " - Reason: " + accessDeniedException.getMessage();
-                    System.err.println(msg);
-                    java.nio.file.Files.write(java.nio.file.Paths.get("auth_debug.txt"), 
-                        (new java.util.Date().toString() + " - " + msg + "\n").getBytes(), 
-                        java.nio.file.StandardOpenOption.APPEND);
+                    logger.warn("Forbidden request path={}", request.getRequestURI());
                     response.sendError(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN, accessDeniedException.getMessage());
                 })
             )

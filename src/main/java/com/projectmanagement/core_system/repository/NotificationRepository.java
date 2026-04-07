@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface NotificationRepository extends MongoRepository<Notification, String> {
@@ -18,6 +19,8 @@ public interface NotificationRepository extends MongoRepository<Notification, St
 
     // Lấy danh sách thông báo chưa đọc
     List<Notification> findByReceiverAndReadFalseOrderByCreatedAtDesc(User receiver);
+
+    Optional<Notification> findByIdAndReceiver(String id, User receiver);
 
     long deleteByReceiverAndTaskAndType(User receiver, Task task, String type);
 

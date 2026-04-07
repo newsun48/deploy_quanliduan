@@ -14,12 +14,11 @@ import com.projectmanagement.core_system.repository.TaskRepository;
 import com.projectmanagement.core_system.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.Map;
@@ -27,8 +26,13 @@ import java.util.UUID;
 
 import java.util.List;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.URI;
 import java.net.URL;
-import java.net.URLConnection;
 import com.projectmanagement.core_system.model.UpdateUserRequest;
 import com.projectmanagement.core_system.enums.ERole;
 import org.slf4j.Logger;
@@ -38,6 +42,7 @@ import org.slf4j.LoggerFactory;
 public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+    private static final int AVATAR_BUFFER_SIZE = 8192;
 
     @Autowired
     private UserRepository userRepository;
@@ -58,10 +63,19 @@ public class UserService {
     private UserActivityService userActivityService;
 
     @Autowired
-    private JavaMailSender mailSender;
+    private EmailDeliveryService emailDeliveryService;
 
-    @Value("${spring.mail.username:}")
-    private String senderEmail;
+    @Value("${app.avatar.max-download-bytes:5242880}")
+    private long maxAvatarDownloadBytes;
+
+    @Value("${app.avatar.connect-timeout-ms:5000}")
+    private int avatarConnectTimeoutMs;
+
+    @Value("${app.avatar.read-timeout-ms:5000}")
+    private int avatarReadTimeoutMs;
+
+    @Value("${app.avatar.max-redirects:3}")
+    private int maxAvatarRedirects;
 
     // 1. Tạo User (Thêm Validate kỹ càng hơn)
     public User createUser(User user, String deptId) {
@@ -359,6 +373,7 @@ public class UserService {
 
         // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setAuthVersion((user.getAuthVersion() != null ? user.getAuthVersion() : 0L) + 1L);
         User savedUser = userRepository.save(user);
         userActivityService.record(savedUser, savedUser, "PASSWORD_CHANGED",
                 savedUser.getFullName() + " đã thay đổi mật khẩu");
@@ -425,32 +440,216 @@ public class UserService {
         }
 
         try {
-            URL url = new URL(imageUrl);
-            URLConnection connection = url.openConnection();
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0");
-
-            String contentType = connection.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                throw new IllegalArgumentException("URL không chỉ tới một file ảnh!");
+            URI targetUri = validateExternalImageUri(imageUrl);
+            HttpURLConnection connection = openValidatedImageConnection(targetUri);
+            String contentType = normalizeRemoteContentType(connection.getContentType());
+            if (!isAllowedRemoteImageContentType(contentType)) {
+                throw new IllegalArgumentException("URL không chỉ tới một file ảnh PNG hoặc JPG hợp lệ!");
             }
 
-            byte[] imageBytes = connection.getInputStream().readAllBytes();
-
-            if (imageBytes.length > 5 * 1024 * 1024) {
+            long declaredLength = connection.getContentLengthLong();
+            if (declaredLength > maxAvatarDownloadBytes) {
                 throw new IllegalArgumentException("Kích thước ảnh từ URL không được vượt quá 5MB!");
             }
 
+            byte[] imageBytes;
+            try (InputStream inputStream = connection.getInputStream()) {
+                imageBytes = readWithLimit(inputStream, maxAvatarDownloadBytes);
+            } finally {
+                connection.disconnect();
+            }
+
+            String detectedContentType = detectAvatarContentType(imageBytes);
+            if (detectedContentType == null || !detectedContentType.equals(contentType)) {
+                throw new IllegalArgumentException("Nội dung ảnh không khớp với định dạng PNG hoặc JPG hợp lệ!");
+            }
+
             String base64 = Base64.getEncoder().encodeToString(imageBytes);
-            return "data:" + contentType + ";base64," + base64;
-        } catch (java.net.MalformedURLException e) {
+            return "data:" + detectedContentType + ";base64," + base64;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (java.net.MalformedURLException | java.net.URISyntaxException e) {
             throw new IllegalArgumentException("URL không hợp lệ!");
         } catch (java.net.SocketTimeoutException e) {
             throw new IllegalArgumentException("Timeout khi tải ảnh từ URL!");
         } catch (IOException e) {
             throw new IOException("Lỗi khi tải ảnh từ URL: " + e.getMessage());
         }
+    }
+
+    private URI validateExternalImageUri(String imageUrl) throws java.net.URISyntaxException, IOException {
+        URI uri = new URI(imageUrl.trim());
+        if (!uri.isAbsolute()) {
+            throw new IllegalArgumentException("URL ảnh phải là URL tuyệt đối!");
+        }
+
+        String scheme = uri.getScheme();
+        if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            throw new IllegalArgumentException("Chỉ chấp nhận URL ảnh qua HTTP hoặc HTTPS!");
+        }
+
+        if (!StringUtils.hasText(uri.getHost())) {
+            throw new IllegalArgumentException("URL ảnh không hợp lệ!");
+        }
+
+        if (uri.getUserInfo() != null) {
+            throw new IllegalArgumentException("URL ảnh không hợp lệ!");
+        }
+
+        ensureHostIsPublic(uri.getHost());
+        return uri;
+    }
+
+    private HttpURLConnection openValidatedImageConnection(URI initialUri) throws IOException, java.net.URISyntaxException {
+        URI currentUri = initialUri;
+        int redirects = 0;
+
+        while (true) {
+            URL url = currentUri.toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(avatarConnectTimeoutMs);
+            connection.setReadTimeout(avatarReadTimeoutMs);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestProperty("User-Agent", "ProjectManagementAvatarFetcher/1.0");
+            connection.setRequestProperty("Accept", "image/png,image/jpeg");
+
+            int status = connection.getResponseCode();
+            if (!isRedirectStatus(status)) {
+                if (status >= 400) {
+                    connection.disconnect();
+                    throw new IllegalArgumentException("Không thể tải ảnh từ URL đã cung cấp!");
+                }
+                return connection;
+            }
+
+            if (redirects >= maxAvatarRedirects) {
+                connection.disconnect();
+                throw new IllegalArgumentException("URL ảnh chuyển hướng quá nhiều lần!");
+            }
+
+            String location = connection.getHeaderField("Location");
+            connection.disconnect();
+            if (!StringUtils.hasText(location)) {
+                throw new IllegalArgumentException("URL ảnh chuyển hướng không hợp lệ!");
+            }
+
+            currentUri = validateExternalImageUri(currentUri.resolve(location).toString());
+            redirects++;
+        }
+    }
+
+    private boolean isRedirectStatus(int status) {
+        return status == HttpURLConnection.HTTP_MOVED_PERM
+                || status == HttpURLConnection.HTTP_MOVED_TEMP
+                || status == HttpURLConnection.HTTP_SEE_OTHER
+                || status == 307
+                || status == 308;
+    }
+
+    private void ensureHostIsPublic(String host) throws IOException {
+        String normalizedHost = host.trim().toLowerCase();
+        if (normalizedHost.equals("localhost") || normalizedHost.endsWith(".localhost") || normalizedHost.endsWith(".local")) {
+            throw new IllegalArgumentException("URL ảnh không được trỏ tới host nội bộ!");
+        }
+
+        InetAddress[] addresses = InetAddress.getAllByName(host);
+        for (InetAddress address : addresses) {
+            if (isBlockedAddress(address)) {
+                throw new IllegalArgumentException("URL ảnh không được trỏ tới địa chỉ mạng nội bộ!");
+            }
+        }
+    }
+
+    private boolean isBlockedAddress(InetAddress address) {
+        if (address.isAnyLocalAddress()
+                || address.isLoopbackAddress()
+                || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress()
+                || address.isMulticastAddress()) {
+            return true;
+        }
+
+        byte[] raw = address.getAddress();
+        if (address instanceof Inet4Address && raw.length == 4) {
+            int first = raw[0] & 0xFF;
+            int second = raw[1] & 0xFF;
+            if (first == 0 || first == 10 || first == 127) {
+                return true;
+            }
+            if (first == 169 && second == 254) {
+                return true;
+            }
+            if (first == 172 && second >= 16 && second <= 31) {
+                return true;
+            }
+            if (first == 192 && second == 168) {
+                return true;
+            }
+            if (first == 100 && second >= 64 && second <= 127) {
+                return true;
+            }
+        }
+
+        if (address instanceof Inet6Address && raw.length == 16) {
+            int first = raw[0] & 0xFF;
+            int second = raw[1] & 0xFF;
+            if ((first & 0xFE) == 0xFC) {
+                return true;
+            }
+            return first == 0xFE && (second & 0xC0) == 0x80;
+        }
+
+        return false;
+    }
+
+    private String normalizeRemoteContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return null;
+        }
+
+        return contentType.toLowerCase().split(";")[0].trim();
+    }
+
+    private boolean isAllowedRemoteImageContentType(String contentType) {
+        return "image/png".equals(contentType) || "image/jpeg".equals(contentType);
+    }
+
+    private byte[] readWithLimit(InputStream inputStream, long maxBytes) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[AVATAR_BUFFER_SIZE];
+        long totalBytes = 0L;
+        int read;
+        while ((read = inputStream.read(buffer)) != -1) {
+            totalBytes += read;
+            if (totalBytes > maxBytes) {
+                throw new IllegalArgumentException("Kích thước ảnh từ URL không được vượt quá 5MB!");
+            }
+            outputStream.write(buffer, 0, read);
+        }
+        return outputStream.toByteArray();
+    }
+
+    private String detectAvatarContentType(byte[] imageBytes) {
+        if (imageBytes.length >= 8
+                && (imageBytes[0] & 0xFF) == 0x89
+                && imageBytes[1] == 0x50
+                && imageBytes[2] == 0x4E
+                && imageBytes[3] == 0x47
+                && imageBytes[4] == 0x0D
+                && imageBytes[5] == 0x0A
+                && imageBytes[6] == 0x1A
+                && imageBytes[7] == 0x0A) {
+            return "image/png";
+        }
+
+        if (imageBytes.length >= 3
+                && (imageBytes[0] & 0xFF) == 0xFF
+                && (imageBytes[1] & 0xFF) == 0xD8
+                && (imageBytes[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+
+        return null;
     }
 
     // 11. Admin update employee info (email, department, role)
@@ -674,25 +873,17 @@ public class UserService {
     }
 
     private void sendApprovalEmail(User user) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(user.getEmail());
-        message.setFrom(senderEmail);
-        message.setSubject("Tai khoan da duoc phe duyet");
-        message.setText("Xin chao " + user.getFullName() + ",\n\n"
+        String message = "Xin chao " + user.getFullName() + ",\n\n"
                 + "Tai khoan cua ban da duoc phe duyet va co the dang nhap vao he thong.\n"
-                + "Neu can ho tro them, vui long lien he quan tri vien.");
-        mailSender.send(message);
+                + "Neu can ho tro them, vui long lien he quan tri vien.";
+        emailDeliveryService.sendEmail(user.getEmail(), "Tai khoan da duoc phe duyet", message, null);
     }
 
     private void sendRejectionEmail(User user, String reason) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(user.getEmail());
-        message.setFrom(senderEmail);
-        message.setSubject("Tai khoan da bi tu choi phe duyet");
-        message.setText("Xin chao " + user.getFullName() + ",\n\n"
+        String message = "Xin chao " + user.getFullName() + ",\n\n"
                 + "Yeu cau dang ky tai khoan cua ban da bi tu choi.\n"
                 + "Ly do: " + reason + "\n\n"
-                + "Ban co the lien he quan tri vien de duoc huong dan them.");
-        mailSender.send(message);
+                + "Ban co the lien he quan tri vien de duoc huong dan them.";
+        emailDeliveryService.sendEmail(user.getEmail(), "Tai khoan da bi tu choi phe duyet", message, null);
     }
 }

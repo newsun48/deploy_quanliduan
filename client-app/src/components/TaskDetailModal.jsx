@@ -171,7 +171,6 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
             setSavingChecklist(true);
             await taskAPI.addChecklistItem(task.id, {
                 title: newChecklistTitle.trim(),
-                actorId: currentUser.id,
             });
             setNewChecklistTitle('');
             await refreshTaskDetail(true);
@@ -186,7 +185,6 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
         try {
             await taskAPI.updateChecklistItem(task.id, item.id, {
                 completed: !item.completed,
-                actorId: currentUser.id,
             });
             await refreshTaskDetail(true);
         } catch (err) {
@@ -198,7 +196,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
         if (!(await askConfirm('Bạn chắc chắn muốn xóa checklist này?'))) return;
 
         try {
-            await taskAPI.deleteChecklistItem(task.id, itemId, currentUser.id);
+            await taskAPI.deleteChecklistItem(task.id, itemId);
             await refreshTaskDetail(true);
         } catch (err) {
             alert('Lỗi xóa checklist: ' + (err.response?.data || err.message));
@@ -213,10 +211,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
             const uploadedFiles = await uploadFiles(taskFiles);
 
             for (const uploadedFile of uploadedFiles) {
-                await taskAPI.addAttachment(task.id, {
-                    ...uploadedFile,
-                    actorId: currentUser.id,
-                });
+                await taskAPI.addAttachment(task.id, uploadedFile);
             }
 
             setTaskFiles([]);
@@ -232,7 +227,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
         if (!(await askConfirm('Bạn chắc chắn muốn xóa file này?'))) return;
 
         try {
-            await taskAPI.deleteAttachment(task.id, attachmentId, currentUser.id);
+            await taskAPI.deleteAttachment(task.id, attachmentId);
             await refreshTaskDetail(true);
         } catch (err) {
             alert('Lỗi xóa file: ' + (err.response?.data || err.message));
@@ -331,18 +326,18 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                     <div className="task-modal-title-section">
                         <div>
                             <h2 className="task-modal-title">{currentTask.title}</h2>
-                            <div className="task-modal-subtitle">Task collaboration hub</div>
+                            <div className="task-modal-subtitle">Trung tâm cộng tác công việc</div>
                         </div>
                         <div className="task-modal-header-meta">
                             {canManageTask && !isEditingTask && (
                                 <div className="task-modal-manager-actions">
                                     <button className="task-modal-action-btn task-modal-action-btn-secondary" onClick={() => setIsEditingTask(true)}>
                                         <i className="bi bi-pencil-square"></i>
-                                        Chinh sua
+                                        Chỉnh sửa
                                     </button>
                                     <button className="task-modal-action-btn task-modal-action-btn-danger" onClick={handleDeleteTask} disabled={deletingTask}>
                                         <i className="bi bi-trash3"></i>
-                                        {deletingTask ? 'Dang xoa...' : 'Xoa'}
+                                        {deletingTask ? 'Đang xóa...' : 'Xóa'}
                                     </button>
                                 </div>
                             )}
@@ -359,14 +354,14 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                         <div className="task-info-section">
                             <div className="section-heading-row">
                                 <h5 className="task-section-title">Chi tiết công việc</h5>
-                                {isEditingTask && <span className="section-chip">Dang chinh sua</span>}
+                                {isEditingTask && <span className="section-chip">Đang chỉnh sửa</span>}
                             </div>
 
                             {canManageTask && isEditingTask && (
                                 <form className="task-edit-form" onSubmit={handleTaskEditSubmit}>
                                     <div className="task-edit-grid">
                                         <div className="task-edit-field task-edit-field-full">
-                                            <label htmlFor="task-edit-title">Tieu de cong viec</label>
+                                            <label htmlFor="task-edit-title">Tiêu đề công việc</label>
                                             <input
                                                 id="task-edit-title"
                                                 className="form-control"
@@ -377,7 +372,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                                         </div>
 
                                         <div className="task-edit-field task-edit-field-full">
-                                            <label htmlFor="task-edit-description">Mo ta</label>
+                                            <label htmlFor="task-edit-description">Mô tả</label>
                                             <textarea
                                                 id="task-edit-description"
                                                 className="form-control"
@@ -388,7 +383,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                                         </div>
 
                                         <div className="task-edit-field">
-                                            <label htmlFor="task-edit-deadline">Han hoan thanh</label>
+                                            <label htmlFor="task-edit-deadline">Hạn hoàn thành</label>
                                             <input
                                                 id="task-edit-deadline"
                                                 type="date"
@@ -401,21 +396,21 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                                         </div>
 
                                         <div className="task-edit-field">
-                                            <label htmlFor="task-edit-priority">Do uu tien</label>
+                                            <label htmlFor="task-edit-priority">Độ ưu tiên</label>
                                             <select
                                                 id="task-edit-priority"
                                                 className="form-select"
                                                 value={taskEditForm.priority}
                                                 onChange={(e) => setTaskEditForm((prev) => ({ ...prev, priority: e.target.value }))}
                                             >
-                                                <option value="MEDIUM">Trung binh</option>
+                                                <option value="MEDIUM">Trung bình</option>
                                                 <option value="HIGH">Cao</option>
-                                                <option value="LOW">Thap</option>
+                                                <option value="LOW">Thấp</option>
                                             </select>
                                         </div>
 
                                         <div className="task-edit-field">
-                                            <label htmlFor="task-edit-assignee">Nguoi thuc hien</label>
+                                            <label htmlFor="task-edit-assignee">Người thực hiện</label>
                                             <select
                                                 id="task-edit-assignee"
                                                 className="form-select"
@@ -423,7 +418,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                                                 value={taskEditForm.assigneeId}
                                                 onChange={(e) => setTaskEditForm((prev) => ({ ...prev, assigneeId: e.target.value }))}
                                             >
-                                                <option value="">-- Chon thanh vien du an --</option>
+                                                <option value="">-- Chọn thành viên dự án --</option>
                                                 {assigneeOptions.map((member) => (
                                                     <option key={member.id} value={member.id}>
                                                         {member.fullName}{member.email ? ` (${member.email})` : ''}
@@ -442,14 +437,14 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                                                 setTaskEditForm(createTaskEditState(currentTask));
                                             }}
                                         >
-                                            Huy
+                                            Hủy
                                         </button>
                                         <button
                                             type="submit"
                                             className="btn btn-primary"
                                             disabled={savingTask || !taskEditForm.title.trim() || !taskEditForm.deadline || !taskEditForm.assigneeId}
                                         >
-                                            {savingTask ? 'Dang luu...' : 'Luu thay doi'}
+                                            {savingTask ? 'Đang lưu...' : 'Lưu thay đổi'}
                                         </button>
                                     </div>
                                 </form>
@@ -548,7 +543,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
 
                         <div className="task-info-section">
                             <div className="section-heading-row">
-                                <h5 className="task-section-title">Task Attachments</h5>
+                                <h5 className="task-section-title">Tệp đính kèm công việc</h5>
                                 <span className="section-chip">{currentTask.attachments?.length || 0} file</span>
                             </div>
 
@@ -578,7 +573,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
                                                     {attachment.originalName}
                                                 </a>
                                                 <div className="attachment-meta">
-                                                    {formatBytes(attachment.size)} - {attachment.uploadedByName || 'Unknown'} - {formatDateTime(attachment.uploadedAt)}
+                                                    {formatBytes(attachment.size)} - {attachment.uploadedByName || 'Không rõ'} - {formatDateTime(attachment.uploadedAt)}
                                                 </div>
                                             </div>
                                             <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteTaskAttachment(attachment.id)}>
@@ -592,7 +587,7 @@ const TaskDetailModal = ({ task, currentUser, assigneeCandidates = [], onClose, 
 
                         <div className="task-info-section task-activity-section">
                             <div className="section-heading-row">
-                                <h5 className="task-section-title">Activity History</h5>
+                                <h5 className="task-section-title">Lịch sử hoạt động</h5>
                                 <span className="section-chip">{activity.length} sự kiện</span>
                             </div>
                             <div className="activity-list">

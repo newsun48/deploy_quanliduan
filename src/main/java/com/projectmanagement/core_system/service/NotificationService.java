@@ -5,6 +5,7 @@ import com.projectmanagement.core_system.model.Task;
 import com.projectmanagement.core_system.model.User;
 import com.projectmanagement.core_system.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -68,9 +69,13 @@ public class NotificationService {
     }
 
     // Đánh dấu thong báo là đã đọc
-    public Notification markAsRead(String notificationId) {
-        Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Thông báo không tồn tại!"));
+    public Notification markAsRead(String notificationId, User user) {
+        if (user == null) {
+            throw new AccessDeniedException("Không đủ quyền!");
+        }
+
+        Notification notification = notificationRepository.findByIdAndReceiver(notificationId, user)
+                .orElseThrow(() -> new AccessDeniedException("Bạn không có quyền cập nhật thông báo này!"));
         notification.setRead(true);
         return notificationRepository.save(notification);
     }

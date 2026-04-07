@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
-import api, { authAPI } from '../api';
+import { authAPI } from '../api';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [errorCode, setErrorCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const normalizedError = error.toLowerCase();
-    const rejectedApproval = normalizedError.includes('từ chối');
-    const pendingApproval = !rejectedApproval && (normalizedError.includes('chờ') || normalizedError.includes('duyệt') || normalizedError.includes('phê duyệt'));
+    const rejectedApproval = errorCode === 'REJECTED_APPROVAL';
+    const pendingApproval = errorCode === 'PENDING_APPROVAL';
     const genericError = error && !pendingApproval && !rejectedApproval;
     const googleClientConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
@@ -28,20 +28,16 @@ const LoginPage = () => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
+        setErrorCode('');
 
         try {
-            const res = await api.post('/auth/login', { email, password });
-            console.log("Login Response:", res.data);
+            const res = await authAPI.login(email, password);
             const { token, user } = res.data;
             persistSessionAndRedirect(token, user);
 
         } catch (err) {
-            console.error("❌ Login error:", err);
-            if (err.response) {
-                console.error("Error Status:", err.response.status);
-                console.error("Error Data:", err.response.data);
-            }
             const errorData = err.response?.data;
+            setErrorCode(typeof errorData === 'object' ? (errorData?.code || '') : '');
             const errorMsg = typeof errorData === 'string'
                 ? errorData
                 : (errorData?.message || err.message || 'Đăng nhập thất bại! Vui lòng kiểm tra thông tin.');
@@ -54,10 +50,12 @@ const LoginPage = () => {
     const handleGoogleLogin = async (credentialResponse) => {
         setIsLoading(true);
         setError('');
+        setErrorCode('');
 
         try {
             const res = await authAPI.googleLogin(credentialResponse.credential);
             if (res.status === 202) {
+                setErrorCode(res.data?.code || 'PENDING_APPROVAL');
                 const pendingMsg = res.data?.message || 'Tài khoản của bạn đang chờ quản trị viên phê duyệt!';
                 setError(pendingMsg);
                 localStorage.removeItem('token');
@@ -69,6 +67,7 @@ const LoginPage = () => {
             persistSessionAndRedirect(token, user);
         } catch (err) {
             const errorData = err.response?.data;
+            setErrorCode(typeof errorData === 'object' ? (errorData?.code || '') : '');
             const errorMsg = typeof errorData === 'string'
                 ? errorData
                 : (errorData?.message || err.message || 'Đăng nhập Google thất bại!');
@@ -162,10 +161,6 @@ const LoginPage = () => {
                 )}
 
                 <div className="text-center mt-3">
-                    <Link to="/forgot-password" className="text-decoration-none">Quên mật khẩu?</Link>
-                </div>
-
-                <div className="text-center mt-2">
                     <span className="text-muted">Chưa có tài khoản? </span>
                     <Link to="/signup" className="text-decoration-none fw-semibold">Đăng ký ngay</Link>
                 </div>

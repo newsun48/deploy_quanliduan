@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
-import api, { getWebSocketUrl, resolveAppUrl, userAPI } from '../api';
+import api, { getWebSocketUrl, projectTemplateAPI, requestAPI, resolveAppUrl, userAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell';
 import TaskDetailModal from '../components/TaskDetailModal';
@@ -9,7 +9,37 @@ import ProjectChatPanel from '../components/ProjectChatPanel';
 import PrivateChatPanel from '../components/PrivateChatPanel';
 import { askConfirm } from '../utils/confirm';
 import Swal from 'sweetalert2';
+import '../components/EnterpriseWorkflow.css';
 import './AdminDashboard.css';
+import {
+    REQUEST_PRIORITY_OPTIONS,
+    REQUEST_TYPE_OPTIONS,
+    TEMPLATE_PRIORITY_OPTIONS,
+    formatWorkflowDate,
+    formatWorkflowDateTime,
+    getRequestStatusMeta,
+    getTemplateStatusMeta,
+    normalizeRequestItem,
+    normalizeTemplateItem,
+} from '../utils/enterpriseWorkflow';
+
+const createEmptyTemplateForm = () => ({
+    name: '',
+    summary: '',
+    templateGroupType: 'OTHER',
+    priority: 'MEDIUM',
+    checklistText: '',
+    objectiveText: '',
+});
+
+const createProjectFromTemplateForm = () => ({
+    templateId: '',
+    name: '',
+    description: '',
+    startDate: '',
+    deadline: '',
+    priority: '',
+});
 
 const formatDeptName = (name) => {
     if (!name) return "";
@@ -77,12 +107,48 @@ const ManagerDashboard = () => {
     const [privateChatUser, setPrivateChatUser] = useState(null);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+    const [requestInbox, setRequestInbox] = useState([]);
+    const [requestHistory, setRequestHistory] = useState([]);
+    const [workflowLoading, setWorkflowLoading] = useState(false);
+    const [workflowError, setWorkflowError] = useState('');
+    const [requestStatusFilter, setRequestStatusFilter] = useState('ALL');
+    const [templateList, setTemplateList] = useState([]);
+    const [templateForm, setTemplateForm] = useState(createEmptyTemplateForm);
+    const [editingTemplateId, setEditingTemplateId] = useState(null);
+    const [templateSubmitting, setTemplateSubmitting] = useState(false);
+    const [projectFromTemplateForm, setProjectFromTemplateForm] = useState(createProjectFromTemplateForm);
+    const [creatingProjectFromTemplate, setCreatingProjectFromTemplate] = useState(false);
 
     // FORMS
     const [newTask, setNewTask] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '' });
     const [selectedMembersToAdd, setSelectedMembersToAdd] = useState([]);
     const [editProjectForm, setEditProjectForm] = useState({ name: '', description: '', startDate: '', deadline: '', documentLink: '' });
     const [projectDocumentFile, setProjectDocumentFile] = useState(null);
+
+    const loadWorkflowData = async (deptId) => {
+        try {
+            setWorkflowLoading(true);
+            setWorkflowError('');
+            const [inboxRes, historyRes, templatesRes] = await Promise.all([
+                requestAPI.getApprovals(),
+                requestAPI.getHistory(),
+                projectTemplateAPI.getAll(),
+            ]);
+            const normalizedTemplates = (templatesRes.data || []).map(normalizeTemplateItem);
+            setRequestInbox((inboxRes.data || []).map(normalizeRequestItem));
+            setRequestHistory((historyRes.data || []).map(normalizeRequestItem));
+            setTemplateList(normalizedTemplates);
+            setProjectFromTemplateForm((prev) => ({
+                ...prev,
+                templateId: prev.templateId || normalizedTemplates[0]?.id || '',
+            }));
+        } catch (err) {
+            console.error('Lỗi tải workflow manager:', err);
+            setWorkflowError(typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message));
+        } finally {
+            setWorkflowLoading(false);
+        }
+    };
 
     useEffect(() => {
         const userJson = localStorage.getItem('user');
@@ -142,7 +208,10 @@ const ManagerDashboard = () => {
                 setCurrentUser(foundUser);
                 if (foundUser.department) {
                     setMyDepartment(foundUser.department);
-                    await fetchDeptData(foundUser.department.id);
+                    await Promise.all([
+                        fetchDeptData(foundUser.department.id),
+                        loadWorkflowData(foundUser.department.id),
+                    ]);
                 }
             }
         } catch (err) { 
@@ -302,6 +371,97 @@ const ManagerDashboard = () => {
         } catch (err) { alert("Lỗi: " + (err.response?.data || err.message)); }
     };
 
+    const handleRequestDecision = async (request, approved) => {
+        const actionText = approved ? 'Duyệt yêu cầu' : 'Từ chối yêu cầu';
+        const confirmText = approved ? 'Duyệt' : 'Từ chối';
+
+        const result = await Swal.fire({
+            title: actionText,
+            input: 'textarea',
+            inputLabel: 'Ghi chú xử lý',
+            inputPlaceholder: 'Thêm ghi chú để người gửi và cấp tiếp theo nắm rõ bối cảnh...',
+            inputAttributes: { 'aria-label': 'Ghi chú xử lý' },
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: approved ? '#1d6fa3' : '#dc3545',
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            await requestAPI.decide(request.id, {
+                approved,
+                comment: result.value || '',
+            });
+            await loadWorkflowData(myDepartment.id);
+            alert(`Đã cập nhật yêu cầu ${request.title}.`);
+        } catch (err) {
+            const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
+            alert(`Lỗi: ${message}`);
+        }
+    };
+
+    const handleTemplateSubmit = async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            name: templateForm.name.trim(),
+            description: templateForm.summary.trim(),
+            templateGroupType: templateForm.templateGroupType,
+            taskTemplates: templateForm.objectiveText.split('\n').map((item) => item.trim()).filter(Boolean).map((item, index) => ({
+                title: item,
+                description: templateForm.summary.trim(),
+                priority: templateForm.priority,
+                deadlineOffsetDays: index * 7,
+                checklistTemplates: index === 0
+                    ? templateForm.checklistText.split('\n').map((check) => check.trim()).filter(Boolean).map((check) => ({ title: check }))
+                    : [],
+            })),
+        };
+
+        try {
+            setTemplateSubmitting(true);
+            await projectTemplateAPI.create(payload);
+            setTemplateForm(createEmptyTemplateForm());
+            setEditingTemplateId(null);
+            await loadWorkflowData(myDepartment.id);
+            alert('Đã tạo template dự án mới.');
+        } catch (err) {
+            const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
+            alert(`Lỗi: ${message}`);
+        } finally {
+            setTemplateSubmitting(false);
+        }
+    };
+
+    const handleCreateProjectFromTemplate = async (e) => {
+        e.preventDefault();
+
+        try {
+            setCreatingProjectFromTemplate(true);
+            await projectTemplateAPI.instantiate(projectFromTemplateForm.templateId, {
+                departmentId: myDepartment.id,
+                project: {
+                    name: projectFromTemplateForm.name.trim(),
+                    description: projectFromTemplateForm.description.trim(),
+                    startDate: projectFromTemplateForm.startDate,
+                    deadline: projectFromTemplateForm.deadline,
+                    priority: projectFromTemplateForm.priority || undefined,
+                },
+            });
+            setProjectFromTemplateForm((prev) => ({ ...createProjectFromTemplateForm(), templateId: prev.templateId }));
+            await fetchDeptData(myDepartment.id);
+            await loadWorkflowData(myDepartment.id);
+            alert('Đã khởi tạo dự án từ template.');
+        } catch (err) {
+            const message = typeof err.response?.data === 'string' ? err.response.data : (err.response?.data?.message || err.message);
+            alert(`Lỗi: ${message}`);
+        } finally {
+            setCreatingProjectFromTemplate(false);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
@@ -333,6 +493,15 @@ const ManagerDashboard = () => {
         if (String(user.id) === String(currentUser?.id)) return false;
         return !selectedProjectMembers.some((member) => String(member.id) === String(user.id));
     }), [allEmployees, currentUser?.id, selectedProjectMembers]);
+    const filteredRequestInbox = useMemo(
+        () => requestInbox.filter((request) => requestStatusFilter === 'ALL' || request.status === requestStatusFilter),
+        [requestInbox, requestStatusFilter]
+    );
+    const workflowStats = useMemo(() => ({
+        pending: requestInbox.filter((request) => request.status === 'PENDING').length,
+        handled: requestHistory.length,
+        templates: templateList.length,
+    }), [requestHistory.length, requestInbox, templateList.length]);
 
     if (isLoading) {
         return (
@@ -369,6 +538,15 @@ const ManagerDashboard = () => {
                         onClick={() => setActiveTab('DASHBOARD')}
                     >
                         <i className="bi bi-grid-fill top-menu-icon" style={{ color: activeTab === 'DASHBOARD' ? '#4318ff' : '#a3aed1' }}></i> Tổng Quan
+                    </button>
+                    <button 
+                        className={`top-menu-item ${activeTab === 'OPERATIONS' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('OPERATIONS')}
+                    >
+                        <i className="bi bi-briefcase-fill top-menu-icon" style={{ color: activeTab === 'OPERATIONS' ? '#4318ff' : '#a3aed1' }}></i> Workflow
+                    </button>
+                    <button className="top-menu-item" onClick={() => navigate('/manager/statistics')}>
+                        <i className="bi bi-bar-chart-fill top-menu-icon" style={{ color: '#a3aed1' }}></i> KPI / OKR
                     </button>
                     {activeTab === 'PROJECT_DETAIL' && (
                         <button className="top-menu-item active">
@@ -422,6 +600,23 @@ const ManagerDashboard = () => {
                         <button onClick={() => setActiveTab('DASHBOARD')} className="btn btn-link text-decoration-none fw-bold mb-3 ps-0 text-dark">
                             <i className="bi bi-arrow-left"></i> Quay lại Dashboard
                         </button>
+                    )}
+
+                    {activeTab !== 'PROJECT_DETAIL' && (
+                        <div className="d-flex justify-content-between align-items-center mb-4 d-xl-none bg-white p-3 rounded-4 shadow-sm">
+                            <h4 className="page-title mb-0 fs-5">{activeTab === 'DASHBOARD' ? 'Tổng quan phòng ban' : 'Workflow phòng ban'}</h4>
+                            <select className="form-select modern-input w-auto fw-bold text-primary-dark shadow-sm py-1" value={activeTab} onChange={(e) => {
+                                if (e.target.value === 'STATS') {
+                                    navigate('/manager/statistics');
+                                    return;
+                                }
+                                setActiveTab(e.target.value);
+                            }}>
+                                <option value="DASHBOARD">Tổng quan</option>
+                                <option value="OPERATIONS">Workflow</option>
+                                <option value="STATS">KPI / OKR</option>
+                            </select>
+                        </div>
                     )}
 
                     {activeTab === 'DASHBOARD' && (
@@ -492,6 +687,316 @@ const ManagerDashboard = () => {
                                 )}
                             </div>
                         </>
+                    )}
+
+                    {activeTab === 'OPERATIONS' && (
+                        <div className="workflow-shell">
+                            <div className="workflow-hero">
+                                <div>
+                                    <span className="admin-section-kicker">Quản trị phê duyệt và template</span>
+                                    <h2 className="workflow-hero-title">Xử lý inbox phê duyệt của phòng và chuẩn hóa dự án từ template trong một khu vực</h2>
+                                    <p className="workflow-hero-copy">
+                                        Manager có thể phê duyệt đề xuất nghiệp vụ, đẩy các yêu cầu cần leo thang cho admin và khởi tạo dự án mới từ các template lặp lại.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="workflow-summary-grid">
+                                <div className="workflow-summary-card">
+                                    <span className="workflow-summary-label">Cần xử lý</span>
+                                    <div className="workflow-summary-value">{workflowStats.pending}</div>
+                                    <div className="workflow-summary-note">Yêu cầu đang chờ manager duyệt</div>
+                                </div>
+                                <div className="workflow-summary-card">
+                                    <span className="workflow-summary-label">Đã xử lý</span>
+                                    <div className="workflow-summary-value">{workflowStats.handled}</div>
+                                    <div className="workflow-summary-note">Lịch sử workflow phòng ban</div>
+                                </div>
+                                <div className="workflow-summary-card">
+                                    <span className="workflow-summary-label">Template đang có</span>
+                                    <div className="workflow-summary-value">{workflowStats.templates}</div>
+                                    <div className="workflow-summary-note">Mẫu dự án sẵn sàng sử dụng</div>
+                                </div>
+                            </div>
+
+                            <div className="workflow-layout">
+                                <div className="workflow-stack">
+                                    <div className="workflow-panel">
+                                        <div className="workflow-panel-header">
+                                            <div>
+                                                <h3 className="workflow-panel-title">Inbox phê duyệt của phòng</h3>
+                                                <p className="workflow-panel-copy">Danh sách yêu cầu nghiệp vụ do nhân viên trong phòng gửi lên và cần manager quyết định.</p>
+                                            </div>
+                                            <select className="form-select modern-input" style={{ maxWidth: '220px' }} value={requestStatusFilter} onChange={(e) => setRequestStatusFilter(e.target.value)}>
+                                                <option value="ALL">Tất cả trạng thái</option>
+                                                <option value="PENDING">Chờ duyệt</option>
+                                                <option value="APPROVED">Đã duyệt</option>
+                                                <option value="REJECTED">Từ chối</option>
+                                            </select>
+                                        </div>
+                                        <div className="workflow-panel-body">
+                                            {workflowError && <div className="workflow-error mb-3">{workflowError}</div>}
+                                            {workflowLoading ? (
+                                                <div className="workflow-empty">Đang tải inbox phê duyệt...</div>
+                                            ) : filteredRequestInbox.length === 0 ? (
+                                                <div className="workflow-empty">Không có yêu cầu nào cần xử lý trong bộ lọc hiện tại.</div>
+                                            ) : (
+                                                <div className="workflow-list workflow-scroll-region">
+                                                    {filteredRequestInbox.map((request) => {
+                                                        const statusMeta = getRequestStatusMeta(request.status);
+                                                        const requestTypeLabel = REQUEST_TYPE_OPTIONS.find((option) => option.value === request.type)?.label || request.type;
+                                                        const requestPriority = REQUEST_PRIORITY_OPTIONS.find((option) => option.value === request.priority)?.label || request.priority;
+
+                                                        return (
+                                                            <article key={request.id || `${request.title}-${request.createdAt}`} className="workflow-item">
+                                                                <div className="workflow-item-head">
+                                                                    <div>
+                                                                        <h4 className="workflow-item-title">{request.title}</h4>
+                                                                        <p className="workflow-item-copy">{request.summary || 'Không có mô tả bổ sung.'}</p>
+                                                                    </div>
+                                                                    <span className={`workflow-pill ${statusMeta.className}`}>{statusMeta.label}</span>
+                                                                </div>
+
+                                                                <div className="workflow-meta-grid">
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Người gửi</span>
+                                                                        <div className="workflow-meta-value">{request.requesterName}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Loại / Ưu tiên</span>
+                                                                        <div className="workflow-meta-value">{requestTypeLabel} - {requestPriority}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Gửi lúc</span>
+                                                                        <div className="workflow-meta-value">{formatWorkflowDateTime(request.createdAt)}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Cập nhật</span>
+                                                                        <div className="workflow-meta-value">{formatWorkflowDateTime(request.resolvedAt || request.updatedAt || request.createdAt)}</div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {request.latestNote ? (
+                                                                    <div className="mt-3">
+                                                                        <span className="workflow-meta-label">Ghi chú mới nhất</span>
+                                                                        <div className="workflow-meta-value">{request.latestNote}</div>
+                                                                    </div>
+                                                                ) : null}
+
+                                                                <div className="workflow-inline-actions mt-3">
+                                                                    <button className="btn btn-sm btn-success rounded-pill px-3 fw-bold" onClick={() => handleRequestDecision(request, true)}>
+                                                                        Duyệt
+                                                                    </button>
+                                                                    <button className="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" onClick={() => handleRequestDecision(request, false)}>
+                                                                        Từ chối
+                                                                    </button>
+                                                                </div>
+                                                            </article>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="workflow-panel">
+                                        <div className="workflow-panel-header">
+                                            <div>
+                                                <h3 className="workflow-panel-title">Lịch sử đã xử lý</h3>
+                                                <p className="workflow-panel-copy">Theo dõi các phê duyệt gần đây của manager để đối chiếu và đánh giá tốc độ xử lý.</p>
+                                            </div>
+                                        </div>
+                                        <div className="workflow-panel-body">
+                                            {requestHistory.length === 0 ? (
+                                                <div className="workflow-empty">Chưa có mục lịch sử nào được ghi nhận.</div>
+                                            ) : (
+                                                <div className="workflow-list workflow-scroll-region">
+                                                    {requestHistory.slice(0, 8).map((request) => {
+                                                        const statusMeta = getRequestStatusMeta(request.status);
+
+                                                        return (
+                                                            <article key={request.id || `${request.title}-${request.createdAt}-history`} className="workflow-item">
+                                                                <div className="workflow-item-head">
+                                                                    <div>
+                                                                        <h4 className="workflow-item-title">{request.title}</h4>
+                                                                        <p className="workflow-item-copy">{request.requesterName} - {request.departmentName}</p>
+                                                                    </div>
+                                                                    <span className={`workflow-pill ${statusMeta.className}`}>{statusMeta.label}</span>
+                                                                </div>
+                                                                <div className="workflow-item-meta">
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Cập nhật lúc</span>
+                                                                        <div className="workflow-meta-value">{formatWorkflowDateTime(request.createdAt)}</div>
+                                                                    </div>
+                                                                    {request.latestNote ? (
+                                                                        <div className="flex-grow-1">
+                                                                            <span className="workflow-meta-label">Ghi chú</span>
+                                                                            <div className="workflow-meta-value">{request.latestNote}</div>
+                                                                        </div>
+                                                                    ) : null}
+                                                                </div>
+                                                            </article>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="workflow-stack">
+                                    <div className="workflow-panel">
+                                        <div className="workflow-panel-header">
+                                            <div>
+                                                <h3 className="workflow-panel-title">Quản lý template dự án</h3>
+                                                <p className="workflow-panel-copy">Lưu mẫu dự án lặp lại của phòng để rút ngắn thời gian khởi tạo và giảm sai lệch quy trình.</p>
+                                            </div>
+                                        </div>
+                                        <div className="workflow-panel-body">
+                                            <form className="workflow-stack" onSubmit={handleTemplateSubmit}>
+                                                <div className="workflow-form-grid">
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Tên template</label>
+                                                        <input className="form-control modern-input" required value={templateForm.name} onChange={(e) => setTemplateForm((prev) => ({ ...prev, name: e.target.value }))} />
+                                                    </div>
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Mô tả / phạm vi</label>
+                                                        <textarea className="form-control modern-input" rows="3" value={templateForm.summary} onChange={(e) => setTemplateForm((prev) => ({ ...prev, summary: e.target.value }))} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="user-form-label">Loại template</label>
+                                                        <select className="form-select modern-input" value={templateForm.templateGroupType} onChange={(e) => setTemplateForm((prev) => ({ ...prev, templateGroupType: e.target.value }))}>
+                                                            <option value="DELIVERY">Delivery</option>
+                                                            <option value="MAINTENANCE">Maintenance</option>
+                                                            <option value="INTERNAL">Internal</option>
+                                                            <option value="OTHER">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="user-form-label">Ưu tiên mặc định</label>
+                                                        <select className="form-select modern-input" value={templateForm.priority} onChange={(e) => setTemplateForm((prev) => ({ ...prev, priority: e.target.value }))}>
+                                                            {TEMPLATE_PRIORITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Checklist mặc định</label>
+                                                        <textarea className="form-control modern-input" rows="4" placeholder="Mỗi dòng là một hạng mục mặc định" value={templateForm.checklistText} onChange={(e) => setTemplateForm((prev) => ({ ...prev, checklistText: e.target.value }))} />
+                                                    </div>
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Task templates</label>
+                                                        <textarea className="form-control modern-input" rows="4" placeholder="Mỗi dòng là một task template" value={templateForm.objectiveText} onChange={(e) => setTemplateForm((prev) => ({ ...prev, objectiveText: e.target.value }))} />
+                                                    </div>
+                                                </div>
+
+                                                <div className="workflow-inline-actions">
+                                                    <button className="modern-btn-primary flex-grow-1" disabled={templateSubmitting}>
+                                                        {templateSubmitting ? 'Đang lưu...' : 'Tạo template'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <div className="workflow-panel">
+                                        <div className="workflow-panel-header">
+                                            <div>
+                                                <h3 className="workflow-panel-title">Khởi tạo dự án từ template</h3>
+                                                <p className="workflow-panel-copy">Chọn template, đặt mốc thời gian và tạo ngay dự án mới cho phòng ban hiện tại.</p>
+                                            </div>
+                                        </div>
+                                        <div className="workflow-panel-body">
+                                            <form className="workflow-stack" onSubmit={handleCreateProjectFromTemplate}>
+                                                <div className="workflow-form-grid">
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Template</label>
+                                                        <select className="form-select modern-input" required value={projectFromTemplateForm.templateId} onChange={(e) => setProjectFromTemplateForm((prev) => ({ ...prev, templateId: e.target.value }))}>
+                                                            <option value="">-- Chọn template --</option>
+                                                            {templateList.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Tên dự án mới</label>
+                                                        <input className="form-control modern-input" required value={projectFromTemplateForm.name} onChange={(e) => setProjectFromTemplateForm((prev) => ({ ...prev, name: e.target.value }))} />
+                                                    </div>
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Mô tả bổ sung</label>
+                                                        <textarea className="form-control modern-input" rows="3" value={projectFromTemplateForm.description} onChange={(e) => setProjectFromTemplateForm((prev) => ({ ...prev, description: e.target.value }))} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="user-form-label">Ngày bắt đầu</label>
+                                                        <input type="date" className="form-control modern-input" required value={projectFromTemplateForm.startDate} onChange={(e) => setProjectFromTemplateForm((prev) => ({ ...prev, startDate: e.target.value }))} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="user-form-label">Hạn cuối</label>
+                                                        <input type="date" className="form-control modern-input" required value={projectFromTemplateForm.deadline} onChange={(e) => setProjectFromTemplateForm((prev) => ({ ...prev, deadline: e.target.value }))} />
+                                                    </div>
+                                                    <div className="workflow-form-field-full">
+                                                        <label className="user-form-label">Ưu tiên override</label>
+                                                        <select className="form-select modern-input" value={projectFromTemplateForm.priority} onChange={(e) => setProjectFromTemplateForm((prev) => ({ ...prev, priority: e.target.value }))}>
+                                                            <option value="">Dùng cấu hình template</option>
+                                                            {TEMPLATE_PRIORITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <button className="modern-btn-primary w-100" disabled={creatingProjectFromTemplate || !templateList.length}>
+                                                    {creatingProjectFromTemplate ? 'Đang tạo dự án...' : 'Tạo dự án từ template'}
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <div className="workflow-panel">
+                                        <div className="workflow-panel-header">
+                                            <div>
+                                                <h3 className="workflow-panel-title">Thư viện template</h3>
+                                                <p className="workflow-panel-copy">Danh sách mẫu dự án hiện có trong phòng, kèm checklist và mục tiêu gợi ý.</p>
+                                            </div>
+                                        </div>
+                                        <div className="workflow-panel-body">
+                                            {templateList.length === 0 ? (
+                                                <div className="workflow-empty">Chưa có template dự án nào trong phòng ban này.</div>
+                                            ) : (
+                                                <div className="workflow-template-grid workflow-scroll-region">
+                                                    {templateList.map((template) => {
+                                                        const statusMeta = getTemplateStatusMeta(template.status);
+
+                                                        return (
+                                                            <article key={template.id} className="workflow-template-card">
+                                                                <div className="workflow-template-head">
+                                                                    <div>
+                                                                        <h4 className="workflow-template-title">{template.name}</h4>
+                                                                        <p className="workflow-template-copy">{template.summary || 'Không có mô tả cho template này.'}</p>
+                                                                    </div>
+                                                                    <span className={`workflow-pill ${statusMeta.className}`}>{statusMeta.label}</span>
+                                                                </div>
+
+                                                                <div className="workflow-meta-grid">
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Loại template</span>
+                                                                        <div className="workflow-meta-value">{template.templateGroupType || 'OTHER'}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="workflow-meta-label">Cập nhật lần cuối</span>
+                                                                        <div className="workflow-meta-value">{formatWorkflowDate(template.updatedAt)}</div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {template.taskTemplates?.length > 0 ? (
+                                                                    <ul className="workflow-template-list">
+                                                                        {template.taskTemplates.slice(0, 4).map((item, index) => <li key={`${template.id}-task-${index}`}>{item.title || item.name}</li>)}
+                                                                    </ul>
+                                                                ) : null}
+                                                            </article>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {activeTab === 'PROJECT_DETAIL' && selectedProject && (

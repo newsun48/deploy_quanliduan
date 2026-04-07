@@ -2,60 +2,77 @@ package com.projectmanagement.core_system.config;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Objects;
 
 @Component
 public class JwtUtil {
 
-    private final String SECRET_KEY = "mySecretKeyForJWTTokenGenerationThatIsLongEnough123456789"; // Thay bằng key mạnh hơn trong production
-    private final long EXPIRATION_TIME = 86400000; // 24 giờ
+    @Value("${app.jwt.secret:}")
+    private String secretKey;
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    @Value("${app.jwt.expiration-ms:86400000}")
+    private long expirationTime;
+
+    @PostConstruct
+    void validateConfiguration() {
+        if (!StringUtils.hasText(secretKey) || secretKey.trim().length() < 32) {
+            throw new IllegalStateException("JWT secret must be configured and at least 32 characters long");
+        }
     }
 
-    public String generateToken(String email, String role) {
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(secretKey.getBytes());
+    }
+
+    public String generateToken(String email, String role, Long authVersion) {
         return Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
+                .claim("authVersion", authVersion != null ? authVersion : 0L)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    public Long extractAuthVersion(String token) {
+        return extractAllClaims(token).get("authVersion", Long.class);
+    }
+
     public String extractEmail(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        return extractAllClaims(token).getSubject();
     }
 
     public String extractRole(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .get("role", String.class);
+        return extractAllClaims(token).get("role", String.class);
     }
 
     public boolean isTokenExpired(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
+        return extractAllClaims(token)
                 .getExpiration()
                 .before(new Date());
     }
 
-    public boolean validateToken(String token, String email) {
-        return (email.equals(extractEmail(token)) && !isTokenExpired(token));
+    public boolean validateToken(String token, com.projectmanagement.core_system.model.User user) {
+        long currentAuthVersion = user.getAuthVersion() != null ? user.getAuthVersion() : 0L;
+        Long tokenAuthVersion = extractAuthVersion(token);
+        return user.getEmail().equals(extractEmail(token))
+                && !isTokenExpired(token)
+                && Objects.equals(currentAuthVersion, tokenAuthVersion != null ? tokenAuthVersion : 0L);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }

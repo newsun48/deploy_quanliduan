@@ -20,10 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -58,15 +55,10 @@ class UserServiceTest {
     private UserActivityService userActivityService;
 
     @Mock
-    private JavaMailSender mailSender;
+    private EmailDeliveryService emailDeliveryService;
 
     @InjectMocks
     private UserService userService;
-
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(userService, "senderEmail", "noreply@example.com");
-    }
 
     @Test
     void updateUserStatus_rejectsDeactivatingAdminTarget() {
@@ -310,7 +302,7 @@ class UserServiceTest {
         assertEquals(ApprovalStatus.APPROVED, updatedUser.getApprovalStatus());
         assertTrue(updatedUser.isActive());
         assertEquals(null, updatedUser.getRejectionReason());
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify(emailDeliveryService).sendEmail(any(String.class), any(String.class), any(String.class), any());
     }
 
     @Test
@@ -331,11 +323,13 @@ class UserServiceTest {
         assertEquals(ApprovalStatus.REJECTED, updatedUser.getApprovalStatus());
         assertFalse(updatedUser.isActive());
         assertEquals("Hồ sơ không đầy đủ", updatedUser.getRejectionReason());
-        ArgumentCaptor<SimpleMailMessage> emailCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender).send(emailCaptor.capture());
-        SimpleMailMessage sentEmail = emailCaptor.getValue();
-        assertEquals("pending@example.com", sentEmail.getTo()[0]);
-        assertTrue(sentEmail.getText().contains("Hồ sơ không đầy đủ"));
+        ArgumentCaptor<String> toCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailDeliveryService).sendEmail(toCaptor.capture(), subjectCaptor.capture(), bodyCaptor.capture(), any());
+        assertEquals("pending@example.com", toCaptor.getValue());
+        assertTrue(subjectCaptor.getValue().contains("tu choi"));
+        assertTrue(bodyCaptor.getValue().contains("Hồ sơ không đầy đủ"));
     }
 
     @Test
@@ -409,6 +403,22 @@ class UserServiceTest {
 
         assertEquals("Bạn không có quyền thực hiện thao tác này!", error.getMessage());
         verify(userRepository, never()).deleteById("employee-1");
+    }
+
+    @Test
+    void downloadImageFromUrl_rejectsLocalhostHost() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> userService.downloadImageFromUrl("http://localhost/avatar.png"));
+
+        assertEquals("URL ảnh không được trỏ tới host nội bộ!", error.getMessage());
+    }
+
+    @Test
+    void downloadImageFromUrl_rejectsNonHttpSchemes() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> userService.downloadImageFromUrl("ftp://example.com/avatar.png"));
+
+        assertEquals("Chỉ chấp nhận URL ảnh qua HTTP hoặc HTTPS!", error.getMessage());
     }
 
     private User buildUser(String id, String email, ERole role, boolean active) {

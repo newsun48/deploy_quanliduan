@@ -2,6 +2,7 @@ package com.projectmanagement.core_system.controller;
 
 import com.projectmanagement.core_system.model.AttachmentInfo;
 import com.projectmanagement.core_system.model.Comment;
+import com.projectmanagement.core_system.config.JwtUtil;
 import com.projectmanagement.core_system.service.CommentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,16 @@ public class CommentController {
     @Autowired
     private CommentService commentService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     // 1. Get all comments by Task ID
     @GetMapping("/task/{taskId}")
-    public ResponseEntity<?> getCommentsByTask(@PathVariable String taskId) {
+    public ResponseEntity<?> getCommentsByTask(
+            @PathVariable String taskId,
+            @RequestHeader("Authorization") String token) {
         try {
-            List<Comment> comments = commentService.getCommentsByTaskId(taskId);
+            List<Comment> comments = commentService.getCommentsByTaskId(taskId, extractEmailSafely(token));
             return ResponseEntity.ok(comments);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -32,9 +38,11 @@ public class CommentController {
 
     // 1b. 🆕 Get all comments by Project ID
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<?> getCommentsByProject(@PathVariable String projectId) {
+    public ResponseEntity<?> getCommentsByProject(
+            @PathVariable String projectId,
+            @RequestHeader("Authorization") String token) {
         try {
-            List<Comment> comments = commentService.getCommentsByProjectId(projectId);
+            List<Comment> comments = commentService.getCommentsByProjectId(projectId, extractEmailSafely(token));
             return ResponseEntity.ok(comments);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -45,11 +53,12 @@ public class CommentController {
     @PostMapping("/add")
     public ResponseEntity<?> addComment(
             @RequestParam String taskId,
-            @RequestParam String userId,
+            @RequestParam(required = false) String userId,
+            @RequestHeader("Authorization") String token,
             @RequestBody Map<String, Object> payload) {
         try {
             String content = payload.get("content") != null ? payload.get("content").toString() : "";
-            Comment comment = commentService.addComment(taskId, userId, content, parseAttachments(payload.get("attachments")));
+            Comment comment = commentService.addComment(taskId, userId, extractEmailSafely(token), content, parseAttachments(payload.get("attachments")));
             return ResponseEntity.ok(comment);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -60,10 +69,11 @@ public class CommentController {
     @PutMapping("/{commentId}")
     public ResponseEntity<?> updateComment(
             @PathVariable String commentId,
+            @RequestHeader("Authorization") String token,
             @RequestBody Map<String, String> payload) {
         try {
             String newContent = payload.get("content");
-            Comment comment = commentService.updateComment(commentId, newContent);
+            Comment comment = commentService.updateComment(commentId, extractEmailSafely(token), newContent);
             return ResponseEntity.ok(comment);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -72,9 +82,11 @@ public class CommentController {
 
     // 4. Delete comment
     @DeleteMapping("/{commentId}")
-    public ResponseEntity<?> deleteComment(@PathVariable String commentId) {
+    public ResponseEntity<?> deleteComment(
+            @PathVariable String commentId,
+            @RequestHeader("Authorization") String token) {
         try {
-            commentService.deleteComment(commentId);
+            commentService.deleteComment(commentId, extractEmailSafely(token));
             return ResponseEntity.ok("Bình luận đã được xóa!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -110,5 +122,13 @@ public class CommentController {
         }
 
         return Long.parseLong(value.toString());
+    }
+
+    private String extractEmailSafely(String token) {
+        if (token == null || token.isBlank() || !token.startsWith("Bearer ")) {
+            return null;
+        }
+
+        return jwtUtil.extractEmail(token.replace("Bearer ", ""));
     }
 }
